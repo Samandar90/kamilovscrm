@@ -1,5 +1,9 @@
 /** Must match services/api PORT (see env.ts default 4000 and .env). */
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const API_BASE = import.meta.env.VITE_API_URL;
+
+if (!API_BASE) {
+  throw new Error("VITE_API_URL is not defined");
+}
 const TOKEN_KEY = "crm_access_token";
 
 type RequestOptions = {
