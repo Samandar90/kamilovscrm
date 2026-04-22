@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { ActivitySquare, CalendarDays, Eye, EyeOff, Lock, ShieldCheck, User, Users } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 
 const WRONG_CREDENTIALS_MSG = "Неверный логин или пароль";
@@ -22,12 +23,17 @@ const mapLoginApiError = (message: string): string => {
   return message;
 };
 
+function CursorGlow() {
+  return null;
+}
+
 export const LoginPage: React.FC = () => {
   const { login, isAuthenticated, isLoading, error, clearError } = useAuth();
-  const [username, setUsername] = React.useState("");
-  const [password, setPassword] = React.useState("");
-  const [showPassword, setShowPassword] = React.useState(false);
-  const [formError, setFormError] = React.useState<string | null>(null);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+  const [show, setShow] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const lastSubmitAtRef = React.useRef(0);
 
   if (isAuthenticated) {
@@ -47,143 +53,143 @@ export const LoginPage: React.FC = () => {
     }
     setFormError(null);
     clearError();
-    await login(username.trim(), password, false);
+    await login(username.trim(), password, rememberMe);
   };
 
   const displayError = formError ?? (error ? mapLoginApiError(error) : null);
 
-  const inputClass =
-    "w-full rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none transition " +
-    "placeholder:text-zinc-400 " +
-    "hover:border-zinc-300 " +
-    "focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10";
+  const features = [
+    { icon: Users, title: "Пациенты" },
+    { icon: CalendarDays, title: "Расписание" },
+    { icon: ActivitySquare, title: "Аналитика" },
+  ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        {/* Левая панель — бренд */}
-        <aside className="relative flex flex-col justify-center border-b border-zinc-800/80 bg-zinc-950 px-8 py-12 md:w-1/2 md:border-b-0 md:border-r md:py-16 md:pl-12 md:pr-10 lg:pl-16">
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.35]"
-            style={{
-              backgroundImage: `radial-gradient(circle at 1px 1px, rgb(255 255 255 / 0.08) 1px, transparent 0)`,
-              backgroundSize: "24px 24px",
-            }}
-          />
-          <div className="relative mx-auto w-full max-w-md md:mx-0">
-            <div className="mb-8 flex items-center gap-3">
+    <div className="min-h-screen flex relative overflow-hidden">
+      <CursorGlow />
+
+      <div className="hidden lg:flex w-1/2 relative overflow-hidden bg-[#0B1120] text-white">
+        <div className="absolute inset-0 bg-[linear-gradient(160deg,#0B1120_0%,#0F172A_100%)]" />
+        <div className="relative z-10 flex h-full w-full flex-col justify-center pl-20 pr-12">
+          <div className="max-w-[480px]">
+          <h1 className="text-[48px] font-semibold leading-[1.1] tracking-tight">
+            Управление клиникой
+            <br />
+            в <span className="text-blue-400">одном месте</span>
+          </h1>
+
+          <p className="mt-4 max-w-[360px] text-white/60">Цифровая система для современной клиники</p>
+
+          <div className="mt-7 flex flex-col gap-3">
+            {features.map((item) => (
               <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-lg font-semibold tracking-tight text-zinc-950 shadow-sm"
-                aria-hidden
+                key={item.title}
+                className="group inline-flex w-fit items-center gap-3 text-white/70 transition duration-200 hover:translate-x-0.5 hover:text-white"
               >
-                K
+                <item.icon size={16} className="text-white/55 transition group-hover:text-white/80" />
+                <span className="text-sm">{item.title}</span>
               </div>
-            </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-white md:text-[1.75rem] lg:text-4xl">
-              Kamilovs clinic
-            </h1>
-            <p className="mt-3 max-w-sm text-[15px] leading-relaxed text-zinc-400">
-              Управление клиникой в одном месте
-            </p>
+            ))}
           </div>
-        </aside>
 
-        {/* Правая часть — форма */}
-        <main className="flex flex-1 flex-col items-center justify-center bg-zinc-50/80 px-5 py-12 md:px-8 md:py-16">
-          <div className="w-full max-w-[400px] rounded-xl border border-zinc-200/80 bg-white p-8 shadow-lg">
-            <form
-              className="space-y-5"
-              onSubmit={onSubmit}
-              noValidate
-              aria-busy={isLoading}
-            >
-              <div>
-                <label htmlFor="login-username" className="mb-1.5 block text-sm font-medium text-zinc-700">
-                  Логин
-                </label>
-                <input
-                  id="login-username"
-                  type="text"
-                  name="username"
-                  autoComplete="username"
-                  autoFocus
-                  value={username}
-                  onChange={(e) => {
-                    setUsername(e.target.value);
-                    setFormError(null);
-                    clearError();
-                  }}
-                  className={inputClass}
-                  placeholder="Введите логин"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-zinc-700">
-                  Пароль
-                </label>
-                <div className="relative isolate">
-                  <input
-                    id="login-password"
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setFormError(null);
-                      clearError();
-                    }}
-                    className={`crm-login-password-field ${inputClass} pr-12`}
-                    placeholder="Введите пароль"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
-                    aria-pressed={showPassword}
-                    className="absolute inset-y-0 right-0 z-10 flex w-11 shrink-0 items-center justify-center rounded-r-xl text-zinc-400 transition-colors hover:bg-zinc-100/80 hover:text-zinc-600 focus:outline-none focus-visible:bg-zinc-100/80 focus-visible:text-zinc-700"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
-                    ) : (
-                      <Eye className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {displayError ? (
-                <div
-                  className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800"
-                  role="alert"
-                  aria-live="polite"
-                >
-                  {displayError}
-                </div>
-              ) : null}
-
-              <button
-                type="submit"
-                disabled={isLoading || !canSubmit}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 shrink-0 animate-spin" strokeWidth={2.5} aria-hidden />
-                    <span>Вход…</span>
-                  </>
-                ) : (
-                  "Войти"
-                )}
-              </button>
-            </form>
+          <div className="mt-8 inline-flex items-center gap-2 text-xs text-white/45">
+            <ShieldCheck size={14} />
+            Ваши данные под надёжной защитой
           </div>
-        </main>
+          </div>
+        </div>
       </div>
-      <footer className="shrink-0 border-t border-zinc-100 py-3 text-center text-[11px] text-zinc-400">
-        © 2026 Kamilovs clinic
-      </footer>
+
+      <div className="relative z-10 flex-1 flex items-center justify-center bg-gradient-to-br from-[#F8FAFC] to-[#EEF2F7]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(560px_circle_at_84%_20%,rgba(99,102,241,0.10),transparent_45%)]" />
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className="w-[400px] rounded-2xl border border-[#E5E7EB] bg-white p-8 shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
+        >
+          <h2 className="mb-1 text-[26px] leading-tight font-semibold text-[#111827]">
+            Добро пожаловать
+          </h2>
+          <p className="mb-5 text-sm text-gray-500">
+            Войдите в систему для продолжения работы
+          </p>
+
+          <form className="space-y-4" onSubmit={onSubmit} noValidate aria-busy={isLoading}>
+            <div className="relative">
+              <User className="absolute left-3 top-[15px] text-gray-400" size={18} />
+              <input
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  setFormError(null);
+                  clearError();
+                }}
+                autoFocus
+                autoComplete="username"
+                className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+                placeholder="Введите логин"
+              />
+            </div>
+
+            <div className="relative">
+              <Lock className="absolute left-3 top-[15px] text-gray-400" size={18} />
+              <input
+                type={show ? "text" : "password"}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setFormError(null);
+                  clearError();
+                }}
+                autoComplete="current-password"
+                className="crm-login-password-field h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-10 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+                placeholder="Введите пароль"
+              />
+              <button
+                type="button"
+                onClick={() => setShow((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-0.5 text-gray-400 transition-colors duration-200 hover:text-gray-600"
+              >
+                {show ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-[#2563EB] focus:ring-[#2563EB]/20"
+              />
+              Запомнить меня
+            </label>
+
+            {displayError ? (
+              <motion.div
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: [0, -4, 4, -3, 3, 0] }}
+                transition={{ duration: 0.36 }}
+                className="rounded-xl border border-[rgba(239,68,68,0.2)] bg-[rgba(239,68,68,0.08)] px-3.5 py-2.5 text-sm text-[#DC2626]"
+                role="alert"
+                aria-live="polite"
+              >
+                {displayError}
+              </motion.div>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={isLoading || !canSubmit}
+              className="h-12 w-full rounded-xl bg-[#2563EB] text-white font-medium transition hover:bg-[#1D4ED8] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isLoading ? "Вход..." : "Войти"}
+            </button>
+          </form>
+        </motion.div>
+      </div>
     </div>
   );
 };
+
+export default LoginPage;
