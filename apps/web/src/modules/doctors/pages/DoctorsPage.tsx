@@ -6,6 +6,7 @@ import { hasPermission } from "../../../auth/permissions";
 import { ListEmptyState } from "../../../components/ui/ListEmptyState";
 import { MultiSelect } from "../../../components/ui/MultiSelect";
 import { Modal } from "../../../components/ui/Modal";
+import { CollapsibleChips } from "../../../shared/ui/CollapsibleChips";
 import { PhoneInput } from "../../../shared/ui/PhoneInput";
 import { phoneToApiValue, storedPhoneToNormalized } from "../../../utils/phoneInput";
 
@@ -45,8 +46,6 @@ const initialFormState: DoctorFormState = {
   serviceIds: [],
 };
 
-const DOCTOR_SERVICES_PREVIEW_COUNT = 2;
-
 type DoctorServicesChipsProps = {
   doctorId: number;
   serviceIds: number[];
@@ -58,53 +57,24 @@ const DoctorServicesChips: React.FC<DoctorServicesChipsProps> = ({
   serviceIds,
   serviceNameById,
 }) => {
-  const [expanded, setExpanded] = React.useState(false);
-
   if (serviceIds.length === 0) {
     return <p className="mt-1 text-sm text-[#94a3b8]">Услуги пока не назначены</p>;
   }
 
-  const hiddenCount = Math.max(0, serviceIds.length - DOCTOR_SERVICES_PREVIEW_COUNT);
-  const visibleServiceIds = expanded ? serviceIds : serviceIds.slice(0, DOCTOR_SERVICES_PREVIEW_COUNT);
-
   return (
-    <div
-      className={`mt-2 overflow-hidden transition-all duration-300 ease-out ${
-        expanded ? "max-h-64" : "max-h-10"
-      }`}
-    >
-      <div className="flex flex-wrap gap-2">
-        {visibleServiceIds.map((serviceId) => (
-          <span
-            key={`${doctorId}-${serviceId}`}
-            className="inline-flex items-center rounded-full border border-[#dbeafe] bg-[#eff6ff] px-2.5 py-0.5 text-xs font-medium text-[#1d4ed8]"
-          >
-            {serviceNameById[serviceId] ?? `#${serviceId}`}
-          </span>
-        ))}
-
-        {!expanded && hiddenCount > 0 ? (
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200"
-            aria-label={`Показать еще ${hiddenCount} услуг`}
-          >
-            +{hiddenCount}
-          </button>
-        ) : null}
-
-        {expanded && hiddenCount > 0 ? (
-          <button
-            type="button"
-            onClick={() => setExpanded(false)}
-            className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200"
-          >
-            Свернуть
-          </button>
-        ) : null}
-      </div>
-    </div>
+    <CollapsibleChips
+      items={serviceIds}
+      maxVisible={2}
+      className="mt-2"
+      renderItem={(serviceId) => (
+        <span
+          key={`${doctorId}-${serviceId}`}
+          className="inline-flex items-center rounded-full border border-[#dbeafe] bg-[#eff6ff] px-2.5 py-0.5 text-xs font-medium text-[#1d4ed8]"
+        >
+          {serviceNameById[serviceId] ?? `#${serviceId}`}
+        </span>
+      )}
+    />
   );
 };
 

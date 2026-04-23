@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS services (
   code VARCHAR(64) NOT NULL,
   name VARCHAR(255) NOT NULL,
   category VARCHAR(128) NOT NULL DEFAULT 'other',
-  price NUMERIC(12,2) NOT NULL CHECK (price > 0),
+  price NUMERIC(12,2) NOT NULL CHECK (price >= 0),
   duration INTEGER NOT NULL DEFAULT 30 CHECK (duration > 0),
   active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

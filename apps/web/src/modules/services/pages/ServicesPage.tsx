@@ -12,6 +12,7 @@ import {
   refreshServicesCache,
 } from "../../../shared/cache/servicesCache";
 import { normalizeMoneyInput } from "../../../shared/lib/money";
+import { CollapsibleChips } from "../../../shared/ui/CollapsibleChips";
 import { MoneyInput } from "../../../shared/ui/MoneyInput";
 import { formatSum } from "../../../utils/formatMoney";
 
@@ -321,16 +322,19 @@ export const ServicesPage: React.FC = () => {
                 <div className="mt-3">
                   <p className="text-xs uppercase tracking-wide text-[#94a3b8]">Врачи</p>
                   {service.doctorIds.length > 0 ? (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {service.doctorIds.map((doctorId) => (
+                    <CollapsibleChips
+                      items={service.doctorIds}
+                      maxVisible={2}
+                      className="mt-2"
+                      renderItem={(doctorId) => (
                         <span
                           key={`${service.id}-${doctorId}`}
                           className="inline-flex items-center rounded-full border border-[#dbeafe] bg-[#eff6ff] px-2.5 py-0.5 text-xs font-medium text-[#1d4ed8]"
                         >
                           {doctorNameById[doctorId] ?? `#${doctorId}`}
                         </span>
-                      ))}
-                    </div>
+                      )}
+                    />
                   ) : (
                     <p className="mt-1 text-sm text-[#94a3b8]">Врачи не назначены</p>
                   )}

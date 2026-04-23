@@ -61,6 +61,9 @@ export class ServicesService {
 
   async create(_auth: AuthTokenPayload, payload: ServiceCreateInput): Promise<Service> {
     const price = parseRequiredMoney(payload.price as unknown, "price");
+    if (price < 0) {
+      throw new ApiError(400, "Field 'price' must be a number greater than or equal to 0");
+    }
     const d = parseNumericInput(payload.duration);
     if (d === null || d <= 0) {
       throw new ApiError(400, "Поле «длительность» должно быть положительным числом");
@@ -80,7 +83,11 @@ export class ServicesService {
   ): Promise<Service | null> {
     const next: ServiceUpdateInput = { ...payload };
     if (payload.price !== undefined) {
-      next.price = parseRequiredMoney(payload.price as unknown, "price");
+      const price = parseRequiredMoney(payload.price as unknown, "price");
+      if (price < 0) {
+        throw new ApiError(400, "Field 'price' must be a number greater than or equal to 0");
+      }
+      next.price = price;
     }
     if (payload.duration !== undefined) {
       const d = parseNumericInput(payload.duration);

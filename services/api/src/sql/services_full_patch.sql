@@ -1,4 +1,4 @@
--- Full CRM service fields + stricter price (run after baseline services table exists;
+-- Full CRM service fields + non-negative price (run after baseline services table exists;
 -- apply services_duration_patch.sql first if duration column is missing.)
 
 ALTER TABLE services
@@ -24,12 +24,12 @@ END
 $$;
 
 UPDATE services
-SET price = 0.01
+SET price = 0
 WHERE price IS NOT NULL
-  AND price <= 0
+  AND price < 0
   AND deleted_at IS NULL;
 
 ALTER TABLE services DROP CONSTRAINT IF EXISTS services_price_check;
 
 ALTER TABLE services
-ADD CONSTRAINT services_price_check CHECK (price > 0);
+ADD CONSTRAINT services_price_check CHECK (price >= 0);
