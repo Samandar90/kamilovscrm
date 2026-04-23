@@ -36,6 +36,11 @@ export type Appointment = {
   diagnosis: string | null;
   treatment: string | null;
   notes: string | null;
+  services?: Array<{
+    serviceId: number;
+    name: string;
+    price: number;
+  }>;
   createdAt: string;
   updatedAt: string;
 };

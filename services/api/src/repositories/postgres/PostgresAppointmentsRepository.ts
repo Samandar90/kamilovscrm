@@ -1,6 +1,7 @@
 import type { IAppointmentsRepository } from "../interfaces/IAppointmentsRepository";
 import type {
   Appointment,
+  AppointmentServiceAssignedSummary,
   AppointmentBillingStatus,
   AppointmentCreateInput,
   AppointmentFilters,
@@ -45,6 +46,13 @@ type AppointmentServiceRow = {
   created_at: string | Date;
 };
 
+type AppointmentAssignedServiceWithDetailsRow = {
+  appointment_id: number;
+  service_id: number;
+  service_name: string;
+  service_price: string | number;
+};
+
 /** Любой ввод цены (JSON-строка с пробелами) → число для NUMERIC в PostgreSQL. */
 const coerceAppointmentPriceForDb = (value: unknown): number | null => {
   if (value === null || value === undefined) {
@@ -79,6 +87,46 @@ const mapAppointmentRow = (row: AppointmentRow): Appointment => ({
   createdAt: normalizeToLocalDateTime(row.created_at),
   updatedAt: normalizeToLocalDateTime(row.updated_at),
 });
+
+const attachAssignedServices = async (
+  appointments: Appointment[]
+): Promise<Appointment[]> => {
+  if (appointments.length === 0) {
+    return appointments;
+  }
+  const appointmentIds = appointments.map((row) => row.id);
+  const result = await dbPool.query<AppointmentAssignedServiceWithDetailsRow>(
+    `
+      SELECT
+        aps.appointment_id,
+        s.id AS service_id,
+        s.name AS service_name,
+        s.price AS service_price
+      FROM appointment_services aps
+      INNER JOIN services s ON s.id = aps.service_id
+      WHERE aps.appointment_id = ANY($1::bigint[])
+      ORDER BY aps.id ASC
+    `,
+    [appointmentIds]
+  );
+
+  const grouped = new Map<number, AppointmentServiceAssignedSummary[]>();
+  for (const row of result.rows) {
+    const key = Number(row.appointment_id);
+    const list = grouped.get(key) ?? [];
+    list.push({
+      serviceId: Number(row.service_id),
+      name: String(row.service_name),
+      price: parseNumericFromPg(row.service_price) ?? 0,
+    });
+    grouped.set(key, list);
+  }
+
+  return appointments.map((appointment) => ({
+    ...appointment,
+    services: grouped.get(appointment.id) ?? [],
+  }));
+};
 
 const SELECT_LIST = `
   id,
@@ -151,7 +199,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       ORDER BY start_at DESC
     `;
     const result = await dbPool.query<AppointmentRow>(query, values);
-    return result.rows.map(mapAppointmentRow);
+    return attachAssignedServices(result.rows.map(mapAppointmentRow));
   }
 
   async findById(id: number): Promise<Appointment | null> {
@@ -167,7 +215,8 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     if (result.rows.length === 0) {
       return null;
     }
-    return mapAppointmentRow(result.rows[0]);
+    const [withServices] = await attachAssignedServices([mapAppointmentRow(result.rows[0])]);
+    return withServices ?? null;
   }
 
   async create(data: AppointmentCreateInput): Promise<Appointment> {
@@ -381,6 +430,34 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
         return false;
       }
 
+      const invoiceIdsResult = await client.query<{ id: number }>(
+        `
+          SELECT id
+          FROM invoices
+          WHERE appointment_id = $1 AND deleted_at IS NULL
+        `,
+        [id]
+      );
+      const invoiceIds = invoiceIdsResult.rows.map((row) => Number(row.id));
+
+      if (invoiceIds.length > 0) {
+        const paymentsResult = await client.query<{ id: number }>(
+          `
+            SELECT id
+            FROM payments
+            WHERE invoice_id = ANY($1::bigint[]) AND deleted_at IS NULL
+            LIMIT 1
+          `,
+          [invoiceIds]
+        );
+        if (paymentsResult.rows.length > 0) {
+          await client.query("ROLLBACK");
+          throw new ApiError(409, "Нельзя удалить запись с финансовыми операциями");
+        }
+        await client.query("ROLLBACK");
+        throw new ApiError(409, "Нельзя удалить запись с финансовыми операциями");
+      }
+
       await client.query(
         `
           DELETE FROM appointment_services
@@ -388,50 +465,6 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
         `,
         [id]
       );
-
-      const invoiceIdsResult = await client.query<{ id: number }>(
-        `
-          SELECT id
-          FROM invoices
-          WHERE appointment_id = $1
-        `,
-        [id]
-      );
-      const invoiceIds = invoiceIdsResult.rows.map((row) => Number(row.id));
-
-      if (invoiceIds.length > 0) {
-        await client.query(
-          `
-            UPDATE cash_register_entries
-            SET payment_id = NULL
-            WHERE payment_id IN (
-              SELECT p.id FROM payments p WHERE p.invoice_id = ANY($1::bigint[])
-            )
-          `,
-          [invoiceIds]
-        );
-        await client.query(
-          `
-            DELETE FROM payments
-            WHERE invoice_id = ANY($1::bigint[])
-          `,
-          [invoiceIds]
-        );
-        await client.query(
-          `
-            DELETE FROM invoice_items
-            WHERE invoice_id = ANY($1::bigint[])
-          `,
-          [invoiceIds]
-        );
-        await client.query(
-          `
-            DELETE FROM invoices
-            WHERE id = ANY($1::bigint[])
-          `,
-          [invoiceIds]
-        );
-      }
 
       const deletedAppointment = await client.query<{ id: number }>(
         `
@@ -445,7 +478,11 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       await client.query("COMMIT");
       return deletedAppointment.rows.length > 0;
     } catch (error) {
-      await client.query("ROLLBACK");
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        /* noop */
+      }
       throw error;
     } finally {
       client.release();

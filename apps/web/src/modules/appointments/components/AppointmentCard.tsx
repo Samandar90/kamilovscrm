@@ -113,6 +113,7 @@ export const AppointmentCard: React.FC<Props> = ({
     appointmentPrice !== null &&
     serviceBasePrice !== null &&
     Math.round(appointmentPrice) !== Math.round(coercePriceToNumber(serviceBasePrice));
+  const assignedServices = appointment.services ?? [];
 
   return (
     <li className="list-none">
@@ -154,6 +155,12 @@ export const AppointmentCard: React.FC<Props> = ({
                   : service.name
                 : `#${appointment.serviceId}`}
             </p>
+            {assignedServices.length > 0 ? (
+              <p className="text-[#334155]">
+                <span className="text-[#64748b]">Назначенные услуги:</span>{" "}
+                {assignedServices.map((row) => row.name).join(", ")}
+              </p>
+            ) : null}
             {isPriceManuallyChanged ? (
               <p className="text-xs text-amber-700">
                 <span className="rounded-md bg-amber-100 px-1.5 py-0.5">изменено вручную</span>

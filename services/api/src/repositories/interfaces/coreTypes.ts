@@ -105,6 +105,7 @@ export type Appointment = {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  services?: AppointmentServiceAssignedSummary[];
 };
 
 export type AppointmentFilters = {
@@ -156,4 +157,10 @@ export type AppointmentServiceAssignment = {
   serviceId: number;
   createdBy: number | null;
   createdAt: string;
+};
+
+export type AppointmentServiceAssignedSummary = {
+  serviceId: number;
+  name: string;
+  price: number;
 };

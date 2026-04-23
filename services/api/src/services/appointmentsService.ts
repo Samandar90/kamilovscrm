@@ -359,6 +359,9 @@ export class AppointmentsService {
     }
 
     const normalizedPayload = normalizeUpdateInput(payload);
+    if (current.billingStatus === "paid" && normalizedPayload.serviceId !== undefined) {
+      throw new ApiError(409, "Нельзя изменять услуги после оплаты");
+    }
     if (normalizedPayload.startAt !== undefined) {
       normalizedPayload.startAt = assertAppointmentTimestampForDb(
         normalizedPayload.startAt,
@@ -609,6 +612,9 @@ export class AppointmentsService {
     const appointment = await this.appointmentsRepository.findById(appointmentId);
     if (!appointment) {
       throw new ApiError(404, "Appointment not found");
+    }
+    if (appointment.billingStatus === "paid") {
+      throw new ApiError(409, "Нельзя изменять услуги после оплаты");
     }
     enforceDoctorSelfScopeOnWrite(auth, appointment.doctorId);
     if (appointment.status !== "in_consultation" && appointment.status !== "arrived") {

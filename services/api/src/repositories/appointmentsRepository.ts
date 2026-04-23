@@ -1,7 +1,9 @@
 import type { IAppointmentsRepository } from "./interfaces/IAppointmentsRepository";
+import { ApiError } from "../middleware/errorHandler";
 import { APPOINTMENT_BILLING_STATUSES, APPOINTMENT_STATUSES } from "./interfaces/coreTypes";
 import type {
   Appointment,
+  AppointmentServiceAssignedSummary,
   AppointmentBillingStatus,
   AppointmentCreateInput,
   AppointmentFilters,
@@ -27,9 +29,29 @@ export type {
 
 const toAppointment = (row: AppointmentRecord): Appointment => ({ ...row });
 
+const attachServices = (
+  appointments: AppointmentRecord[]
+): Appointment[] => {
+  const db = getMockDb();
+  return appointments.map((row) => {
+    const services: AppointmentServiceAssignedSummary[] = db.appointmentServices
+      .filter((item) => item.appointmentId === row.id)
+      .map((item) => {
+        const service = db.services.find((s) => s.id === item.serviceId);
+        return {
+          serviceId: item.serviceId,
+          name: service?.name ?? `#${item.serviceId}`,
+          price: service?.price ?? 0,
+        };
+      });
+    return { ...row, services };
+  });
+};
+
 export class MockAppointmentsRepository implements IAppointmentsRepository {
   async findAll(filters: AppointmentFilters = {}): Promise<Appointment[]> {
-    return getMockDb()
+    return attachServices(
+      getMockDb()
       .appointments.filter((row) => {
         if (filters.patientId !== undefined && row.patientId !== filters.patientId) return false;
         if (filters.doctorId !== undefined && row.doctorId !== filters.doctorId) return false;
@@ -42,12 +64,13 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
         return true;
       })
       .sort((a, b) => b.startAt.localeCompare(a.startAt))
-      .map(toAppointment);
+    );
   }
 
   async findById(id: number): Promise<Appointment | null> {
     const found = getMockDb().appointments.find((item) => item.id === id);
-    return found ? toAppointment(found) : null;
+    if (!found) return null;
+    return attachServices([found])[0] ?? null;
   }
 
   async create(input: AppointmentCreateInput): Promise<Appointment> {
@@ -116,6 +139,9 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
     const invoiceIds = db.invoices
       .filter((item) => item.appointmentId === id && item.deletedAt === null)
       .map((item) => item.id);
+    if (invoiceIds.length > 0) {
+      throw new ApiError(409, "Нельзя удалить запись с финансовыми операциями");
+    }
     const paymentIds = db.payments
       .filter((item) => invoiceIds.includes(item.invoiceId))
       .map((item) => item.id);
