@@ -47,18 +47,10 @@ export const AppointmentPrimaryWorkflowButton: React.FC<Props> = ({
     );
   }
 
-  if (appointment.status === "in_consultation" && canOpenDoctorWorkspace) {
-    return (
-      <button type="button" className={btnNeutral} disabled={disabled} onClick={onOpenDoctorWorkspace}>
-        Рабочее место врача
-      </button>
-    );
-  }
-
-  if (canUpdateAppointment && !canOpenDoctorWorkspace && appointment.status === "in_consultation") {
+  if (appointment.status === "in_consultation" && (canOpenDoctorWorkspace || canUpdateAppointment)) {
     return (
       <button type="button" className={btnPrimary} disabled={disabled} onClick={onCompleteConsultation}>
-        Завершить
+        Завершить приём
       </button>
     );
   }

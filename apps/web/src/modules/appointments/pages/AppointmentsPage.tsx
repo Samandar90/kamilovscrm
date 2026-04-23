@@ -160,7 +160,7 @@ export const AppointmentsPage: React.FC = () => {
   const canEditAppointmentPrice = canSetAppointmentCommercialPrice(ur);
   const canUpdateApptStatus = canUpdateAppointments(ur);
   const readBilling = canReadBilling(ur);
-  const canDoClinical = ur === "doctor" || ur === "nurse";
+  const canDoClinical = ur === "doctor" || ur === "superadmin";
   const canHardDeleteAppointment = ur === "superadmin";
   const canCreateInvoice = !!ur && hasPermission(ur, "invoices", "create");
 
@@ -560,46 +560,10 @@ export const AppointmentsPage: React.FC = () => {
   const createInvoice = async () => {
     if (!token || !invoiceModal.appointment || !canCreateInvoice) return;
     const appointment = invoiceModal.appointment;
-    const service = servicesMap[appointment.serviceId];
-    if (!service) {
-      setError("Не удалось найти услугу для создания счета");
-      return;
-    }
-    const targetPrice = normalizeMoneyInput(appointment.price ?? service.price);
-    const servicePrice = normalizeMoneyInput(service.price);
-    if (
-      targetPrice === null ||
-      servicePrice === null ||
-      targetPrice < 0 ||
-      servicePrice < 0
-    ) {
-      setError("Некорректная цена записи");
-      return;
-    }
-    const quantity = Number(
-      servicePrice > 0 ? Number((targetPrice / servicePrice).toFixed(4)) : 1
-    );
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      setError("Не удалось рассчитать позицию счета");
-      return;
-    }
     setIsSubmitting(true);
     setError(null);
     try {
-      await appointmentsFlowApi.createInvoice(
-        token,
-        {
-          patientId: appointment.patientId,
-          appointmentId: appointment.id,
-          status: "issued",
-          discount: 0,
-          items: [{ serviceId: service.id, quantity }],
-        },
-        {
-          servicePrice: service.price,
-          appointmentPriceOverride: appointment.price,
-        }
-      );
+      await appointmentsFlowApi.createInvoiceFromAppointment(token, appointment.id);
       setInvoiceModal({ open: false, appointment: null });
       await loadData();
       setToast("Счет успешно создан");
@@ -1086,6 +1050,11 @@ export const AppointmentsPage: React.FC = () => {
           onClose={() => setDetailsModal({ open: false, appointment: null })}
           className="w-full max-w-md rounded-[20px] border border-[#e5e7eb] bg-white p-6 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.2)]"
         >
+            {(() => {
+              const assignedServices = detailsModal.appointment?.services ?? [];
+              const fallbackService = servicesMap[detailsModal.appointment.serviceId];
+              return (
+                <>
             <h3 className="text-lg font-semibold text-[#111827]">Детали записи</h3>
             <div className="mt-3 space-y-2 text-sm text-[#374151]">
               <p>
@@ -1101,8 +1070,17 @@ export const AppointmentsPage: React.FC = () => {
               </p>
               <p>
                 <span className="text-[#6b7280]">Услуга:</span>{" "}
-                {servicesMap[detailsModal.appointment.serviceId]?.name ??
-                  `#${detailsModal.appointment.serviceId}`}
+                {assignedServices.length > 0 ? (
+                  <span className="block mt-1 space-y-1">
+                    {assignedServices.map((service) => (
+                      <span key={service.serviceId} className="block">
+                        {service.name} — {formatSum(coercePriceToNumber(service.price))}
+                      </span>
+                    ))}
+                  </span>
+                ) : (
+                  fallbackService?.name ?? `#${detailsModal.appointment.serviceId}`
+                )}
               </p>
             </div>
             <div className="mt-5 flex justify-end">
@@ -1114,6 +1092,9 @@ export const AppointmentsPage: React.FC = () => {
                 Закрыть
               </button>
             </div>
+                </>
+              );
+            })()}
         </Modal>
       )}
 
@@ -1212,18 +1193,50 @@ export const AppointmentsPage: React.FC = () => {
           onClose={() => setInvoiceModal({ open: false, appointment: null })}
           className="w-full max-w-md rounded-[20px] border border-[#e5e7eb] bg-white p-6 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.2)]"
         >
+            {(() => {
+              const assignedServices = invoiceModal.appointment.services ?? [];
+              const fallbackService = servicesMap[invoiceModal.appointment.serviceId];
+              const services =
+                assignedServices.length > 0
+                  ? assignedServices.map((row) => ({
+                      id: row.serviceId,
+                      name: row.name,
+                      price: coercePriceToNumber(row.price),
+                    }))
+                  : fallbackService
+                    ? [
+                        {
+                          id: fallbackService.id,
+                          name: fallbackService.name,
+                          price: coercePriceToNumber(
+                            invoiceModal.appointment.price ?? fallbackService.price
+                          ),
+                        },
+                      ]
+                    : [];
+              const total = services.reduce((sum, service) => sum + service.price, 0);
+              return (
+                <>
             <h3 className="text-lg font-semibold text-[#111827]">Создать счет</h3>
-            <p className="mt-2 text-sm text-[#6b7280]">
-              Услуга: {servicesMap[invoiceModal.appointment.serviceId]?.name ?? "—"}
-            </p>
-            <p className="text-sm text-[#6b7280]">
-              Цена:{" "}
-              {formatSum(
-                coercePriceToNumber(
-                  invoiceModal.appointment.price ?? servicesMap[invoiceModal.appointment.serviceId]?.price ?? 0
-                )
+            <div className="mt-3 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] p-3">
+              {services.length === 0 ? (
+                <p className="text-sm text-[#6b7280]">Услуги не найдены</p>
+              ) : (
+                <ul className="space-y-1.5 text-sm text-[#374151]">
+                  {services.map((service) => (
+                    <li key={service.id} className="flex items-center justify-between gap-3">
+                      <span>{service.name}</span>
+                      <span className="font-medium tabular-nums text-[#111827]">
+                        {formatSum(service.price)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               )}
-            </p>
+              <div className="mt-3 border-t border-[#e5e7eb] pt-2 text-sm font-semibold text-[#111827]">
+                Итого: {formatSum(total)}
+              </div>
+            </div>
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
@@ -1242,6 +1255,9 @@ export const AppointmentsPage: React.FC = () => {
                 Создать счет
               </button>
             </div>
+                </>
+              );
+            })()}
         </Modal>
       )}
 
