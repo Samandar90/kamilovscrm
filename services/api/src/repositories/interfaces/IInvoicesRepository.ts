@@ -9,6 +9,7 @@ import type {
 
 export interface IInvoicesRepository {
   findAll(filters?: InvoiceFilters): Promise<InvoiceSummary[]>;
+  findByAppointmentId(appointmentId: number): Promise<InvoiceSummary | null>;
   findById(id: number): Promise<Invoice | null>;
   /** Persists header and line items in one transaction (Postgres) or equivalent (mock). */
   create(input: InvoiceCreateInput, items: InvoiceItemInput[]): Promise<InvoiceSummary>;

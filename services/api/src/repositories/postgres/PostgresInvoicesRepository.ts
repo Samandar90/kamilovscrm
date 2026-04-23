@@ -195,6 +195,35 @@ export class PostgresInvoicesRepository implements IInvoicesRepository {
     return result.rows.map(mapSummaryRow);
   }
 
+  async findByAppointmentId(appointmentId: number): Promise<InvoiceSummary | null> {
+    const result = await dbPool.query<InvoiceRow>(
+      `
+        SELECT
+          id,
+          number,
+          patient_id,
+          appointment_id,
+          subtotal,
+          discount,
+          total,
+          status,
+          created_at,
+          updated_at,
+          ${paidSubquery}
+        FROM invoices
+        WHERE appointment_id = $1
+          AND deleted_at IS NULL
+        ORDER BY created_at DESC
+        LIMIT 1
+      `,
+      [appointmentId]
+    );
+    if (result.rows.length === 0) {
+      return null;
+    }
+    return mapSummaryRow(result.rows[0]);
+  }
+
   async findById(id: number): Promise<Invoice | null> {
     const inv = await dbPool.query<InvoiceRow>(
       `

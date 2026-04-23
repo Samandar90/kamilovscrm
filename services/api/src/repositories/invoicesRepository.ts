@@ -57,6 +57,14 @@ export class MockInvoicesRepository implements IInvoicesRepository {
       .map((row) => toSummary(row));
   }
 
+  async findByAppointmentId(appointmentId: number): Promise<InvoiceSummary | null> {
+    const found = getMockDb()
+      .invoices
+      .filter((row) => row.appointmentId === appointmentId && !row.deletedAt)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    return found ? toSummary(found) : null;
+  }
+
   async findById(id: number): Promise<Invoice | null> {
     const invoice = getMockDb().invoices.find((row) => row.id === id && !row.deletedAt);
     if (!invoice) return null;

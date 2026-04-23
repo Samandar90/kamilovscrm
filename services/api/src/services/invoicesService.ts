@@ -333,20 +333,32 @@ export class InvoicesService {
   }
 
   async createFromAppointment(auth: AuthTokenPayload, appointmentId: number): Promise<Invoice> {
+    const existingInvoice = await this.invoicesRepository.findByAppointmentId(appointmentId);
+    if (existingInvoice) {
+      throw new ApiError(409, "Счёт уже создан для этой записи");
+    }
+
     const appointment = await this.appointmentsRepository.findById(appointmentId);
     if (!appointment) {
       throw new ApiError(404, "Appointment not found");
     }
-    const assignedServices = await this.appointmentsRepository.listServiceAssignments(
-      appointmentId
-    );
-    if (assignedServices.length === 0) {
-      throw new ApiError(400, "No assigned services found for appointment");
+
+    const assignedServices = await this.appointmentsRepository.listServiceAssignments(appointmentId);
+    const serviceIds = new Set<number>(assignedServices.map((row) => row.serviceId));
+
+    if (Number.isInteger(appointment.serviceId) && appointment.serviceId > 0) {
+      serviceIds.add(appointment.serviceId);
     }
-    const items = assignedServices.map((row) => ({
-      serviceId: row.serviceId,
+
+    if (serviceIds.size === 0) {
+      throw new ApiError(400, "No services found for appointment");
+    }
+
+    const items = Array.from(serviceIds).map((serviceId) => ({
+      serviceId,
       quantity: 1,
     }));
+
     const created = await this.create(auth, {
       patientId: appointment.patientId,
       appointmentId: appointment.id,
