@@ -430,6 +430,14 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
         return false;
       }
 
+      await client.query(
+        `
+          DELETE FROM appointment_services
+          WHERE appointment_id = $1
+        `,
+        [id]
+      );
+
       const invoiceIdsResult = await client.query<{ id: number }>(
         `
           SELECT id
@@ -441,30 +449,38 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       const invoiceIds = invoiceIdsResult.rows.map((row) => Number(row.id));
 
       if (invoiceIds.length > 0) {
-        const paymentsResult = await client.query<{ id: number }>(
+        await client.query(
           `
-            SELECT id
-            FROM payments
-            WHERE invoice_id = ANY($1::bigint[]) AND deleted_at IS NULL
-            LIMIT 1
+            UPDATE cash_register_entries
+            SET payment_id = NULL
+            WHERE payment_id IN (
+              SELECT p.id FROM payments p WHERE p.invoice_id = ANY($1::bigint[])
+            )
           `,
           [invoiceIds]
         );
-        if (paymentsResult.rows.length > 0) {
-          await client.query("ROLLBACK");
-          throw new ApiError(409, "Нельзя удалить запись с финансовыми операциями");
-        }
-        await client.query("ROLLBACK");
-        throw new ApiError(409, "Нельзя удалить запись с финансовыми операциями");
+        await client.query(
+          `
+            DELETE FROM payments
+            WHERE invoice_id = ANY($1::bigint[])
+          `,
+          [invoiceIds]
+        );
+        await client.query(
+          `
+            DELETE FROM invoice_items
+            WHERE invoice_id = ANY($1::bigint[])
+          `,
+          [invoiceIds]
+        );
+        await client.query(
+          `
+            DELETE FROM invoices
+            WHERE id = ANY($1::bigint[])
+          `,
+          [invoiceIds]
+        );
       }
-
-      await client.query(
-        `
-          DELETE FROM appointment_services
-          WHERE appointment_id = $1
-        `,
-        [id]
-      );
 
       const deletedAppointment = await client.query<{ id: number }>(
         `

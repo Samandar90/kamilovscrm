@@ -17,4 +17,5 @@ export interface ICashRegisterRepository {
   findEntries(filters?: FindEntriesFilters): Promise<CashRegisterEntry[]>;
   findEntriesWithContext(filters?: FindEntriesFilters): Promise<CashRegisterEntryListItem[]>;
   createCashRegisterEntry(input: CreateCashRegisterEntryInput): Promise<CashRegisterEntry>;
+  clearFinancialData(): Promise<void>;
 }

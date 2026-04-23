@@ -85,6 +85,7 @@ export const CashDeskPage: React.FC = () => {
   const { token, user } = useAuth();
   const canOperate = canWriteBilling(user?.role);
   const canRefund = canRefundPayments(user?.role);
+  const isSuperadmin = user?.role === "superadmin";
   const cashierName = user?.username ?? "—";
 
   const [invoices, setInvoices] = React.useState<InvoiceSummary[]>([]);
@@ -532,27 +533,19 @@ export const CashDeskPage: React.FC = () => {
       setAppointmentServicesMap({});
       return;
     }
-    let cancelled = false;
-    void Promise.all(
-      readyAppointments.map(async (row) => {
-        const services = await cashDeskApi.listAppointmentServices(token, row.id);
-        return [row.id, services.map((item) => item.serviceId)] as const;
-      })
-    )
-      .then((pairs) => {
-        if (!cancelled) {
-          setAppointmentServicesMap(Object.fromEntries(pairs));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setAppointmentServicesMap({});
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
+    const fromAppointments = Object.fromEntries(
+      readyAppointments.map((row) => [row.id, (row.services ?? []).map((s) => s.serviceId)])
+    );
+    setAppointmentServicesMap(fromAppointments);
   }, [token, readyAppointments]);
+
+  React.useEffect(() => {
+    if (user?.role && user.role !== "superadmin") {
+      // temporary debug per request
+      // eslint-disable-next-line no-console
+      console.log(user.role);
+    }
+  }, [user?.role]);
 
   const createInvoiceForAppointment = async (appointmentId: number) => {
     if (!token || !canOperate) return;
@@ -561,9 +554,28 @@ export const CashDeskPage: React.FC = () => {
     try {
       await cashDeskApi.createInvoiceFromAppointment(token, appointmentId);
       await loadCore("refresh");
+      await loadEntries();
       setToast("Счет оформлен");
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Не удалось оформить счет");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const clearCashDeskData = async () => {
+    if (!token || !isSuperadmin) return;
+    const confirmed = window.confirm("Очистить все финансовые данные?");
+    if (!confirmed) return;
+    setRefreshing(true);
+    setError(null);
+    try {
+      await cashDeskApi.clearFinancialData(token);
+      await loadCore("refresh");
+      await loadEntries();
+      setToast("Касса очищена");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Не удалось очистить кассу");
     } finally {
       setRefreshing(false);
     }
@@ -590,6 +602,17 @@ export const CashDeskPage: React.FC = () => {
               <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
               {refreshing ? "Обновление…" : "Обновить"}
             </Button>
+            {isSuperadmin ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                onClick={() => void clearCashDeskData()}
+                disabled={refreshing || loading}
+              >
+                Очистить кассу
+              </Button>
+            ) : null}
           </div>
         }
       />
@@ -707,9 +730,14 @@ export const CashDeskPage: React.FC = () => {
                         Врач: {doctorsMap[row.doctorId] ?? `#${row.doctorId}`}
                       </p>
                       <ul className="mt-2 text-sm text-[#334155]">
-                        {(appointmentServicesMap[row.id] ?? []).map((serviceId, idx) => (
+                        {(row.services && row.services.length > 0
+                          ? row.services.map((service) => service.serviceId)
+                          : appointmentServicesMap[row.id] ?? []
+                        ).map((serviceId, idx) => (
                           <li key={`${row.id}-${serviceId}-${idx}`}>
-                            {servicesMap[serviceId] ?? `Услуга #${serviceId}`}
+                            {servicesMap[serviceId] ??
+                              row.services?.find((s) => s.serviceId === serviceId)?.name ??
+                              `Услуга #${serviceId}`}
                           </li>
                         ))}
                       </ul>

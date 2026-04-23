@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../middleware/asyncHandler";
 import {
+  clearFinancialDataController,
   closeCurrentShiftController,
   closeShiftController,
   getActiveShiftController,
@@ -99,6 +100,13 @@ router.get(
   checkPermission("cash", "read"),
   validateEntriesQuery,
   asyncHandler(listCashEntriesController)
+);
+router.post(
+  "/clear",
+  requireAuth,
+  requireFinancialPortalAccess,
+  checkPermission("cash", "update"),
+  asyncHandler(clearFinancialDataController)
 );
 
 export { router as cashRegisterRouter };

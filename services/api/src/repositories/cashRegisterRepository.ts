@@ -156,5 +156,13 @@ export class MockCashRegisterRepository implements ICashRegisterRepository {
     getMockDb().cashRegisterEntries.push(created);
     return { ...created };
   }
+
+  async clearFinancialData(): Promise<void> {
+    const db = getMockDb();
+    db.cashRegisterEntries = [];
+    db.payments = [];
+    db.invoiceItems = [];
+    db.invoices = [];
+  }
 }
 

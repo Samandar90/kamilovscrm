@@ -107,6 +107,11 @@ export type AppointmentReadyForPayment = {
   patientId: number;
   doctorId: number;
   billingStatus: BillingStatus;
+  services?: Array<{
+    serviceId: number;
+    name: string;
+    price: number;
+  }>;
 };
 export type AppointmentAssignedService = {
   id: number;
@@ -230,5 +235,12 @@ export const cashDeskApi = {
       method: "POST",
       token,
       body: { appointment_id: appointmentId },
+    }),
+
+  clearFinancialData: (token: string) =>
+    requestJson<{ success: boolean }>("/api/cash-register/clear", {
+      method: "POST",
+      token,
+      body: {},
     }),
 };

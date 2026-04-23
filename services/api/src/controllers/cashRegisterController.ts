@@ -115,3 +115,9 @@ export const getCurrentShiftSummaryController = async (req: Request, res: Respon
   return res.status(200).json(summary);
 };
 
+export const clearFinancialDataController = async (req: Request, res: Response) => {
+  const auth = getAuthPayload(req);
+  await services.cashRegister.clearFinancialData(auth);
+  return res.status(200).json({ success: true });
+};
+

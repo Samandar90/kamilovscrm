@@ -381,4 +381,25 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
     );
     return mapEntry(result.rows[0]);
   }
+
+  async clearFinancialData(): Promise<void> {
+    const client = await dbPool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(`DELETE FROM cash_register_entries`);
+      await client.query(`DELETE FROM payments`);
+      await client.query(`DELETE FROM invoice_items`);
+      await client.query(`DELETE FROM invoices`);
+      await client.query("COMMIT");
+    } catch (error) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        /* noop */
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 }

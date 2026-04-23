@@ -1,5 +1,4 @@
 import type { IAppointmentsRepository } from "./interfaces/IAppointmentsRepository";
-import { ApiError } from "../middleware/errorHandler";
 import { APPOINTMENT_BILLING_STATUSES, APPOINTMENT_STATUSES } from "./interfaces/coreTypes";
 import type {
   Appointment,
@@ -139,9 +138,6 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
     const invoiceIds = db.invoices
       .filter((item) => item.appointmentId === id && item.deletedAt === null)
       .map((item) => item.id);
-    if (invoiceIds.length > 0) {
-      throw new ApiError(409, "Нельзя удалить запись с финансовыми операциями");
-    }
     const paymentIds = db.payments
       .filter((item) => invoiceIds.includes(item.invoiceId))
       .map((item) => item.id);

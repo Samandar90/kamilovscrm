@@ -191,5 +191,12 @@ export class CashRegisterService {
       closingBalancePreview,
     };
   }
+
+  async clearFinancialData(auth: AuthTokenPayload): Promise<void> {
+    if (auth.role !== "superadmin") {
+      throw new ApiError(403, "Только superadmin может очищать кассу");
+    }
+    await this.cashRegisterRepository.clearFinancialData();
+  }
 }
 
