@@ -51,6 +51,7 @@ type ConsultationModalState = {
   treatment: string;
   notes: string;
   services: Array<{ serviceId: number; name: string; price: number }>;
+  carePlanItems: Array<{ id: string; type: "medication" | "recommendation" | "procedure"; text: string }>;
   selectedServiceId: string;
 };
 type AppointmentDetailsModalState = {
@@ -204,6 +205,7 @@ export const AppointmentsPage: React.FC = () => {
     treatment: "",
     notes: "",
     services: [],
+    carePlanItems: [],
     selectedServiceId: "",
   });
   const [detailsModal, setDetailsModal] = React.useState<AppointmentDetailsModalState>({
@@ -590,6 +592,7 @@ export const AppointmentsPage: React.FC = () => {
       treatment: appointment.treatment ?? "",
       notes: appointment.notes ?? "",
       services: initialServices,
+      carePlanItems: [],
       selectedServiceId: "",
     });
     consultationLastSavedSignatureRef.current = JSON.stringify({
@@ -624,11 +627,43 @@ export const AppointmentsPage: React.FC = () => {
       treatment: "",
       notes: "",
       services: [],
+      carePlanItems: [],
       selectedServiceId: "",
     });
     consultationLastSavedSignatureRef.current = "";
     setIsConsultationSaving(false);
     setIsConsultationAutoSaving(false);
+  };
+
+  const printPrescription = () => {
+    if (!consultationModal.appointment) return;
+    const patient = patientsMap[consultationModal.appointment.patientId] ?? `#${consultationModal.appointment.patientId}`;
+    const doctor = doctorsMap[consultationModal.appointment.doctorId] ?? `#${consultationModal.appointment.doctorId}`;
+    const servicesHtml =
+      consultationModal.services.length > 0
+        ? consultationModal.services
+            .map((item) => `<li>${item.name} — ${formatSum(item.price)}</li>`)
+            .join("")
+        : "<li>Нет назначенных услуг</li>";
+    const planHtml =
+      consultationModal.carePlanItems.length > 0
+        ? consultationModal.carePlanItems.map((item) => `<li>${item.text}</li>`).join("")
+        : "<li>Нет назначений</li>";
+    const popup = window.open("", "_blank");
+    if (!popup) return;
+    popup.document.write(`<!doctype html><html><body style="font-family:Arial,sans-serif;padding:24px;">
+      <h2>Назначение пациента</h2>
+      <p><b>Пациент:</b> ${patient}</p>
+      <p><b>Врач:</b> ${doctor}</p>
+      <h3>Услуги</h3><ul>${servicesHtml}</ul>
+      <h3>Диагноз</h3><p>${consultationModal.diagnosis || "—"}</p>
+      <h3>Лечение</h3><p>${consultationModal.treatment || "—"}</p>
+      <h3>Заметки</h3><p>${consultationModal.notes || "—"}</p>
+      <h3>Назначение</h3><ul>${planHtml}</ul>
+    </body></html>`);
+    popup.document.close();
+    popup.focus();
+    popup.print();
   };
 
   const completeConsultation = async () => {
@@ -739,6 +774,32 @@ export const AppointmentsPage: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const addCarePlanItem = (type: "medication" | "recommendation" | "procedure") => {
+    const defaults: Record<typeof type, string> = {
+      medication: "Амоксиклав — 2 раза в день",
+      recommendation: "Полоскание — 5 дней",
+      procedure: "Повторный осмотр через 7 дней",
+    };
+    setConsultationModal((prev) => ({
+      ...prev,
+      carePlanItems: [
+        ...prev.carePlanItems,
+        {
+          id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          type,
+          text: defaults[type],
+        },
+      ],
+    }));
+  };
+
+  const removeCarePlanItem = (id: string) => {
+    setConsultationModal((prev) => ({
+      ...prev,
+      carePlanItems: prev.carePlanItems.filter((item) => item.id !== id),
+    }));
   };
 
   const saveConsultationDraft = async (showToast = false): Promise<boolean> => {
@@ -1515,48 +1576,109 @@ export const AppointmentsPage: React.FC = () => {
                 </div>
               </div>
               <label className="text-sm text-[#111827]">
-                Diagnosis
+                <span className="text-xs font-medium uppercase tracking-wide text-[#94a3b8]">
+                  Diagnosis
+                </span>
                 <input
                   value={consultationModal.diagnosis}
                   onChange={(event) => setConsultationModal((prev) => ({ ...prev, diagnosis: event.target.value }))}
                   className="mt-1 h-11 w-full rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] px-3 text-sm text-[#111827] outline-none transition focus:border-[#22c55e] focus:bg-white focus:ring-1 focus:ring-[#22c55e]/25"
                   aria-label="diagnosis"
+                  placeholder="Например: Пульпит 36 зуба"
                   disabled={consultationBusy}
                 />
               </label>
               <label className="text-sm text-[#111827]">
-                Treatment
+                <span className="text-xs font-medium uppercase tracking-wide text-[#94a3b8]">
+                  Treatment
+                </span>
                 <textarea
                   value={consultationModal.treatment}
                   onChange={(event) => setConsultationModal((prev) => ({ ...prev, treatment: event.target.value }))}
                   className="mt-1 min-h-20 w-full rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-sm text-[#111827] outline-none transition focus:border-[#22c55e] focus:bg-white focus:ring-1 focus:ring-[#22c55e]/25"
                   aria-label="treatment"
+                  placeholder="Удаление нерва, пломбирование каналов"
                   disabled={consultationBusy}
                 />
               </label>
               <label className="text-sm text-[#111827]">
-                Notes
+                <span className="text-xs font-medium uppercase tracking-wide text-[#94a3b8]">
+                  Notes
+                </span>
                 <textarea
                   value={consultationModal.notes}
                   onChange={(event) => setConsultationModal((prev) => ({ ...prev, notes: event.target.value }))}
                   className="mt-1 min-h-20 w-full rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-sm text-[#111827] outline-none transition focus:border-[#22c55e] focus:bg-white focus:ring-1 focus:ring-[#22c55e]/25"
                   aria-label="notes"
+                  placeholder="Дополнительные комментарии"
                   disabled={consultationBusy}
                 />
               </label>
+              <div className="rounded-2xl border border-[#e5e7eb] bg-[#fafafa] p-4 shadow-sm">
+                <p className="text-sm font-medium text-[#111827]">Назначение</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="rounded-xl border border-[#e5e7eb] bg-white px-3 py-1.5 text-xs text-[#334155] transition duration-150 ease-out hover:bg-[#f3f4f6]"
+                    disabled={consultationBusy}
+                    onClick={() => addCarePlanItem("medication")}
+                  >
+                    + Препарат
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-[#e5e7eb] bg-white px-3 py-1.5 text-xs text-[#334155] transition duration-150 ease-out hover:bg-[#f3f4f6]"
+                    disabled={consultationBusy}
+                    onClick={() => addCarePlanItem("recommendation")}
+                  >
+                    + Рекомендация
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-[#e5e7eb] bg-white px-3 py-1.5 text-xs text-[#334155] transition duration-150 ease-out hover:bg-[#f3f4f6]"
+                    disabled={consultationBusy}
+                    onClick={() => addCarePlanItem("procedure")}
+                  >
+                    + Процедура
+                  </button>
+                </div>
+                <ul className="mt-3 space-y-2 text-sm text-[#334155]">
+                  {consultationModal.carePlanItems.length === 0 ? (
+                    <li className="text-[#9ca3af]">Нет добавленных назначений</li>
+                  ) : (
+                    consultationModal.carePlanItems.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex items-center justify-between rounded-xl border border-[#e5e7eb] bg-white px-3 py-2"
+                      >
+                        <span>• {item.text}</span>
+                        <button
+                          type="button"
+                          className="text-[#94a3b8] transition hover:text-rose-600"
+                          disabled={consultationBusy}
+                          onClick={() => removeCarePlanItem(item.id)}
+                        >
+                          ✕
+                        </button>
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
             </div>
-            <div className="sticky bottom-0 mt-4 flex flex-wrap justify-end gap-2 border-t border-[#e5e7eb] bg-white pt-3">
+            <div className="sticky bottom-0 mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#e5e7eb] bg-white pt-3">
               <button
                 type="button"
-                className="rounded-xl border border-[#e5e7eb] bg-white px-4 py-2 text-sm font-medium text-[#111827] transition hover:bg-[#f3f4f6] active:scale-[0.97]"
-                onClick={closeConsultation}
+                className="rounded-xl border border-[#e5e7eb] bg-white px-4 py-2 text-sm font-medium text-[#111827] transition duration-150 ease-out hover:bg-[#f3f4f6] active:scale-[0.97]"
+                onClick={printPrescription}
                 disabled={consultationBusy}
               >
-                Отмена
+                Печать назначения
               </button>
+              <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="rounded-xl border border-[#e5e7eb] bg-white px-4 py-2 text-sm font-medium text-[#111827] transition hover:bg-[#f3f4f6] active:scale-[0.97] disabled:opacity-50"
+                className="rounded-xl border border-transparent bg-transparent px-4 py-2 text-sm font-medium text-[#111827] transition duration-150 ease-out hover:bg-[#f3f4f6] active:scale-[0.97] disabled:opacity-50"
                 onClick={() => void saveConsultationDraft(true)}
                 disabled={consultationBusy}
               >
@@ -1564,12 +1686,13 @@ export const AppointmentsPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                className="rounded-xl bg-[#22c55e] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:scale-[1.03] hover:bg-[#16a34a] active:scale-[0.97] disabled:opacity-50"
+                className="rounded-xl bg-[#22c55e] px-4 py-2 text-sm font-medium text-white shadow-sm transition duration-150 ease-out hover:scale-[1.03] hover:bg-[#16a34a] active:scale-[0.97] disabled:opacity-50"
                 onClick={() => void completeConsultation()}
                 disabled={consultationBusy || !canCompleteConsultation}
               >
                 {isSubmitting ? "Сохранение..." : "Завершить приём"}
               </button>
+              </div>
             </div>
                 </>
               );

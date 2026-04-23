@@ -196,16 +196,37 @@ export const AppointmentCard: React.FC<Props> = ({
               {workflowLabelMap[getWorkflowStage(appointment, invoice)]}
             </span>
             <ActionButtons className="ml-auto items-center">
-              <AppointmentPrimaryWorkflowButton
-                appointment={appointment}
-                disabled={actionsDisabled}
-                canUpdateAppointment={canManageAppointmentFlow}
-                canOpenDoctorWorkspace={canDoClinical}
-                onMarkArrived={onMarkArrived}
-                onStartConsultation={onStartConsultation}
-                onCompleteConsultation={onCompleteConsultation}
-                onOpenDoctorWorkspace={onOpenDoctorWorkspace}
-              />
+              {appointment.status === "in_consultation" && canDoClinical ? (
+                <>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#111827] shadow-sm transition duration-150 ease-out hover:bg-[#f3f4f6] disabled:opacity-50"
+                    disabled={actionsDisabled}
+                    onClick={onOpenDoctorWorkspace}
+                  >
+                    Рабочее место врача
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-xl bg-[#22c55e] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-150 ease-out hover:bg-[#16a34a] disabled:opacity-50"
+                    disabled={actionsDisabled}
+                    onClick={onCompleteConsultation}
+                  >
+                    Завершить приём
+                  </button>
+                </>
+              ) : (
+                <AppointmentPrimaryWorkflowButton
+                  appointment={appointment}
+                  disabled={actionsDisabled}
+                  canUpdateAppointment={canManageAppointmentFlow}
+                  canOpenDoctorWorkspace={canDoClinical}
+                  onMarkArrived={onMarkArrived}
+                  onStartConsultation={onStartConsultation}
+                  onCompleteConsultation={onCompleteConsultation}
+                  onOpenDoctorWorkspace={onOpenDoctorWorkspace}
+                />
+              )}
               <AppointmentBillingActions
                 appointment={appointment}
                 hasInvoice={Boolean(invoice)}
