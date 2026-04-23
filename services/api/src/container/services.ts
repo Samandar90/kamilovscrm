@@ -19,8 +19,16 @@ export const services = {
   doctors: new DoctorsService(repositories.doctors, repositories.services),
   services: new ServicesService(repositories.services),
   appointments: new AppointmentsService(repositories.appointments),
-  invoices: new InvoicesService(repositories.invoices, repositories.services),
-  payments: new PaymentsService(repositories.payments, repositories.cashRegister),
+  invoices: new InvoicesService(
+    repositories.invoices,
+    repositories.services,
+    repositories.appointments
+  ),
+  payments: new PaymentsService(
+    repositories.payments,
+    repositories.cashRegister,
+    repositories.appointments
+  ),
   expenses: new ExpensesService(repositories.expenses),
   cashRegister: new CashRegisterService(repositories.cashRegister),
   reports: new ReportsService(repositories.reports),

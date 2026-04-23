@@ -1,13 +1,16 @@
 import type { Request, Response } from "express";
 import { ApiError } from "../middleware/errorHandler";
 import {
+  APPOINTMENT_BILLING_STATUSES,
   APPOINTMENT_STATUSES,
+  AppointmentBillingStatus,
   AppointmentStatus,
 } from "../repositories/appointmentsRepository";
 import { services } from "../container";
 import { getAuthPayload } from "../utils/requestAuth";
 import { parseRequiredMoney } from "../utils/numbers";
 const APPOINTMENT_STATUS_SET = new Set<string>(APPOINTMENT_STATUSES);
+const APPOINTMENT_BILLING_STATUS_SET = new Set<string>(APPOINTMENT_BILLING_STATUSES);
 
 const parsePositiveQueryId = (
   value: unknown,
@@ -74,6 +77,18 @@ export const listAppointmentsController = async (
     );
   }
   const status = rawStatus as AppointmentStatus | undefined;
+  const rawBillingStatus =
+    typeof req.query.billing_status === "string" ? req.query.billing_status : undefined;
+  if (
+    rawBillingStatus !== undefined &&
+    !APPOINTMENT_BILLING_STATUS_SET.has(rawBillingStatus)
+  ) {
+    throw new ApiError(
+      400,
+      `Query param 'billing_status' must be one of: ${APPOINTMENT_BILLING_STATUSES.join(", ")}`
+    );
+  }
+  const billingStatus = rawBillingStatus as AppointmentBillingStatus | undefined;
   const startFromRaw =
     typeof req.query.startFrom === "string" ? req.query.startFrom.trim() : undefined;
   const startToRaw =
@@ -90,6 +105,7 @@ export const listAppointmentsController = async (
     doctorId,
     serviceId,
     status,
+    billingStatus,
     startFrom,
     startTo,
     endTo,
@@ -171,6 +187,51 @@ export const updateAppointmentPriceController = async (
     throw new ApiError(404, "Appointment not found");
   }
 
+  return res.status(200).json(updated);
+};
+
+export const addAppointmentServiceController = async (req: Request, res: Response) => {
+  const auth = getAuthPayload(req);
+  const id = Number(req.params.id);
+  const serviceId = Number(req.body?.service_id ?? req.body?.serviceId);
+  if (!Number.isInteger(serviceId) || serviceId <= 0) {
+    throw new ApiError(400, "Field 'service_id' must be a positive integer");
+  }
+  const assignment = await services.appointments.assignService(auth, id, serviceId);
+  return res.status(201).json({
+    id: assignment.id,
+    appointmentId: assignment.appointmentId,
+    serviceId: assignment.serviceId,
+    createdAt: assignment.createdAt,
+  });
+};
+
+export const listAppointmentServicesController = async (req: Request, res: Response) => {
+  const auth = getAuthPayload(req);
+  const id = Number(req.params.id);
+  const assignments = await services.appointments.listAssignedServices(auth, id);
+  return res.status(200).json(
+    assignments.map((row) => ({
+      id: row.id,
+      appointmentId: row.appointmentId,
+      serviceId: row.serviceId,
+      createdAt: row.createdAt,
+    }))
+  );
+};
+
+export const completeAppointmentController = async (req: Request, res: Response) => {
+  const auth = getAuthPayload(req);
+  const id = Number(req.params.id);
+  const updated = await services.appointments.update(auth, id, {
+    status: "completed",
+    diagnosis: req.body?.diagnosis,
+    treatment: req.body?.treatment,
+    notes: req.body?.notes,
+  });
+  if (!updated) {
+    throw new ApiError(404, "Appointment not found");
+  }
   return res.status(200).json(updated);
 };
 

@@ -1,5 +1,6 @@
 import {
   APPOINTMENT_STATUSES,
+  type AppointmentBillingStatus,
   type AppointmentStatus,
   type PatientGender,
   type PatientSource,
@@ -60,6 +61,7 @@ export type AppointmentRecord = {
   startAt: string;
   endAt: string;
   status: AppointmentStatus;
+  billingStatus: AppointmentBillingStatus;
   cancelReason: string | null;
   cancelledAt: string | null;
   cancelledBy: number | null;
@@ -68,6 +70,14 @@ export type AppointmentRecord = {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type AppointmentServiceRecord = {
+  id: number;
+  appointmentId: number;
+  serviceId: number;
+  createdBy: number | null;
+  createdAt: string;
 };
 
 export type InvoiceRecord = {
@@ -167,6 +177,7 @@ type MockDatabase = {
   services: ServiceRecord[];
   doctorServices: DoctorServiceRecord[];
   appointments: AppointmentRecord[];
+  appointmentServices: AppointmentServiceRecord[];
   invoices: InvoiceRecord[];
   invoiceItems: InvoiceItemRecord[];
   payments: PaymentRecord[];
@@ -188,6 +199,7 @@ const mockDb: MockDatabase = {
   services: [],
   doctorServices: [],
   appointments: [],
+  appointmentServices: [],
   invoices: [],
   invoiceItems: [],
   payments: [],

@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Stethoscope } from "lucide-react";
+import { Plus, Search, Stethoscope, X } from "lucide-react";
 import { requestJson } from "../../../api/http";
 import { useAuth } from "../../../auth/AuthContext";
 import { hasPermission } from "../../../auth/permissions";
@@ -7,6 +7,7 @@ import { ListEmptyState } from "../../../components/ui/ListEmptyState";
 import { MultiSelect } from "../../../components/ui/MultiSelect";
 import { Modal } from "../../../components/ui/Modal";
 import { CollapsibleChips } from "../../../shared/ui/CollapsibleChips";
+import { useDebounce } from "../../../shared/lib/useDebounce";
 import { PhoneInput } from "../../../shared/ui/PhoneInput";
 import { phoneToApiValue, storedPhoneToNormalized } from "../../../utils/phoneInput";
 
@@ -89,9 +90,12 @@ export const DoctorsPage: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
+  const [search, setSearch] = React.useState("");
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editingDoctorId, setEditingDoctorId] = React.useState<number | null>(null);
   const [formState, setFormState] = React.useState<DoctorFormState>(initialFormState);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const debouncedSearch = useDebounce(search, 300);
 
   const loadData = React.useCallback(async () => {
     setLoading(true);
@@ -119,6 +123,10 @@ export const DoctorsPage: React.FC = () => {
     const t = window.setTimeout(() => setSuccessMessage(null), 2800);
     return () => window.clearTimeout(t);
   }, [successMessage]);
+
+  React.useEffect(() => {
+    searchInputRef.current?.focus();
+  }, []);
 
   const closeModal = () => {
     setModalOpen(false);
@@ -235,6 +243,15 @@ export const DoctorsPage: React.FC = () => {
     () => Object.fromEntries(services.map((service) => [service.id, service.name])),
     [services]
   );
+  const normalizedSearch = debouncedSearch.trim().toLowerCase();
+  const filteredDoctors = React.useMemo(() => {
+    if (!normalizedSearch) return doctors;
+    return doctors.filter((doctor) => {
+      const byName = doctor.name.toLowerCase().includes(normalizedSearch);
+      const bySpeciality = doctor.speciality.toLowerCase().includes(normalizedSearch);
+      return byName || bySpeciality;
+    });
+  }, [doctors, normalizedSearch]);
 
   return (
     <div className="page-enter space-y-6 p-6">
@@ -245,17 +262,40 @@ export const DoctorsPage: React.FC = () => {
             Управление персоналом клиники, услугами и процентами выплат.
           </p>
         </div>
-        {canManage && (
-          <button
-            type="button"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#16a34a] px-5 text-sm font-semibold text-white shadow-[0_4px_14px_-6px_rgba(22,163,74,0.45)] transition duration-200 hover:bg-[#22c55e] hover:shadow-[0_6px_20px_-8px_rgba(22,163,74,0.5)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={openCreate}
-            disabled={busy}
-          >
-            <Plus className="h-4 w-4" strokeWidth={2.2} />
-            Добавить врача
-          </button>
-        )}
+        <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
+          <div className="relative w-full sm:w-[280px]">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Поиск..."
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-9 text-sm text-[#0f172a] outline-none transition focus:ring-2 focus:ring-blue-500"
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Очистить поиск"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+          {canManage ? (
+            <button
+              type="button"
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#16a34a] px-5 text-sm font-semibold text-white shadow-[0_4px_14px_-6px_rgba(22,163,74,0.45)] transition duration-200 hover:bg-[#22c55e] hover:shadow-[0_6px_20px_-8px_rgba(22,163,74,0.5)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={openCreate}
+              disabled={busy}
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.2} />
+              Добавить врача
+            </button>
+          ) : null}
+        </div>
       </header>
 
       {error && (
@@ -283,9 +323,14 @@ export const DoctorsPage: React.FC = () => {
           showAction={canManage}
           actionDisabled={busy}
         />
+      ) : filteredDoctors.length === 0 ? (
+        <div className="rounded-2xl border border-[#e2e8f0] bg-white px-6 py-16 text-center shadow-sm">
+          <p className="text-base font-medium text-slate-400">Ничего не найдено</p>
+          <p className="mt-1 text-sm text-slate-400">Попробуйте изменить запрос</p>
+        </div>
       ) : (
         <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-          {doctors.map((doctor) => (
+          {filteredDoctors.map((doctor) => (
             <li key={doctor.id}>
               <article className="group rounded-[14px] border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_40px_-18px_rgba(15,23,42,0.18)]">
                 <div className="flex items-start justify-between gap-3">

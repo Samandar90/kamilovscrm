@@ -1,7 +1,9 @@
 import type {
   Appointment,
+  AppointmentBillingStatus,
   AppointmentCreateInput,
   AppointmentFilters,
+  AppointmentServiceAssignment,
   AppointmentUpdateInput,
 } from "./coreTypes";
 
@@ -31,4 +33,14 @@ export interface IAppointmentsRepository {
   getServiceDuration(serviceId: number): Promise<number | null>;
   getServicePrice(serviceId: number): Promise<number | null>;
   isServiceAssignedToDoctor(serviceId: number, doctorId: number): Promise<boolean>;
+  createServiceAssignment(
+    appointmentId: number,
+    serviceId: number,
+    createdBy: number | null
+  ): Promise<AppointmentServiceAssignment>;
+  listServiceAssignments(appointmentId: number): Promise<AppointmentServiceAssignment[]>;
+  updateBillingStatus(
+    appointmentId: number,
+    billingStatus: AppointmentBillingStatus
+  ): Promise<Appointment | null>;
 }

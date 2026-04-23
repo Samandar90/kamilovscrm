@@ -179,6 +179,7 @@ export class MockPaymentsRepository implements IPaymentsRepository {
     if (!found) return null;
     return {
       id: found.id,
+      appointmentId: found.appointmentId,
       status: found.status,
       total: found.total,
       paidAmount: found.paidAmount,

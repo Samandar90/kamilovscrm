@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../middleware/asyncHandler";
 import {
   createInvoiceController,
+  createInvoiceFromAppointmentController,
   deleteInvoiceController,
   getInvoiceByIdController,
   listInvoicesController,
@@ -32,6 +33,13 @@ router.get(
   checkPermission("invoices", "read"),
   validateInvoiceIdParam,
   asyncHandler(getInvoiceByIdController)
+);
+router.post(
+  "/from-appointment",
+  requireAuth,
+  requireFinancialPortalAccess,
+  checkPermission("invoices", "create"),
+  asyncHandler(createInvoiceFromAppointmentController)
 );
 router.post(
   "/",

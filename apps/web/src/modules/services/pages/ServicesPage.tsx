@@ -1,5 +1,5 @@
 import React from "react";
-import { BriefcaseMedical, Plus, Stethoscope } from "lucide-react";
+import { BriefcaseMedical, Plus, Search, Stethoscope, X } from "lucide-react";
 import { requestJson } from "../../../api/http";
 import { useAuth } from "../../../auth/AuthContext";
 import { hasPermission } from "../../../auth/permissions";
@@ -11,6 +11,7 @@ import {
   getServicesInstant,
   refreshServicesCache,
 } from "../../../shared/cache/servicesCache";
+import { useDebounce } from "../../../shared/lib/useDebounce";
 import { normalizeMoneyInput } from "../../../shared/lib/money";
 import { CollapsibleChips } from "../../../shared/ui/CollapsibleChips";
 import { MoneyInput } from "../../../shared/ui/MoneyInput";
@@ -82,9 +83,12 @@ export const ServicesPage: React.FC = () => {
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [toast, setToast] = React.useState<string | null>(null);
+  const [search, setSearch] = React.useState("");
   const [modalOpen, setModalOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
   const [formState, setFormState] = React.useState<ServiceFormState>(initialFormState);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const debouncedSearch = useDebounce(search, 300);
 
   const loadAll = React.useCallback(async () => {
     if (!token) return;
@@ -122,6 +126,10 @@ export const ServicesPage: React.FC = () => {
     const timer = window.setTimeout(() => setToast(null), 2800);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  React.useEffect(() => {
+    searchInputRef.current?.focus();
+  }, []);
 
   const openCreateModal = () => {
     setEditingId(null);
@@ -235,6 +243,17 @@ export const ServicesPage: React.FC = () => {
     () => Object.fromEntries(doctors.map((doctor) => [doctor.id, doctor.name])),
     [doctors]
   );
+  const normalizedSearch = debouncedSearch.trim().toLowerCase();
+  const filteredServices = React.useMemo(() => {
+    if (!normalizedSearch) return services;
+    return services.filter((service) => {
+      const byName = service.name.toLowerCase().includes(normalizedSearch);
+      const byCategory = (CATEGORY_LABELS[service.category] ?? service.category)
+        .toLowerCase()
+        .includes(normalizedSearch);
+      return byName || byCategory;
+    });
+  }, [services, normalizedSearch]);
 
   return (
     <div className="page-enter space-y-6 p-6">
@@ -243,17 +262,40 @@ export const ServicesPage: React.FC = () => {
           <h2 className="text-2xl font-semibold text-[#0f172a]">Услуги</h2>
           <p className="mt-1 text-sm text-[#64748b]">Управление услугами клиники и связями с врачами.</p>
         </div>
-        {canManage && (
-          <button
-            type="button"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#16a34a] px-5 text-sm font-semibold text-white shadow-[0_4px_14px_-6px_rgba(22,163,74,0.45)] transition duration-200 hover:bg-[#22c55e] hover:shadow-[0_6px_20px_-8px_rgba(22,163,74,0.5)] active:scale-[0.98] disabled:opacity-50"
-            onClick={openCreateModal}
-            disabled={isSaving}
-          >
-            <Plus className="h-4 w-4" strokeWidth={2.2} />
-            Добавить услугу
-          </button>
-        )}
+        <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
+          <div className="relative w-full sm:w-[280px]">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Поиск..."
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-9 text-sm text-[#0f172a] outline-none transition focus:ring-2 focus:ring-blue-500"
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Очистить поиск"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+          {canManage ? (
+            <button
+              type="button"
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#16a34a] px-5 text-sm font-semibold text-white shadow-[0_4px_14px_-6px_rgba(22,163,74,0.45)] transition duration-200 hover:bg-[#22c55e] hover:shadow-[0_6px_20px_-8px_rgba(22,163,74,0.5)] active:scale-[0.98] disabled:opacity-50"
+              onClick={openCreateModal}
+              disabled={isSaving}
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.2} />
+              Добавить услугу
+            </button>
+          ) : null}
+        </div>
       </header>
 
       {toast && (
@@ -282,9 +324,14 @@ export const ServicesPage: React.FC = () => {
           showAction={canManage}
           actionDisabled={isSaving}
         />
+      ) : filteredServices.length === 0 ? (
+        <div className="rounded-2xl border border-[#e2e8f0] bg-white px-6 py-16 text-center shadow-sm">
+          <p className="text-base font-medium text-slate-400">Ничего не найдено</p>
+          <p className="mt-1 text-sm text-slate-400">Попробуйте изменить запрос</p>
+        </div>
       ) : (
         <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-          {services.map((service) => (
+          {filteredServices.map((service) => (
             <li key={service.id}>
               <article className="group rounded-[14px] border border-[#e2e8f0] bg-white p-[14px] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_40px_-18px_rgba(15,23,42,0.18)]">
                 <div className="flex items-start justify-between gap-3">

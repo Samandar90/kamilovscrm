@@ -99,6 +99,20 @@ export type CashRegisterShiftSummary = {
 };
 
 export type Patient = { id: number; fullName: string };
+export type Doctor = { id: number; name: string };
+export type Service = { id: number; name: string };
+export type BillingStatus = "draft" | "ready_for_payment" | "paid";
+export type AppointmentReadyForPayment = {
+  id: number;
+  patientId: number;
+  doctorId: number;
+  billingStatus: BillingStatus;
+};
+export type AppointmentAssignedService = {
+  id: number;
+  appointmentId: number;
+  serviceId: number;
+};
 
 export const cashDeskApi = {
   listInvoices: (token: string) =>
@@ -194,4 +208,27 @@ export const cashDeskApi = {
 
   listPatients: (token: string) =>
     requestJson<Patient[]>("/api/patients", { token }),
+
+  listDoctors: (token: string) => requestJson<Doctor[]>("/api/doctors", { token }),
+
+  listServices: (token: string) => requestJson<Service[]>("/api/services", { token }),
+
+  listAppointmentsReadyForPayment: (token: string) =>
+    requestJson<AppointmentReadyForPayment[]>(
+      "/api/appointments?billing_status=ready_for_payment",
+      { token }
+    ),
+
+  listAppointmentServices: (token: string, appointmentId: number) =>
+    requestJson<AppointmentAssignedService[]>(
+      `/api/appointments/${appointmentId}/services`,
+      { token }
+    ),
+
+  createInvoiceFromAppointment: (token: string, appointmentId: number) =>
+    requestJson<InvoiceSummary>("/api/invoices/from-appointment", {
+      method: "POST",
+      token,
+      body: { appointment_id: appointmentId },
+    }),
 };

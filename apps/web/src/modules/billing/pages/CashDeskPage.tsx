@@ -17,6 +17,7 @@ import { buildReceiptHTML } from "../../../shared/receipt/receiptTemplate";
 import kamilovsClinicLogo from "../../../assets/kamilovs-clinic-logo.png";
 import {
   cashDeskApi,
+  type AppointmentReadyForPayment,
   type CashRegisterEntry,
   type CashRegisterShift,
   type CashRegisterShiftSummary,
@@ -88,6 +89,12 @@ export const CashDeskPage: React.FC = () => {
 
   const [invoices, setInvoices] = React.useState<InvoiceSummary[]>([]);
   const [patientsMap, setPatientsMap] = React.useState<Record<number, string>>({});
+  const [doctorsMap, setDoctorsMap] = React.useState<Record<number, string>>({});
+  const [servicesMap, setServicesMap] = React.useState<Record<number, string>>({});
+  const [readyAppointments, setReadyAppointments] = React.useState<AppointmentReadyForPayment[]>([]);
+  const [appointmentServicesMap, setAppointmentServicesMap] = React.useState<
+    Record<number, number[]>
+  >({});
   const [activeShift, setActiveShift] = React.useState<CashRegisterShift | null>(null);
   const [shiftHistory, setShiftHistory] = React.useState<CashRegisterShift[]>([]);
   const [cashEntries, setCashEntries] = React.useState<CashRegisterEntry[]>([]);
@@ -174,9 +181,22 @@ export const CashDeskPage: React.FC = () => {
       else setRefreshing(true);
       setError(null);
       try {
-        const [invoiceRows, patientRows, shift, history, summary, meta] = await Promise.all([
+        const [
+          invoiceRows,
+          patientRows,
+          doctorRows,
+          serviceRows,
+          readyRows,
+          shift,
+          history,
+          summary,
+          meta,
+        ] = await Promise.all([
           cashDeskApi.listInvoices(token),
           cashDeskApi.listPatients(token),
+          cashDeskApi.listDoctors(token),
+          cashDeskApi.listServices(token),
+          cashDeskApi.listAppointmentsReadyForPayment(token),
           cashDeskApi.getCurrentShift(token),
           cashDeskApi.shiftHistory(token),
           cashDeskApi.getSummaryCurrent(token),
@@ -184,6 +204,9 @@ export const CashDeskPage: React.FC = () => {
         ]);
         setInvoices(invoiceRows);
         setPatientsMap(Object.fromEntries(patientRows.map((p) => [p.id, p.fullName])));
+        setDoctorsMap(Object.fromEntries(doctorRows.map((d) => [d.id, d.name])));
+        setServicesMap(Object.fromEntries(serviceRows.map((s) => [s.id, s.name])));
+        setReadyAppointments(readyRows);
         setActiveShift(shift);
         setShiftHistory(history.slice(0, 24));
         setCashSummary(summary);
@@ -504,6 +527,48 @@ export const CashDeskPage: React.FC = () => {
 
   const onRefresh = () => void loadCore("refresh", { showDataRefreshedToast: true });
 
+  React.useEffect(() => {
+    if (!token || readyAppointments.length === 0) {
+      setAppointmentServicesMap({});
+      return;
+    }
+    let cancelled = false;
+    void Promise.all(
+      readyAppointments.map(async (row) => {
+        const services = await cashDeskApi.listAppointmentServices(token, row.id);
+        return [row.id, services.map((item) => item.serviceId)] as const;
+      })
+    )
+      .then((pairs) => {
+        if (!cancelled) {
+          setAppointmentServicesMap(Object.fromEntries(pairs));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAppointmentServicesMap({});
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, readyAppointments]);
+
+  const createInvoiceForAppointment = async (appointmentId: number) => {
+    if (!token || !canOperate) return;
+    setRefreshing(true);
+    setError(null);
+    try {
+      await cashDeskApi.createInvoiceFromAppointment(token, appointmentId);
+      await loadCore("refresh");
+      setToast("Счет оформлен");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Не удалось оформить счет");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <div className="min-h-full bg-[#f6f8fb] text-[#334155]">
       <AppContainer className="max-w-[1400px] space-y-5">
@@ -618,6 +683,52 @@ export const CashDeskPage: React.FC = () => {
           )}
 
           <div className="grid gap-5 lg:grid-cols-12 lg:items-start">
+            <SectionCard className="p-4 lg:col-span-12">
+              <h2 className="text-sm font-semibold text-[#0f172a]">Ожидают оплаты</h2>
+              <p className="mt-0.5 text-xs text-[#64748b]">
+                Приёмы, завершенные врачом и готовые к выставлению счета.
+              </p>
+              {readyAppointments.length === 0 ? (
+                <EmptyState
+                  title="Нет пациентов, ожидающих оплаты"
+                  subtitle="После завершения приема врачом запись появится здесь."
+                />
+              ) : (
+                <div className="mt-4 space-y-2.5">
+                  {readyAppointments.map((row) => (
+                    <article
+                      key={row.id}
+                      className="rounded-[14px] border border-[#eef2f7] bg-white px-4 py-3.5"
+                    >
+                      <p className="font-semibold text-[#0f172a]">
+                        {patientsMap[row.patientId] ?? `Пациент #${row.patientId}`}
+                      </p>
+                      <p className="mt-0.5 text-xs text-[#64748b]">
+                        Врач: {doctorsMap[row.doctorId] ?? `#${row.doctorId}`}
+                      </p>
+                      <ul className="mt-2 text-sm text-[#334155]">
+                        {(appointmentServicesMap[row.id] ?? []).map((serviceId, idx) => (
+                          <li key={`${row.id}-${serviceId}-${idx}`}>
+                            {servicesMap[serviceId] ?? `Услуга #${serviceId}`}
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          className="rounded-xl bg-[#22c55e] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#16a34a] disabled:opacity-50"
+                          onClick={() => void createInvoiceForAppointment(row.id)}
+                          disabled={!canOperate || refreshing}
+                        >
+                          Оформить счёт
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+
             {/* Неоплаченные счета */}
             <SectionCard className="p-4 lg:col-span-7">
               <h2 className="text-sm font-semibold text-[#0f172a]">Неоплаченные счета</h2>

@@ -127,6 +127,7 @@ export type PaymentDeleteWithInvoiceAndCashInput = {
 
 export type InvoiceForPayment = {
   id: number;
+  appointmentId: number | null;
   status: InvoiceStatus;
   total: number;
   paidAmount: number;

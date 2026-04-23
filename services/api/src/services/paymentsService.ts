@@ -3,6 +3,7 @@ import { ApiError } from "../middleware/errorHandler";
 import {
   type ICashRegisterRepository,
 } from "../repositories/interfaces/ICashRegisterRepository";
+import { type IAppointmentsRepository } from "../repositories/interfaces/IAppointmentsRepository";
 import {
   type IPaymentsRepository,
 } from "../repositories/interfaces/IPaymentsRepository";
@@ -64,7 +65,8 @@ const deriveInvoiceStatusFromPayment = (
 export class PaymentsService {
   constructor(
     private readonly paymentsRepository: IPaymentsRepository,
-    private readonly cashRegisterRepository: ICashRegisterRepository
+    private readonly cashRegisterRepository: ICashRegisterRepository,
+    private readonly appointmentsRepository: IAppointmentsRepository
   ) {}
 
   async list(
@@ -176,6 +178,13 @@ export class PaymentsService {
       paymentInput,
       nextStatus
     );
+    if (invoice.appointmentId) {
+      const targetBilling = nextStatus === "paid" ? "paid" : "ready_for_payment";
+      await this.appointmentsRepository.updateBillingStatus(
+        invoice.appointmentId,
+        targetBilling
+      );
+    }
 
     await this.cashRegisterRepository.createCashRegisterEntry({
       shiftId: activeShift.id,
@@ -289,6 +298,12 @@ export class PaymentsService {
         note: cashNote,
       });
     }
+    if (invoice.appointmentId) {
+      await this.appointmentsRepository.updateBillingStatus(
+        invoice.appointmentId,
+        nextStatus === "paid" ? "paid" : "ready_for_payment"
+      );
+    }
     invalidateClinicFactsCache();
   }
 
@@ -334,6 +349,12 @@ export class PaymentsService {
 
     if (!result.deleted) {
       return false;
+    }
+    if (invoice.appointmentId) {
+      await this.appointmentsRepository.updateBillingStatus(
+        invoice.appointmentId,
+        nextStatus === "paid" ? "paid" : "ready_for_payment"
+      );
     }
 
     if (effectivePaid > 1e-9) {

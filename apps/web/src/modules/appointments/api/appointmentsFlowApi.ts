@@ -18,6 +18,8 @@ export type AppointmentStatus =
   | "cancelled"
   | "no_show";
 
+export type AppointmentBillingStatus = "draft" | "ready_for_payment" | "paid";
+
 export type Appointment = {
   id: number;
   patientId: number;
@@ -27,6 +29,7 @@ export type Appointment = {
   startAt: string;
   endAt: string;
   status: AppointmentStatus;
+  billingStatus: AppointmentBillingStatus;
   cancelReason: string | null;
   cancelledAt: string | null;
   cancelledBy: number | null;
@@ -142,9 +145,27 @@ export type AppointmentSlotAvailability = {
   available: boolean;
 };
 
+export type AppointmentAssignedService = {
+  id: number;
+  appointmentId: number;
+  serviceId: number;
+  createdAt: string;
+};
+
 export const appointmentsFlowApi = {
-  listAppointments: (token: string) =>
-    requestJson<Appointment[]>("/api/appointments", { token }),
+  listAppointments: (
+    token: string,
+    filters?: { billingStatus?: AppointmentBillingStatus }
+  ) => {
+    const query = new URLSearchParams();
+    if (filters?.billingStatus) {
+      query.set("billing_status", filters.billingStatus);
+    }
+    const suffix = query.toString();
+    return requestJson<Appointment[]>(`/api/appointments${suffix ? `?${suffix}` : ""}`, {
+      token,
+    });
+  },
 
   checkAppointmentAvailability: (
     token: string,
@@ -203,6 +224,30 @@ export const appointmentsFlowApi = {
       method: "PUT",
       token,
       body: payload,
+    }),
+
+  completeAppointment: (
+    token: string,
+    appointmentId: number,
+    payload: Partial<Pick<Appointment, "diagnosis" | "treatment" | "notes">>
+  ) =>
+    requestJson<Appointment>(`/api/appointments/${appointmentId}/complete`, {
+      method: "PATCH",
+      token,
+      body: payload,
+    }),
+
+  listAppointmentAssignedServices: (token: string, appointmentId: number) =>
+    requestJson<AppointmentAssignedService[]>(
+      `/api/appointments/${appointmentId}/services`,
+      { token }
+    ),
+
+  addAppointmentService: (token: string, appointmentId: number, serviceId: number) =>
+    requestJson<AppointmentAssignedService>(`/api/appointments/${appointmentId}/services`, {
+      method: "POST",
+      token,
+      body: { service_id: serviceId },
     }),
 
   cancelAppointment: (
@@ -288,6 +333,13 @@ export const appointmentsFlowApi = {
       body,
     });
   },
+
+  createInvoiceFromAppointment: (token: string, appointmentId: number) =>
+    requestJson<InvoiceSummary>("/api/invoices/from-appointment", {
+      method: "POST",
+      token,
+      body: { appointment_id: appointmentId },
+    }),
 
   createPayment: (
     token: string,

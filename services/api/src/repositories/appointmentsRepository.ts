@@ -1,9 +1,11 @@
 import type { IAppointmentsRepository } from "./interfaces/IAppointmentsRepository";
-import { APPOINTMENT_STATUSES } from "./interfaces/coreTypes";
+import { APPOINTMENT_BILLING_STATUSES, APPOINTMENT_STATUSES } from "./interfaces/coreTypes";
 import type {
   Appointment,
+  AppointmentBillingStatus,
   AppointmentCreateInput,
   AppointmentFilters,
+  AppointmentServiceAssignment,
   AppointmentStatus,
   AppointmentUpdateInput,
 } from "./interfaces/coreTypes";
@@ -13,8 +15,10 @@ import {
   nextId,
 } from "./mockDatabase";
 export { APPOINTMENT_STATUSES };
+export { APPOINTMENT_BILLING_STATUSES };
 export type {
   Appointment,
+  AppointmentBillingStatus,
   AppointmentCreateInput,
   AppointmentFilters,
   AppointmentStatus,
@@ -31,6 +35,7 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
         if (filters.doctorId !== undefined && row.doctorId !== filters.doctorId) return false;
         if (filters.serviceId !== undefined && row.serviceId !== filters.serviceId) return false;
         if (filters.status !== undefined && row.status !== filters.status) return false;
+        if (filters.billingStatus !== undefined && row.billingStatus !== filters.billingStatus) return false;
         if (filters.startFrom !== undefined && row.startAt < filters.startFrom) return false;
         const upper = filters.startTo ?? filters.endTo;
         if (upper !== undefined && row.startAt > upper) return false;
@@ -56,6 +61,7 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
       startAt: input.startAt,
       endAt: input.endAt,
       status: input.status,
+      billingStatus: input.billingStatus ?? "draft",
       cancelReason: input.cancelReason ?? null,
       cancelledAt: null,
       cancelledBy: null,
@@ -162,5 +168,45 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
     return getMockDb().doctorServices.some(
       (item) => item.serviceId === serviceId && item.doctorId === doctorId
     );
+  }
+
+  async createServiceAssignment(
+    appointmentId: number,
+    serviceId: number,
+    createdBy: number | null
+  ): Promise<AppointmentServiceAssignment> {
+    const created: AppointmentServiceAssignment = {
+      id: nextId(),
+      appointmentId,
+      serviceId,
+      createdBy,
+      createdAt: new Date().toISOString(),
+    };
+    getMockDb().appointmentServices.push(created);
+    return created;
+  }
+
+  async listServiceAssignments(appointmentId: number): Promise<AppointmentServiceAssignment[]> {
+    return getMockDb().appointmentServices
+      .filter((item) => item.appointmentId === appointmentId)
+      .sort((a, b) => a.id - b.id)
+      .map((item) => ({ ...item }));
+  }
+
+  async updateBillingStatus(
+    appointmentId: number,
+    billingStatus: AppointmentBillingStatus
+  ): Promise<Appointment | null> {
+    const db = getMockDb();
+    const idx = db.appointments.findIndex((item) => item.id === appointmentId);
+    if (idx < 0) {
+      return null;
+    }
+    db.appointments[idx] = {
+      ...db.appointments[idx],
+      billingStatus,
+      updatedAt: new Date().toISOString(),
+    };
+    return toAppointment(db.appointments[idx]);
   }
 }

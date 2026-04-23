@@ -51,6 +51,8 @@ type ConsultationModalState = {
   diagnosis: string;
   treatment: string;
   notes: string;
+  assignedServiceIds: number[];
+  selectedServiceId: string;
 };
 type AppointmentDetailsModalState = {
   open: boolean;
@@ -201,6 +203,8 @@ export const AppointmentsPage: React.FC = () => {
     diagnosis: "",
     treatment: "",
     notes: "",
+    assignedServiceIds: [],
+    selectedServiceId: "",
   });
   const [detailsModal, setDetailsModal] = React.useState<AppointmentDetailsModalState>({
     open: false,
@@ -606,17 +610,38 @@ export const AppointmentsPage: React.FC = () => {
   };
 
   const openConsultation = (appointment: Appointment) => {
+    void loadServicesByDoctor(appointment.doctorId);
     setConsultationModal({
       open: true,
       appointment,
       diagnosis: appointment.diagnosis ?? "",
       treatment: appointment.treatment ?? "",
       notes: appointment.notes ?? "",
+      assignedServiceIds: [],
+      selectedServiceId: "",
     });
+    if (!token) return;
+    void appointmentsFlowApi
+      .listAppointmentAssignedServices(token, appointment.id)
+      .then((rows) => {
+        setConsultationModal((prev) => ({
+          ...prev,
+          assignedServiceIds: rows.map((row) => row.serviceId),
+        }));
+      })
+      .catch(() => undefined);
   };
 
   const closeConsultation = () => {
-    setConsultationModal({ open: false, appointment: null, diagnosis: "", treatment: "", notes: "" });
+    setConsultationModal({
+      open: false,
+      appointment: null,
+      diagnosis: "",
+      treatment: "",
+      notes: "",
+      assignedServiceIds: [],
+      selectedServiceId: "",
+    });
   };
 
   const printPrescription = () => {
@@ -652,17 +677,41 @@ export const AppointmentsPage: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await appointmentsFlowApi.updateAppointment(token, consultationModal.appointment.id, {
-        status: "completed",
+      await appointmentsFlowApi.completeAppointment(token, consultationModal.appointment.id, {
         diagnosis,
         treatment,
         notes: consultationModal.notes.trim() || null,
       });
       closeConsultation();
       await loadData();
-      setToast("Прием завершен");
+      setToast("Пациент готов к оплате");
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Ошибка завершения приема");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const addServiceToConsultation = async () => {
+    if (!token || !consultationModal.appointment) return;
+    const serviceId = Number(consultationModal.selectedServiceId);
+    if (!Number.isInteger(serviceId) || serviceId <= 0) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await appointmentsFlowApi.addAppointmentService(
+        token,
+        consultationModal.appointment.id,
+        serviceId
+      );
+      setConsultationModal((prev) => ({
+        ...prev,
+        selectedServiceId: "",
+        assignedServiceIds: [...prev.assignedServiceIds, serviceId],
+      }));
+      setToast("Услуга назначена");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Не удалось назначить услугу");
     } finally {
       setIsSubmitting(false);
     }
@@ -1191,6 +1240,48 @@ export const AppointmentsPage: React.FC = () => {
               {appointments.filter((row) => row.patientId === consultationModal.appointment?.patientId).length}
             </p>
             <div className="mt-4 grid gap-3">
+              <div className="rounded-xl border border-[#e5e7eb] bg-[#f8fafc] p-3">
+                <p className="text-sm font-medium text-[#111827]">Назначенные услуги</p>
+                <ul className="mt-2 space-y-1 text-sm text-[#334155]">
+                  {consultationModal.assignedServiceIds.length === 0 ? (
+                    <li className="text-[#6b7280]">Пока не назначены</li>
+                  ) : (
+                    consultationModal.assignedServiceIds.map((serviceId, idx) => (
+                      <li key={`${serviceId}-${idx}`}>
+                        {servicesMap[serviceId]?.name ?? `Услуга #${serviceId}`}
+                      </li>
+                    ))
+                  )}
+                </ul>
+                <div className="mt-3 flex gap-2">
+                  <select
+                    value={consultationModal.selectedServiceId}
+                    onChange={(event) =>
+                      setConsultationModal((prev) => ({
+                        ...prev,
+                        selectedServiceId: event.target.value,
+                      }))
+                    }
+                    className="h-10 flex-1 rounded-[10px] border border-[#e5e7eb] bg-white px-3 text-sm text-[#111827]"
+                    disabled={isSubmitting}
+                  >
+                    <option value="">Выберите услугу</option>
+                    {availableServices.map((service) => (
+                      <option key={service.id} value={String(service.id)}>
+                        {service.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-[#e5e7eb] bg-white px-3 text-sm font-medium text-[#111827] transition hover:bg-[#f3f4f6]"
+                    onClick={() => void addServiceToConsultation()}
+                    disabled={isSubmitting || !consultationModal.selectedServiceId}
+                  >
+                    + Добавить услугу
+                  </button>
+                </div>
+              </div>
               <label className="text-sm text-[#111827]">
                 Diagnosis
                 <input

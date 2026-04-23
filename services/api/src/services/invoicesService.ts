@@ -12,6 +12,7 @@ import {
   type InvoiceUpdateInput,
 } from "../repositories/interfaces/billingTypes";
 import type { IInvoicesRepository } from "../repositories/interfaces/IInvoicesRepository";
+import type { IAppointmentsRepository } from "../repositories/interfaces/IAppointmentsRepository";
 import type { IServicesRepository } from "../repositories/interfaces/IServicesRepository";
 import type { AuthTokenPayload } from "../repositories/interfaces/userTypes";
 import { parseNumericInput, parseRequiredMoney, roundMoney2 } from "../utils/numbers";
@@ -228,7 +229,8 @@ const ensureStatusTransitionAllowed = (
 export class InvoicesService {
   constructor(
     private readonly invoicesRepository: IInvoicesRepository,
-    private readonly servicesRepository: IServicesRepository
+    private readonly servicesRepository: IServicesRepository,
+    private readonly appointmentsRepository: IAppointmentsRepository
   ) {}
 
   async list(
@@ -328,6 +330,32 @@ export class InvoicesService {
       }
       throw err;
     }
+  }
+
+  async createFromAppointment(auth: AuthTokenPayload, appointmentId: number): Promise<Invoice> {
+    const appointment = await this.appointmentsRepository.findById(appointmentId);
+    if (!appointment) {
+      throw new ApiError(404, "Appointment not found");
+    }
+    const assignedServices = await this.appointmentsRepository.listServiceAssignments(
+      appointmentId
+    );
+    if (assignedServices.length === 0) {
+      throw new ApiError(400, "No assigned services found for appointment");
+    }
+    const items = assignedServices.map((row) => ({
+      serviceId: row.serviceId,
+      quantity: 1,
+    }));
+    const created = await this.create(auth, {
+      patientId: appointment.patientId,
+      appointmentId: appointment.id,
+      status: "issued",
+      discount: 0,
+      items,
+    });
+    await this.appointmentsRepository.updateBillingStatus(appointment.id, "ready_for_payment");
+    return created;
   }
 
   async update(

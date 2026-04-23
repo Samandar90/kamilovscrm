@@ -1,11 +1,14 @@
 import { Router } from "express";
 import { asyncHandler } from "../middleware/asyncHandler";
 import {
+  addAppointmentServiceController,
   cancelAppointmentController,
   checkAvailabilityController,
+  completeAppointmentController,
   createAppointmentController,
   deleteAppointmentController,
   getAppointmentByIdController,
+  listAppointmentServicesController,
   listAppointmentsController,
   updateAppointmentPriceController,
   updateAppointmentController,
@@ -58,6 +61,27 @@ router.patch(
   validateAppointmentIdParam,
   validateUpdateAppointmentPrice,
   asyncHandler(updateAppointmentPriceController)
+);
+router.get(
+  "/:id/services",
+  requireAuth,
+  allowPermission("APPOINTMENT_READ"),
+  validateAppointmentIdParam,
+  asyncHandler(listAppointmentServicesController)
+);
+router.post(
+  "/:id/services",
+  requireAuth,
+  allowPermission("APPOINTMENT_UPDATE"),
+  validateAppointmentIdParam,
+  asyncHandler(addAppointmentServiceController)
+);
+router.patch(
+  "/:id/complete",
+  requireAuth,
+  allowPermission("APPOINTMENT_UPDATE"),
+  validateAppointmentIdParam,
+  asyncHandler(completeAppointmentController)
 );
 router.patch(
   "/:id/cancel",

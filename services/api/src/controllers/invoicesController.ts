@@ -63,10 +63,21 @@ export const getInvoiceByIdController = async (req: Request, res: Response) => {
 };
 
 export const createInvoiceController = async (req: Request, res: Response) => {
-  // eslint-disable-next-line no-console
-  console.log("CREATE INVOICE BODY:", JSON.stringify(req.body, null, 2));
   const auth = getAuthPayload(req);
   const created = await services.invoices.create(auth, req.body);
+  return res.status(201).json(created);
+};
+
+export const createInvoiceFromAppointmentController = async (
+  req: Request,
+  res: Response
+) => {
+  const auth = getAuthPayload(req);
+  const appointmentId = Number(req.body?.appointment_id ?? req.body?.appointmentId);
+  if (!Number.isInteger(appointmentId) || appointmentId <= 0) {
+    throw new ApiError(400, "Field 'appointment_id' must be a positive integer");
+  }
+  const created = await services.invoices.createFromAppointment(auth, appointmentId);
   return res.status(201).json(created);
 };
 

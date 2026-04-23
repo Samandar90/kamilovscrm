@@ -1,8 +1,10 @@
 import type { IAppointmentsRepository } from "../interfaces/IAppointmentsRepository";
 import type {
   Appointment,
+  AppointmentBillingStatus,
   AppointmentCreateInput,
   AppointmentFilters,
+  AppointmentServiceAssignment,
   AppointmentStatus,
   AppointmentUpdateInput,
 } from "../interfaces/coreTypes";
@@ -24,6 +26,7 @@ type AppointmentRow = {
   start_at: string | Date;
   end_at: string | Date;
   status: AppointmentStatus;
+  billing_status: AppointmentBillingStatus;
   cancel_reason: string | null;
   cancelled_at: string | Date | null;
   cancelled_by: number | null;
@@ -32,6 +35,14 @@ type AppointmentRow = {
   notes: string | null;
   created_at: string | Date;
   updated_at: string | Date;
+};
+
+type AppointmentServiceRow = {
+  id: number;
+  appointment_id: number;
+  service_id: number;
+  created_by: number | null;
+  created_at: string | Date;
 };
 
 /** Любой ввод цены (JSON-строка с пробелами) → число для NUMERIC в PostgreSQL. */
@@ -58,6 +69,7 @@ const mapAppointmentRow = (row: AppointmentRow): Appointment => ({
   startAt: normalizeToLocalDateTime(row.start_at),
   endAt: normalizeToLocalDateTime(row.end_at),
   status: row.status,
+  billingStatus: row.billing_status,
   cancelReason: row.cancel_reason,
   cancelledAt: row.cancelled_at ? normalizeToLocalDateTime(row.cancelled_at) : null,
   cancelledBy: row.cancelled_by != null ? Number(row.cancelled_by) : null,
@@ -77,6 +89,7 @@ const SELECT_LIST = `
   start_at,
   end_at,
   status,
+  billing_status,
   cancel_reason,
   cancelled_at,
   cancelled_by,
@@ -107,6 +120,10 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     if (filters.status !== undefined) {
       values.push(filters.status);
       whereClauses.push(`status = $${values.length}`);
+    }
+    if (filters.billingStatus !== undefined) {
+      values.push(filters.billingStatus);
+      whereClauses.push(`billing_status = $${values.length}`);
     }
     if (filters.startFrom != null) {
       const v = assertOptionalAppointmentTimestampForDb(
@@ -176,6 +193,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
           start_at,
           end_at,
           status,
+          billing_status,
           cancel_reason,
           cancelled_at,
           cancelled_by,
@@ -183,7 +201,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
           treatment,
           notes
         )
-        VALUES ($1, $2, $3, $4, $5::timestamptz, $6::timestamptz, $7, $8, $9, $10, $11, $12, $13)
+        VALUES ($1, $2, $3, $4, $5::timestamptz, $6::timestamptz, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING ${SELECT_LIST}
       `,
       [
@@ -194,6 +212,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
         startAt,
         endAt,
         data.status,
+        data.billingStatus ?? "draft",
         data.cancelReason ?? null,
         null,
         null,
@@ -256,6 +275,10 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     if (data.status !== undefined) {
       values.push(data.status);
       setClauses.push(`status = $${values.length}`);
+    }
+    if (data.billingStatus !== undefined) {
+      values.push(data.billingStatus);
+      setClauses.push(`billing_status = $${values.length}`);
     }
     if (data.cancelReason !== undefined) {
       values.push(data.cancelReason);
@@ -473,5 +496,66 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       [serviceId, doctorId]
     );
     return result.rows[0]?.exists === true;
+  }
+
+  async createServiceAssignment(
+    appointmentId: number,
+    serviceId: number,
+    createdBy: number | null
+  ): Promise<AppointmentServiceAssignment> {
+    const result = await dbPool.query<AppointmentServiceRow>(
+      `
+        INSERT INTO appointment_services (appointment_id, service_id, created_by)
+        VALUES ($1, $2, $3)
+        RETURNING id, appointment_id, service_id, created_by, created_at
+      `,
+      [appointmentId, serviceId, createdBy]
+    );
+    const row = result.rows[0];
+    return {
+      id: Number(row.id),
+      appointmentId: Number(row.appointment_id),
+      serviceId: Number(row.service_id),
+      createdBy: row.created_by == null ? null : Number(row.created_by),
+      createdAt: normalizeToLocalDateTime(row.created_at),
+    };
+  }
+
+  async listServiceAssignments(appointmentId: number): Promise<AppointmentServiceAssignment[]> {
+    const result = await dbPool.query<AppointmentServiceRow>(
+      `
+        SELECT id, appointment_id, service_id, created_by, created_at
+        FROM appointment_services
+        WHERE appointment_id = $1
+        ORDER BY id ASC
+      `,
+      [appointmentId]
+    );
+    return result.rows.map((row) => ({
+      id: Number(row.id),
+      appointmentId: Number(row.appointment_id),
+      serviceId: Number(row.service_id),
+      createdBy: row.created_by == null ? null : Number(row.created_by),
+      createdAt: normalizeToLocalDateTime(row.created_at),
+    }));
+  }
+
+  async updateBillingStatus(
+    appointmentId: number,
+    billingStatus: AppointmentBillingStatus
+  ): Promise<Appointment | null> {
+    const result = await dbPool.query<AppointmentRow>(
+      `
+        UPDATE appointments
+        SET billing_status = $2, updated_at = NOW()
+        WHERE id = $1 AND deleted_at IS NULL
+        RETURNING ${SELECT_LIST}
+      `,
+      [appointmentId, billingStatus]
+    );
+    if (result.rows.length === 0) {
+      return null;
+    }
+    return mapAppointmentRow(result.rows[0]);
   }
 }

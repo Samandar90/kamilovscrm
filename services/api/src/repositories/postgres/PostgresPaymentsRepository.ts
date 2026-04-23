@@ -437,6 +437,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
   async findInvoiceByIdForPayment(id: number): Promise<InvoiceForPayment | null> {
     const result = await dbPool.query<{
       id: string | number;
+      appointment_id: string | number | null;
       status: InvoiceStatus;
       total: string | number;
       paid_amount: string | number;
@@ -444,6 +445,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
       `
         SELECT
           i.id,
+          i.appointment_id,
           i.status,
           i.total,
           ${PAID_SUM_EXPR} AS paid_amount
@@ -462,6 +464,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
     const row = result.rows[0];
     return {
       id: Number(row.id),
+      appointmentId: row.appointment_id == null ? null : Number(row.appointment_id),
       status: row.status,
       total: num(row.total),
       paidAmount: num(row.paid_amount),

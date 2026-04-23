@@ -9,6 +9,12 @@ export const APPOINTMENT_STATUSES = [
 ] as const;
 
 export type AppointmentStatus = (typeof APPOINTMENT_STATUSES)[number];
+export const APPOINTMENT_BILLING_STATUSES = [
+  "draft",
+  "ready_for_payment",
+  "paid",
+] as const;
+export type AppointmentBillingStatus = (typeof APPOINTMENT_BILLING_STATUSES)[number];
 export type PatientGender = "male" | "female" | "other" | "unknown";
 
 /** Источник обращения пациента (хранится в БД латиницей). */
@@ -90,6 +96,7 @@ export type Appointment = {
   startAt: string;
   endAt: string;
   status: AppointmentStatus;
+  billingStatus: AppointmentBillingStatus;
   cancelReason: string | null;
   cancelledAt: string | null;
   cancelledBy: number | null;
@@ -105,6 +112,7 @@ export type AppointmentFilters = {
   doctorId?: number;
   serviceId?: number;
   status?: AppointmentStatus;
+  billingStatus?: AppointmentBillingStatus;
   startFrom?: string;
   /** Верхняя граница по `start_at` (включительно). */
   startTo?: string;
@@ -133,6 +141,7 @@ export type AppointmentCreateInput = {
   startAt: string;
   endAt: string;
   status: AppointmentStatus;
+  billingStatus?: AppointmentBillingStatus;
   cancelReason?: string | null;
   diagnosis: string | null;
   treatment: string | null;
@@ -140,3 +149,11 @@ export type AppointmentCreateInput = {
 };
 
 export type AppointmentUpdateInput = Partial<AppointmentCreateInput>;
+
+export type AppointmentServiceAssignment = {
+  id: number;
+  appointmentId: number;
+  serviceId: number;
+  createdBy: number | null;
+  createdAt: string;
+};

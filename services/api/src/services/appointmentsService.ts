@@ -3,8 +3,10 @@ import {
 } from "../repositories/interfaces/IAppointmentsRepository";
 import type {
   Appointment,
+  AppointmentBillingStatus,
   AppointmentCreateInput,
   AppointmentFilters,
+  AppointmentServiceAssignment,
   AppointmentStatus,
   AppointmentUpdateInput,
 } from "../repositories/interfaces/coreTypes";
@@ -202,6 +204,7 @@ const normalizeCreateInput = (
 ): AppointmentCreateInput => {
   return {
     ...payload,
+    billingStatus: payload.billingStatus ?? "draft",
     price: normalizeOptionalPrice(payload.price),
     diagnosis: normalizeOptionalString(payload.diagnosis) ?? null,
     treatment: normalizeOptionalString(payload.treatment) ?? null,
@@ -400,6 +403,10 @@ export class AppointmentsService {
     }
 
     const mergedStatus = normalizedPayload.status ?? current.status;
+    const nextBillingStatus: AppointmentBillingStatus | undefined =
+      mergedStatus === "completed" && normalizedPayload.status !== undefined
+        ? "ready_for_payment"
+        : undefined;
     const mergedPatientId = normalizedPayload.patientId ?? current.patientId;
     const mergedDoctorId = normalizedPayload.doctorId ?? current.doctorId;
     enforceDoctorSelfScopeOnWrite(auth, mergedDoctorId);
@@ -442,7 +449,11 @@ export class AppointmentsService {
       );
     }
 
-    const updated = await this.appointmentsRepository.update(id, normalizedPayload);
+    const updatedPayload =
+      nextBillingStatus === undefined
+        ? normalizedPayload
+        : { ...normalizedPayload, billingStatus: nextBillingStatus };
+    const updated = await this.appointmentsRepository.update(id, updatedPayload);
     if (updated) invalidateClinicFactsCache();
     if (!updated) {
       return null;
@@ -585,6 +596,54 @@ export class AppointmentsService {
     );
 
     return { available: !hasConflict };
+  }
+
+  async assignService(
+    auth: AuthTokenPayload,
+    appointmentId: number,
+    serviceId: number
+  ): Promise<AppointmentServiceAssignment> {
+    if (auth.role !== "doctor") {
+      throw new ApiError(403, "Только врач может назначать услуги в приеме");
+    }
+    const appointment = await this.appointmentsRepository.findById(appointmentId);
+    if (!appointment) {
+      throw new ApiError(404, "Appointment not found");
+    }
+    enforceDoctorSelfScopeOnWrite(auth, appointment.doctorId);
+    if (appointment.status !== "in_consultation" && appointment.status !== "arrived") {
+      throw new ApiError(400, "Услуги можно назначать только во время приема");
+    }
+    const serviceExists = await this.appointmentsRepository.serviceExists(serviceId);
+    if (!serviceExists) {
+      throw new ApiError(404, "Service not found");
+    }
+    const isAssigned = await this.appointmentsRepository.isServiceAssignedToDoctor(
+      serviceId,
+      appointment.doctorId
+    );
+    if (!isAssigned) {
+      throw new ApiError(400, "Selected service is not assigned to selected doctor");
+    }
+    return this.appointmentsRepository.createServiceAssignment(
+      appointmentId,
+      serviceId,
+      auth.userId
+    );
+  }
+
+  async listAssignedServices(
+    auth: AuthTokenPayload,
+    appointmentId: number
+  ): Promise<AppointmentServiceAssignment[]> {
+    const appointment = await this.appointmentsRepository.findById(appointmentId);
+    if (!appointment) {
+      throw new ApiError(404, "Appointment not found");
+    }
+    if (!canReadAppointment(auth, appointment)) {
+      throw new ApiError(403, "Недостаточно прав");
+    }
+    return this.appointmentsRepository.listServiceAssignments(appointmentId);
   }
 }
 
