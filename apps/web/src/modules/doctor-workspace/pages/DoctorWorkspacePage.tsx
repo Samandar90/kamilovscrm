@@ -35,16 +35,16 @@ export const DoctorWorkspacePage: React.FC = () => {
   const [notice, setNotice] = React.useState<string | null>(null);
 
   const parsedId = Number(appointmentId);
+  const noServicesForDoctor = !loading && appointment !== null && servicesCatalog.length === 0;
 
   const load = React.useCallback(async () => {
     if (!token || !Number.isInteger(parsedId) || parsedId <= 0) return;
     setLoading(true);
     setError(null);
     try {
-      const [rows, patients, services, assignedRows] = await Promise.all([
+      const [rows, patients, assignedRows] = await Promise.all([
         appointmentsFlowApi.listAppointments(token),
         appointmentsFlowApi.listPatients(token),
-        appointmentsFlowApi.listServices(token),
         appointmentsFlowApi.listAppointmentAssignedServices(token, parsedId).catch(() => []),
       ]);
       const found = rows.find((row) => row.id === parsedId) ?? null;
@@ -53,13 +53,16 @@ export const DoctorWorkspacePage: React.FC = () => {
         setAppointment(null);
         return;
       }
+      const doctorServices = await appointmentsFlowApi.listServices(token, found.doctorId);
       const patient = patients.find((row) => row.id === found.patientId);
-      const service = services.find((row) => row.id === found.serviceId);
+      const service = doctorServices.find((row) => row.id === found.serviceId);
       setAppointment(found);
-      setServicesCatalog(services);
+      setServicesCatalog(doctorServices);
       setAssignedServiceIds(assignedRows.map((row) => row.serviceId));
       setPatientName(patient?.fullName ?? `Пациент #${found.patientId}`);
       setServiceName(service?.name ?? `Услуга #${found.serviceId}`);
+      setSelectedServiceId("");
+      setServicePickerOpen(false);
       setForm({
         diagnosis: found.diagnosis ?? "",
         treatment: found.treatment ?? "",
@@ -247,11 +250,16 @@ export const DoctorWorkspacePage: React.FC = () => {
           <button
             type="button"
             onClick={() => setServicePickerOpen((v) => !v)}
-            disabled={loading || submitting || !appointment}
+            disabled={loading || submitting || !appointment || noServicesForDoctor}
             className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700"
           >
             Добавить услугу
           </button>
+          {noServicesForDoctor ? (
+            <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700">
+              У этого врача нет доступных услуг
+            </p>
+          ) : null}
           {servicePickerOpen ? (
             <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
               <select
