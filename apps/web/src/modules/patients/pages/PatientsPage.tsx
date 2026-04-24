@@ -4,10 +4,9 @@ import {
   Archive,
   CalendarPlus,
   Pencil,
-  Phone,
   Search,
-  X,
   UserRound,
+  X,
 } from "lucide-react";
 import { requestJson } from "../../../api/http";
 import { useAuth } from "../../../auth/AuthContext";
@@ -25,6 +24,8 @@ import type { InvoiceSummary } from "../../billing/api/cashDeskApi";
 import { formatSum } from "../../../utils/formatMoney";
 import { PhoneInput } from "../../../shared/ui/PhoneInput";
 import { phoneToApiValue, storedPhoneToNormalized } from "../../../utils/phoneInput";
+import { PatientCard } from "../components/PatientCard";
+import { cn } from "../../../ui/utils/cn";
 
 type PatientSource = "instagram" | "telegram" | "advertising" | "referral" | "other";
 
@@ -82,12 +83,6 @@ const initialFormState: PatientFormState = {
 const isPatientSource = (v: string | null | undefined): v is PatientSource =>
   v === "instagram" || v === "telegram" || v === "advertising" || v === "referral" || v === "other";
 
-const genderLabels: Record<Patient["gender"], string> = {
-  male: "Мужской",
-  female: "Женский",
-  other: "Другой",
-  unknown: "Не указан",
-};
 const phoneAllowedCharsRe = /^[+()\-\s\d]+$/;
 
 function getPatientFormValidationError(state: PatientFormState): string | null {
@@ -115,7 +110,9 @@ function getPatientFormValidationError(state: PatientFormState): string | null {
   return null;
 }
 
-const DEBOUNCE_MS = 320;
+const DEBOUNCE_MS = 300;
+const LIST_WINDOW_INITIAL = 40;
+const LIST_WINDOW_STEP = 40;
 
 function buildLastVisitMap(appointments: Appointment[]): Map<number, string> {
   const map = new Map<number, string>();
@@ -169,6 +166,7 @@ export const PatientsPage: React.FC = () => {
   const [servicesMap, setServicesMap] = useState<Record<number, string>>({});
   const [historyLoading, setHistoryLoading] = useState(false);
   const [relatedDataWarning, setRelatedDataWarning] = useState<string | null>(null);
+  const [listWindow, setListWindow] = useState(LIST_WINDOW_INITIAL);
 
   const role = user?.role;
   const canCreatePatient = canCreatePatients(role);
@@ -260,6 +258,16 @@ export const PatientsPage: React.FC = () => {
       return fullName.includes(value) || phone.includes(value);
     });
   }, [normalizedPatients, debouncedSearch]);
+
+  const windowedPatients = useMemo(
+    () => filteredPatients.slice(0, listWindow),
+    [filteredPatients, listWindow]
+  );
+  const hasMorePatients = filteredPatients.length > windowedPatients.length;
+
+  useEffect(() => {
+    setListWindow(LIST_WINDOW_INITIAL);
+  }, [debouncedSearch, normalizedPatients.length]);
 
   const patientFormMeta = useMemo(() => {
     const validationError = getPatientFormValidationError(formState);
@@ -431,11 +439,16 @@ export const PatientsPage: React.FC = () => {
     !loading && normalizedPatients.length > 0 && filteredPatients.length === 0;
 
   return (
-    <div className="page-enter space-y-6 p-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    <div
+      className={cn(
+        "page-enter space-y-4 p-4 md:space-y-6 md:p-6",
+        canCreatePatient && !loading && !showEmptyNoData && "max-md:pb-[100px]"
+      )}
+    >
+      <header className="flex flex-wrap items-end justify-between gap-3 md:gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-[#0f172a]">Пациенты</h2>
-          <p className="mt-1 text-sm text-[#64748b]">
+          <h2 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">Пациенты</h2>
+          <p className="mt-0.5 hidden text-sm text-slate-500 sm:block">
             {role === "operator"
               ? "Поиск и создание новых пациентов."
               : "Карточки пациентов для ежедневной работы администратора."}
@@ -445,7 +458,7 @@ export const PatientsPage: React.FC = () => {
           <button
             type="button"
             onClick={openCreateModal}
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-[#16a34a] px-5 text-sm font-semibold text-white shadow-[0_4px_14px_-6px_rgba(22,163,74,0.45)] transition duration-200 hover:bg-[#22c55e] hover:shadow-[0_6px_20px_-8px_rgba(22,163,74,0.5)] active:scale-[0.98]"
+            className="hidden h-11 items-center justify-center rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white shadow-sm transition duration-200 hover:bg-emerald-700 active:scale-[0.98] md:inline-flex"
           >
             Добавить пациента
           </button>
@@ -453,19 +466,21 @@ export const PatientsPage: React.FC = () => {
       </header>
 
       {!showEmptyNoData && (
-        <div className="relative max-w-xl">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#94a3b8]"
-            strokeWidth={1.75}
-            aria-hidden
-          />
-          <input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className={`${fieldInputClass} h-11 w-full pl-10 pr-3`}
-            aria-label="Поиск по имени и телефону"
-            placeholder="Поиск по имени или телефону…"
-          />
+        <div className="sticky top-0 z-20 -mx-4 border-b border-slate-200/60 bg-slate-50/95 px-4 py-2.5 backdrop-blur-md md:static md:z-0 md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+          <div className="relative w-full md:max-w-xl">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400"
+              strokeWidth={1.75}
+              aria-hidden
+            />
+            <input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className={`${fieldInputClass} h-11 w-full pl-10 pr-3`}
+              aria-label="Поиск по имени и телефону"
+              placeholder="Поиск пациента..."
+            />
+          </div>
         </div>
       )}
 
@@ -486,131 +501,153 @@ export const PatientsPage: React.FC = () => {
       ) : showEmptyNoData ? (
         <ListEmptyState
           icon={UserRound}
-          title="Пока нет пациентов"
-          description="Создайте первую карточку — данные появятся здесь."
-          actionLabel="Добавить"
+          title="Пациентов пока нет"
+          actionLabel="Добавить пациента"
           onAction={openCreateModal}
           showAction={canCreatePatient}
           actionDisabled={isSaving || archivingPatientId !== null}
         />
       ) : showEmptyFilter ? (
-        <div className="rounded-2xl border border-[#e2e8f0] bg-white px-6 py-14 text-center text-sm text-[#64748b] shadow-sm">
-          <p className="font-medium text-[#0f172a]">Никого не нашли</p>
-          <p className="mt-1">Попробуйте другой запрос или сбросьте поиск.</p>
+        <div className="rounded-xl border border-slate-100 bg-white px-5 py-12 text-center text-sm text-slate-500 shadow-sm">
+          <p className="font-medium text-slate-900">Никого не нашли</p>
+          <p className="mt-1 text-slate-500">Измените запрос.</p>
         </div>
       ) : (
-        <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
-          {filteredPatients.map((patient) => {
-            const lastVisit = lastVisitByPatientId.get(patient.id);
-            const debt = debtByPatientId.get(patient.id);
-            return (
-              <li key={patient.id}>
-                <article
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => void openPatientHistory(patient)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      void openPatientHistory(patient);
-                    }
-                  }}
-                  className="group relative cursor-pointer rounded-[14px] border border-[#e2e8f0] bg-white p-4 shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_12px_40px_-16px_rgba(15,23,42,0.14)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#16a34a]/35"
-                >
-                  <div
-                    className="absolute right-3 top-3 z-10 flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      type="button"
-                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#e2e8f0] bg-white px-2.5 text-xs font-medium text-[#0f172a] shadow-sm transition hover:bg-[#f1f5f9]"
-                      title="Открыть карточку"
+        <div className="space-y-3">
+          <ul className="flex flex-col gap-3 md:hidden" aria-label="Список пациентов">
+            {windowedPatients.map((patient) => {
+              const birthLabel = patient.birthDate?.trim() ? formatDate(patient.birthDate) : null;
+              return (
+                <li key={patient.id}>
+                  <PatientCard
+                    patient={patient}
+                    birthLabel={birthLabel}
+                    onOpen={() => void openPatientHistory(patient)}
+                    onEdit={canUpdatePatient ? () => openEditModal(patient) : undefined}
+                    onArchive={canArchive ? (e) => void handleArchivePatient(patient, e) : undefined}
+                    canBookAppointment={canBookAppointment}
+                    canEdit={canUpdatePatient}
+                    canArchive={canArchive}
+                    archivePending={archivingPatientId !== null}
+                    savePending={isSaving}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="hidden overflow-x-auto rounded-xl border border-slate-100 bg-white shadow-sm md:block">
+            <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="whitespace-nowrap px-4 py-3">ФИО</th>
+                  <th className="whitespace-nowrap px-4 py-3">Телефон</th>
+                  <th className="whitespace-nowrap px-4 py-3">Дата рождения</th>
+                  <th className="whitespace-nowrap px-4 py-3">Последний визит</th>
+                  {showPatientDebt ? <th className="whitespace-nowrap px-4 py-3">Долг</th> : null}
+                  <th className="whitespace-nowrap px-4 py-3 text-right">Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {windowedPatients.map((patient) => {
+                  const lastVisit = lastVisitByPatientId.get(patient.id);
+                  const debt = debtByPatientId.get(patient.id);
+                  return (
+                    <tr
+                      key={patient.id}
+                      className="cursor-pointer border-b border-slate-100/90 transition-colors last:border-0 hover:bg-slate-50/80"
                       onClick={() => void openPatientHistory(patient)}
                     >
-                      Открыть
-                    </button>
-                    {canBookAppointment ? (
-                      <Link
-                        to={`/appointments/new?patientId=${patient.id}`}
-                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#e2e8f0] bg-white px-2.5 text-xs font-medium text-[#0f172a] shadow-sm transition hover:bg-[#f1f5f9]"
-                        title="Записать на приём"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <CalendarPlus className="h-3.5 w-3.5 text-[#64748b]" strokeWidth={1.75} />
-                        Записать
-                      </Link>
-                    ) : null}
-                    {canUpdatePatient && (
-                      <button
-                        type="button"
-                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-[#e2e8f0] bg-white px-2.5 text-xs font-medium text-[#0f172a] shadow-sm transition hover:bg-[#f1f5f9]"
-                        title="Изменить"
-                        disabled={isSaving || archivingPatientId !== null}
-                        onClick={() => openEditModal(patient)}
-                      >
-                        <Pencil className="h-3.5 w-3.5 text-[#64748b]" strokeWidth={1.75} />
-                        Изменить
-                      </button>
-                    )}
-                    {canArchive && (
-                      <button
-                        type="button"
-                        className="inline-flex h-8 items-center justify-center rounded-lg border border-[#fecaca] bg-[#fef2f2] px-2 text-[#991b1b] transition hover:bg-[#fee2e2]"
-                        title="Архивировать"
-                        disabled={archivingPatientId !== null}
-                        onClick={(e) => void handleArchivePatient(patient, e)}
-                      >
-                        <Archive className="h-3.5 w-3.5" strokeWidth={1.75} />
-                      </button>
-                    )}
-                  </div>
+                      <td className="max-w-[200px] truncate px-4 py-3 font-medium text-slate-900">{patient.fullName}</td>
+                      <td className="whitespace-nowrap px-4 py-3 tabular-nums text-slate-600">{patient.phone}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">{formatDate(patient.birthDate)}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                        {lastVisit ? formatDateTime(lastVisit) : "—"}
+                      </td>
+                      {showPatientDebt ? (
+                        <td className="whitespace-nowrap px-4 py-3 tabular-nums text-slate-700">
+                          {debt !== undefined && debt > 0 ? (
+                            <span className="font-medium text-red-700">{formatSum(debt)}</span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      ) : null}
+                      <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-wrap items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50"
+                            onClick={() => void openPatientHistory(patient)}
+                          >
+                            Открыть
+                          </button>
+                          {canBookAppointment ? (
+                            <Link
+                              to={`/appointments/new?patientId=${patient.id}`}
+                              className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                            >
+                              <CalendarPlus className="h-3.5 w-3.5" strokeWidth={1.75} />
+                              Запись
+                            </Link>
+                          ) : null}
+                          {canUpdatePatient ? (
+                            <button
+                              type="button"
+                              className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50"
+                              title="Изменить"
+                              disabled={isSaving || archivingPatientId !== null}
+                              onClick={() => openEditModal(patient)}
+                            >
+                              <Pencil className="h-4 w-4" strokeWidth={1.75} />
+                            </button>
+                          ) : null}
+                          {canArchive ? (
+                            <button
+                              type="button"
+                              className="rounded-lg border border-red-100 bg-red-50 p-1.5 text-red-700 hover:bg-red-100"
+                              title="Архивировать"
+                              disabled={archivingPatientId !== null}
+                              onClick={(e) => void handleArchivePatient(patient, e)}
+                            >
+                              <Archive className="h-4 w-4" strokeWidth={1.75} />
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-                  <div className="pr-2">
-                    <h3 className="text-base font-semibold leading-snug text-[#0f172a]">
-                      {patient.fullName}
-                    </h3>
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-[#64748b]">
-                      <span className="inline-flex items-center gap-1.5 tabular-nums">
-                        <Phone className="h-3.5 w-3.5 shrink-0 text-[#94a3b8]" strokeWidth={1.75} />
-                        {patient.phone}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-sm text-[#64748b]">
-                      <span className="text-[#94a3b8]">Пол · дата рождения</span>
-                      <br />
-                      <span className="text-[#0f172a]">
-                        {genderLabels[patient.gender]} · {formatDate(patient.birthDate)}
-                      </span>
-                    </p>
-                    <p className="mt-2 text-xs text-[#94a3b8]">
-                      В базе с{" "}
-                      <span className="font-medium tabular-nums text-[#64748b]">
-                        {formatDateTime(patient.createdAt)}
-                      </span>
-                    </p>
-                    {lastVisit ? (
-                      <p className="mt-1 text-xs">
-                        <span className="text-[#94a3b8]">Последний визит · </span>
-                        <span className="font-medium tabular-nums text-[#0f172a]">
-                          {formatDateTime(lastVisit)}
-                        </span>
-                      </p>
-                    ) : (
-                      <p className="mt-1 text-xs italic text-[#94a3b8]">Визитов ещё не было</p>
-                    )}
-                    {showPatientDebt && debt !== undefined && debt > 0 ? (
-                      <p className="mt-2 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-2.5 py-1.5 text-xs font-semibold tabular-nums text-[#991b1b]">
-                        Долг: {formatSum(debt)}
-                      </p>
-                    ) : null}
-                  </div>
-                </article>
-              </li>
-            );
-          })}
-        </ul>
+          {hasMorePatients ? (
+            <div className="flex justify-center pt-1">
+              <button
+                type="button"
+                onClick={() => setListWindow((n) => n + LIST_WINDOW_STEP)}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                Показать ещё ({filteredPatients.length - windowedPatients.length})
+              </button>
+            </div>
+          ) : null}
+        </div>
       )}
+
+      {canCreatePatient && !loading && !showEmptyNoData ? (
+        <button
+          type="button"
+          onClick={openCreateModal}
+          className="fixed bottom-16 left-0 right-0 z-[90] flex justify-center px-4 transition-transform duration-150 ease-out active:scale-[0.98] md:hidden"
+          aria-label="Добавить пациента"
+        >
+          <span className="flex min-h-[48px] w-full max-w-none items-center justify-center gap-2 rounded-[14px] bg-emerald-600 px-4 text-sm font-semibold text-white shadow-md">
+            + Пациент
+          </span>
+        </button>
+      ) : null}
 
       {modalOpen &&
         ((editingPatientId === null && canCreatePatient) ||
