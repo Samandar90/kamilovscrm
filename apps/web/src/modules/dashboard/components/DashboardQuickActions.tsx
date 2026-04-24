@@ -34,7 +34,7 @@ export const DashboardQuickActions: React.FC<DashboardQuickActionsProps> = ({
           const isPrimary = index === firstEnabledIndex && !item.disabled;
 
           const baseClass =
-            "group relative flex min-h-[3.5rem] items-center gap-3 overflow-hidden rounded-2xl border px-4 py-3 shadow-sm transition-transform duration-100 ease-out will-change-transform max-md:active:scale-[0.98] md:transition-all md:duration-200 md:ease-[cubic-bezier(0.22,1,0.36,1)]";
+            "group relative flex min-h-[3.5rem] items-center gap-3 overflow-hidden rounded-[20px] border border-slate-100/90 px-4 py-3 shadow-sm transition-transform duration-150 ease-out will-change-transform max-md:active:scale-[0.98] md:transition-all md:duration-200 md:ease-[cubic-bezier(0.22,1,0.36,1)]";
           const lift =
             "md:hover:-translate-y-0.5 md:hover:scale-[1.01] md:hover:shadow-[0_14px_40px_-18px_rgba(15,23,42,0.14)] md:active:translate-y-0 md:active:scale-[0.99]";
           const primaryClass = `${baseClass} border-[#16a34a] bg-[#16a34a] text-white shadow-[0_8px_28px_-12px_rgba(22,163,74,0.55)] ${lift} hover:border-[#22c55e] hover:bg-[#22c55e]`;

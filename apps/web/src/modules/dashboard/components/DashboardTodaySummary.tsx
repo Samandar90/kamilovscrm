@@ -38,7 +38,7 @@ export const DashboardTodaySummary: React.FC<DashboardTodaySummaryProps> = ({
   ];
 
   return (
-    <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm md:p-6 md:transition-all md:duration-200 md:ease-[cubic-bezier(0.22,1,0.36,1)] md:hover:shadow-md">
+    <div className="rounded-[20px] border border-slate-100/90 bg-white p-4 shadow-sm md:p-6 md:transition-all md:duration-200 md:ease-[cubic-bezier(0.22,1,0.36,1)] md:hover:shadow-md">
       <div className="flex items-center justify-between">
         <p className="text-[12px] font-semibold uppercase tracking-wider text-[#64748b] md:text-[13px]">Сегодня</p>
         <p className="hidden text-xs text-[#94a3b8] sm:block">Сводка смены</p>

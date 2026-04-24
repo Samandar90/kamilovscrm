@@ -310,7 +310,7 @@ export const DashboardPage: React.FC = () => {
     <div
       className={cn(
         "page-enter w-full max-w-none space-y-4 rounded-2xl bg-slate-50/70 p-4 md:space-y-7 md:p-8",
-        canQuickPatientBooking && readAppointments && "max-md:pb-[calc(4rem+3.5rem+0.75rem)]"
+        canQuickPatientBooking && readAppointments && "max-md:pb-[100px]"
       )}
     >
       <header className="flex flex-wrap items-end justify-between gap-2 md:gap-3">
@@ -357,86 +357,87 @@ export const DashboardPage: React.FC = () => {
           {toast}
         </div>
       ) : null}
-      {showSetupBanner ? (
-        <DashboardSetupBanner
-          steps={[
-            { label: "Добавить пациента", to: "/patients", done: patients.length > 0, icon: UserPlus },
-            { label: "Создать запись", to: "/appointments", done: appointments.length > 0, icon: CalendarPlus },
-            { label: "Выставить счёт", to: "/billing/invoices", done: invoices.length > 0, icon: FileText },
-          ]}
-        />
-      ) : null}
-
       <section className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.7fr)_minmax(340px,1fr)] xl:gap-5 xl:items-stretch">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:auto-rows-fr">
-          <DashboardCard
-            title="Выручка сегодня"
-            subtitle={readBilling && !loading ? "Сумма оплат за день" : undefined}
-            value={loading ? "..." : readBilling ? formatSum(revenueToday) : "—"}
-            icon={Banknote}
-            animationIndex={0}
-            loading={loading}
-            valueMuted={!readBilling && !loading}
-            iconTone="emerald"
-            revenueHighlight={readBilling}
-            revenueAmount={revenueToday}
-            className="min-h-[140px] p-4 sm:min-h-[152px] sm:p-5"
-          />
-          <DashboardCard
-            title="Записи сегодня"
-            subtitle={readAppointments && !loading ? "В расписании на сегодня" : undefined}
-            value={loading ? "..." : readAppointments ? String(todayAppointments.length) : "—"}
-            icon={CalendarClock}
-            animationIndex={1}
-            loading={loading}
-            valueMuted={!readAppointments && !loading}
-            iconTone="indigo"
-            className="min-h-[152px] p-5"
-          />
-          <DashboardCard
-            title="Новые пациенты"
-            subtitle={readPatients && !loading ? "Зарегистрировано сегодня" : undefined}
-            value={loading ? "..." : readPatients ? String(newPatientsToday) : "—"}
-            icon={Users}
-            animationIndex={2}
-            loading={loading}
-            valueMuted={!readPatients && !loading}
-            iconTone="violet"
-            className="min-h-[152px] p-5"
-          />
-          <DashboardCard
-            title="Долги пациентов"
-            subtitle={readBilling && !loading ? "Открытая задолженность" : undefined}
-            value={loading ? "..." : readBilling ? formatSum(debtTotal) : "—"}
-            icon={Receipt}
-            animationIndex={3}
-            loading={loading}
-            valueMuted={!readBilling && !loading}
-            iconTone="rose"
-            className="min-h-[152px] p-5"
-          />
-          <DashboardCard
-            title="Активная смена"
-            subtitle={readBilling && !loading ? "Статус кассовой смены" : undefined}
-            value={loading ? "..." : readBilling ? (activeShift && !activeShift.closedAt ? "Открыта" : "Закрыта") : "—"}
-            icon={Store}
-            animationIndex={4}
-            loading={loading}
-            valueMuted={!readBilling && !loading}
-            iconTone="amber"
-            className="min-h-[152px] p-5"
-          />
-          <DashboardCard
-            title="Неоплаченные счета"
-            subtitle={readBilling && !loading ? "Ожидают оплаты" : undefined}
-            value={loading ? "..." : readBilling ? String(openInvoices.length) : "—"}
-            icon={CreditCard}
-            animationIndex={5}
-            loading={loading}
-            valueMuted={!readBilling && !loading}
-            iconTone="sky"
-            className="min-h-[152px] p-5"
-          />
+        <div className="flex flex-col gap-3 md:gap-5">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2.5">
+            <div className="min-w-0 sm:col-span-2">
+              <DashboardCard
+                title="Выручка сегодня"
+                subtitle={readBilling && !loading ? "Сумма оплат за день" : undefined}
+                value={loading ? "..." : readBilling ? formatSum(revenueToday) : "—"}
+                icon={Banknote}
+                animationIndex={0}
+                loading={loading}
+                valueMuted={!readBilling && !loading}
+                iconTone="emerald"
+                revenueHighlight={readBilling}
+                revenueAmount={revenueToday}
+              />
+            </div>
+            <DashboardCard
+              title="Записи сегодня"
+              subtitle={readAppointments && !loading ? "На сегодня" : undefined}
+              value={loading ? "..." : readAppointments ? String(todayAppointments.length) : "—"}
+              icon={CalendarClock}
+              animationIndex={1}
+              loading={loading}
+              valueMuted={!readAppointments && !loading}
+              iconTone="indigo"
+            />
+            <DashboardCard
+              title="Новые пациенты"
+              subtitle={readPatients && !loading ? "Сегодня" : undefined}
+              value={loading ? "..." : readPatients ? String(newPatientsToday) : "—"}
+              icon={Users}
+              animationIndex={2}
+              loading={loading}
+              valueMuted={!readPatients && !loading}
+              iconTone="violet"
+            />
+          </div>
+
+          {showSetupBanner ? (
+            <DashboardSetupBanner
+              steps={[
+                { label: "Добавить пациента", to: "/patients", done: patients.length > 0, icon: UserPlus },
+                { label: "Создать запись", to: "/appointments", done: appointments.length > 0, icon: CalendarPlus },
+                { label: "Выставить счёт", to: "/billing/invoices", done: invoices.length > 0, icon: FileText },
+              ]}
+            />
+          ) : null}
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2.5 xl:auto-rows-fr">
+            <DashboardCard
+              title="Долги пациентов"
+              subtitle={readBilling && !loading ? "Задолженность" : undefined}
+              value={loading ? "..." : readBilling ? formatSum(debtTotal) : "—"}
+              icon={Receipt}
+              animationIndex={3}
+              loading={loading}
+              valueMuted={!readBilling && !loading}
+              iconTone="rose"
+            />
+            <DashboardCard
+              title="Активная смена"
+              subtitle={readBilling && !loading ? "Касса" : undefined}
+              value={loading ? "..." : readBilling ? (activeShift && !activeShift.closedAt ? "Открыта" : "Закрыта") : "—"}
+              icon={Store}
+              animationIndex={4}
+              loading={loading}
+              valueMuted={!readBilling && !loading}
+              iconTone="amber"
+            />
+            <DashboardCard
+              title="Неоплаченные счета"
+              subtitle={readBilling && !loading ? "К оплате" : undefined}
+              value={loading ? "..." : readBilling ? String(openInvoices.length) : "—"}
+              icon={CreditCard}
+              animationIndex={5}
+              loading={loading}
+              valueMuted={!readBilling && !loading}
+              iconTone="sky"
+            />
+          </div>
         </div>
 
         {readAi && token ? (
@@ -466,7 +467,7 @@ export const DashboardPage: React.FC = () => {
       <DashboardQuickActions items={quickActionItems} />
 
       <section className="grid grid-cols-1 gap-3 md:gap-6 xl:grid-cols-2">
-        <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm backdrop-blur-sm md:p-6 md:transition-all md:duration-200 md:hover:shadow-md">
+        <div className="rounded-[20px] border border-slate-100/90 bg-white p-4 shadow-sm backdrop-blur-sm md:p-6 md:transition-all md:duration-200 md:hover:shadow-md">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-base font-semibold text-[#111827]">Ближайшие записи сегодня</h2>
             <Link to="/appointments" className="text-xs font-semibold text-[#6366f1] hover:text-[#4f46e5]">
@@ -539,7 +540,7 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         <div className="space-y-3 md:space-y-6">
-          <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm backdrop-blur-sm sm:p-5 md:transition-all md:duration-200 md:hover:shadow-md">
+          <div className="rounded-[20px] border border-slate-100/90 bg-white p-4 shadow-sm backdrop-blur-sm sm:p-5 md:transition-all md:duration-200 md:hover:shadow-md">
             <h2 className="mb-2 text-base font-semibold text-[#111827]">Последние оплаты</h2>
             {!readBilling ? (
               <DashboardEmptyState icon={CreditCard} title="Нет доступа" description="Оплаты доступны ролям с правами биллинга" />
@@ -564,7 +565,7 @@ export const DashboardPage: React.FC = () => {
             )}
           </div>
 
-          <div className="rounded-2xl border border-[#e2e8f0] bg-white p-4 shadow-sm backdrop-blur-sm md:p-6 md:transition-all md:duration-200 md:hover:shadow-md">
+          <div className="rounded-[20px] border border-slate-100/90 bg-white p-4 shadow-sm backdrop-blur-sm md:p-6 md:transition-all md:duration-200 md:hover:shadow-md">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-semibold text-[#111827]">Долги пациентов</h2>
               <Link to="/billing/invoices" className="text-xs font-semibold text-[#6366f1] hover:text-[#4f46e5]">
@@ -603,7 +604,7 @@ export const DashboardPage: React.FC = () => {
         <button
           type="button"
           onClick={openQuickModal}
-          className="fixed bottom-16 left-0 right-0 z-[90] flex w-full justify-center px-4 transition-transform duration-100 ease-out active:scale-[0.98] md:hidden"
+          className="fixed bottom-16 left-0 right-0 z-[90] flex w-full justify-center px-4 transition-transform duration-150 ease-out active:scale-[0.98] md:hidden"
           aria-label="Быстрая запись пациента"
         >
           <span className="flex min-h-[48px] w-full max-w-none items-center justify-center gap-2 rounded-[14px] bg-emerald-600 px-4 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(5,150,105,0.45)]">
