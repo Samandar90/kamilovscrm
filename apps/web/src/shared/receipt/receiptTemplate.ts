@@ -57,7 +57,7 @@ export function buildReceiptHTML(data: ReceiptTemplateData): string {
       ? `<div style="text-align:center;margin-bottom:2px;"><img src="${escapeHtml(data.logoUrl)}" alt="logo" style="width:60px;margin-bottom:6px;" /></div>`
       : "";
 
-  return `<div id="receipt" style="width:280px;margin:0;padding:8px 10px;box-sizing:border-box;font-family:monospace;font-size:11px;line-height:1.3;color:#000;background:#fff;">
+  return `<div id="receipt" style="width:80mm;margin:0;padding:8px 10px;box-sizing:border-box;font-family:monospace;font-size:11px;line-height:1.3;color:#000;background:#fff;">
       ${logoBlock}
       <div style="text-align:center;font-weight:700;font-size:13px;letter-spacing:.06em;text-transform:uppercase;">${escapeHtml(data.clinicName)}</div>
       <div style="text-align:center;margin-top:2px;">Квитанция</div>

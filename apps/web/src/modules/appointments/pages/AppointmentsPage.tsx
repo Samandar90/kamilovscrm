@@ -46,7 +46,6 @@ const secondaryActionButtonClass =
 const MOBILE_WINDOW_INITIAL = 40;
 const MOBILE_WINDOW_STEP = 40;
 
-type InvoiceModalState = { open: boolean; appointment: Appointment | null };
 type ConsultationModalState = {
   open: boolean;
   appointment: Appointment | null;
@@ -221,10 +220,6 @@ export const AppointmentsPage: React.FC = () => {
 
   const fullPatientRef = React.useRef<HTMLInputElement>(null);
 
-  const [invoiceModal, setInvoiceModal] = React.useState<InvoiceModalState>({
-    open: false,
-    appointment: null,
-  });
   const [consultationModal, setConsultationModal] = React.useState<ConsultationModalState>({
     open: false,
     appointment: null,
@@ -589,16 +584,19 @@ export const AppointmentsPage: React.FC = () => {
     }
   };
 
-  const createInvoice = async () => {
-    if (!token || !invoiceModal.appointment || !canCreateInvoice) return;
-    const appointment = invoiceModal.appointment;
+  const openOrCreateInvoice = async (appointment: Appointment) => {
+    if (!token || !canCreateInvoice) return;
+    const existing = invoicesByAppointmentId[appointment.id];
+    if (existing?.id) {
+      navigate(`/billing/invoices/${existing.id}`);
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     try {
-      await appointmentsFlowApi.createInvoiceFromAppointment(token, appointment.id);
-      setInvoiceModal({ open: false, appointment: null });
+      const created = await appointmentsFlowApi.createInvoiceFromAppointment(token, appointment.id);
       await loadData();
-      setToast("Счет успешно создан");
+      navigate(`/billing/invoices/${created.id}`);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Ошибка создания счета");
     } finally {
@@ -1165,7 +1163,7 @@ export const AppointmentsPage: React.FC = () => {
                     onStart={() => void updateStatus(appointment)}
                     onComplete={() => void updateStatus(appointment)}
                     onOpenWorkspace={() => openConsultation(appointment)}
-                    onCreateInvoice={() => setInvoiceModal({ open: true, appointment })}
+                    onCreateInvoice={() => void openOrCreateInvoice(appointment)}
                     onOpenDetails={() => setDetailsModal({ open: true, appointment })}
                   />
                 );
@@ -1202,7 +1200,7 @@ export const AppointmentsPage: React.FC = () => {
                     canCreateInvoice={canCreateInvoice}
                     onMarkArrived={() => void updateStatus(appointment)}
                     onCompleteConsultation={() => void updateStatus(appointment)}
-                    onCreateInvoice={() => setInvoiceModal({ open: true, appointment })}
+                    onCreateInvoice={() => void openOrCreateInvoice(appointment)}
                     onCancelAppointment={() =>
                       setCancelModal({ open: true, appointment, reason: appointment.cancelReason ?? "" })
                     }
@@ -1466,73 +1464,6 @@ export const AppointmentsPage: React.FC = () => {
           </div>
         </Modal>
       ) : null}
-
-      {canCreateInvoice && invoiceModal.open && invoiceModal.appointment && (
-        <Modal
-          isOpen={invoiceModal.open}
-          onClose={() => setInvoiceModal({ open: false, appointment: null })}
-          className="w-full max-w-md rounded-[20px] border border-[#e5e7eb] bg-white p-6 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.2)]"
-        >
-            {(() => {
-              const fallbackService = servicesMap[invoiceModal.appointment.serviceId];
-              const services = getAllServices(invoiceModal.appointment, {
-                fallbackBase: fallbackService
-                  ? {
-                      id: fallbackService.id,
-                      name: fallbackService.name,
-                      price: invoiceModal.appointment.price ?? fallbackService.price,
-                    }
-                  : undefined,
-              });
-              const total = services.reduce((sum, service) => sum + service.price, 0);
-              return (
-                <>
-            <h3 className="text-lg font-semibold text-[#111827]">Создать счет</h3>
-            <div className="mt-3 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] p-3">
-              {services.length === 0 ? (
-                <p className="text-sm text-[#6b7280]">Услуги не найдены</p>
-              ) : (
-                <ul className="space-y-1.5 text-sm text-[#374151]">
-                  {services.map((service) => (
-                    <li
-                      key={`${service.serviceId}-${service.isBase ? "b" : "a"}`}
-                      className="flex items-center justify-between gap-3"
-                    >
-                      <span>{service.name}</span>
-                      <span className="font-medium tabular-nums text-[#111827]">
-                        {formatSum(service.price)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="mt-3 border-t border-[#e5e7eb] pt-2 text-sm font-semibold text-[#111827]">
-                Итого: {formatSum(total)}
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                className="rounded-xl border border-[#e5e7eb] bg-white px-4 py-2 text-sm font-medium text-[#111827] transition hover:bg-[#f3f4f6] active:scale-[0.97]"
-                onClick={() => setInvoiceModal({ open: false, appointment: null })}
-                disabled={isSubmitting}
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                className="rounded-xl bg-[#22c55e] px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:scale-[1.03] hover:bg-[#16a34a] active:scale-[0.97] disabled:opacity-50"
-                onClick={() => void createInvoice()}
-                disabled={isSubmitting}
-              >
-                Создать счет
-              </button>
-            </div>
-                </>
-              );
-            })()}
-        </Modal>
-      )}
 
       {canDoClinical && consultationModal.open && consultationModal.appointment && (
         <Modal

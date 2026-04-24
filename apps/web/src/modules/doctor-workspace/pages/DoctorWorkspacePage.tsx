@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 import { appointmentsFlowApi, type Appointment, type Service } from "../../appointments/api/appointmentsFlowApi";
+import kamilovsClinicLogo from "../../../assets/kamilovs-clinic-logo.png";
 
 type WorkspaceForm = {
   diagnosis: string;
@@ -159,28 +160,130 @@ export const DoctorWorkspacePage: React.FC = () => {
     }
   };
 
-  const printPrescription = () => {
-    if (!appointment) return;
+  const printPrescription = (targetAppointment: Appointment) => {
     const serviceLines = assignedServiceIds.length
       ? assignedServiceIds
           .map((id) => servicesCatalog.find((s) => s.id === id)?.name ?? `Услуга #${id}`)
           .map((name) => `<li>${name}</li>`)
           .join("")
       : `<li>${serviceName}</li>`;
-    const popup = window.open("", "_blank");
-    if (!popup) return;
-    popup.document.write(`<!doctype html><html><body style="font-family:Arial,sans-serif;padding:24px">
-      <h2>Назначение пациента</h2>
-      <p><b>Пациент:</b> ${patientName}</p>
-      <p><b>Диагноз:</b> ${form.diagnosis || "—"}</p>
-      <p><b>Лечение:</b> ${form.treatment || "—"}</p>
-      <p><b>Назначение:</b> ${form.notes || "—"}</p>
-      <h3>Услуги</h3>
-      <ul>${serviceLines}</ul>
-    </body></html>`);
-    popup.document.close();
-    popup.focus();
-    popup.print();
+    const win = window.open("", "_blank");
+    if (!win) return;
+
+    const dateLabel = new Date(targetAppointment.startAt.includes(" ") ? targetAppointment.startAt.replace(" ", "T") : targetAppointment.startAt)
+      .toLocaleString("ru-RU");
+
+    const html = `<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <title>Назначение пациента</title>
+    <style>
+      @page { size: A4; margin: 14mm 14mm 16mm; }
+      body {
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+        color: #0f172a;
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.45;
+      }
+      .sheet { width: 100%; }
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 12px;
+        margin-bottom: 14px;
+      }
+      .logo {
+        width: 44px;
+        height: 44px;
+        object-fit: contain;
+      }
+      .clinic-name {
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+      .meta {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px 14px;
+        margin-bottom: 14px;
+      }
+      .meta-row { font-size: 14px; }
+      .meta-row b { color: #334155; }
+      .section {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+        page-break-inside: avoid;
+      }
+      .section-title {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: #334155;
+        margin-bottom: 8px;
+      }
+      .text { white-space: pre-wrap; min-height: 44px; }
+      .services { margin: 0; padding-left: 18px; }
+      .services li { margin: 0 0 4px 0; }
+      .footer {
+        margin-top: 20px;
+        padding-top: 8px;
+        border-top: 1px solid #e2e8f0;
+        font-size: 13px;
+        color: #64748b;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="sheet">
+      <header class="header">
+        <img src="${kamilovsClinicLogo}" alt="Kamilovs clinic" class="logo" />
+        <div class="clinic-name">Kamilovs Clinic</div>
+      </header>
+
+      <section class="meta">
+        <div class="meta-row"><b>Пациент:</b> ${patientName}</div>
+        <div class="meta-row"><b>Дата:</b> ${dateLabel}</div>
+        <div class="meta-row"><b>Врач:</b> #${targetAppointment.doctorId}</div>
+        <div class="meta-row"><b>Запись:</b> #${targetAppointment.id}</div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">ДИАГНОЗ</div>
+        <div class="text">${form.diagnosis || "—"}</div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">ЛЕЧЕНИЕ</div>
+        <div class="text">${form.treatment || "—"}</div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">НАЗНАЧЕНИЕ</div>
+        <div class="text">${form.notes || "—"}</div>
+      </section>
+
+      <section class="section">
+        <div class="section-title">УСЛУГИ</div>
+        <ul class="services">${serviceLines}</ul>
+      </section>
+
+      <footer class="footer">Внутренний медицинский документ клиники.</footer>
+    </main>
+  </body>
+</html>`;
+
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
   };
 
   if (!Number.isInteger(parsedId) || parsedId <= 0) {
@@ -296,7 +399,7 @@ export const DoctorWorkspacePage: React.FC = () => {
 
           <button
             type="button"
-            onClick={printPrescription}
+            onClick={() => appointment && printPrescription(appointment)}
             disabled={loading || submitting || !appointment}
             className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700"
           >

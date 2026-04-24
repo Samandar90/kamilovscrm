@@ -22,6 +22,7 @@ type Props = {
   /** Максимум к оплате (остаток по счёту) */
   maxAmount: number;
   invoiceStatus: InvoiceStatus;
+  initialMethod?: PaymentMethod;
   onPaid: (payment: Payment) => void | Promise<void>;
 };
 
@@ -35,6 +36,7 @@ export const PaymentModal: React.FC<Props> = ({
   invoiceId,
   maxAmount,
   invoiceStatus,
+  initialMethod = "cash",
   onPaid,
 }) => {
   const [amount, setAmount] = useState(0);
@@ -48,7 +50,7 @@ export const PaymentModal: React.FC<Props> = ({
     if (!open || !token) return;
     setError(null);
     setSubmitting(false);
-    setMethod("cash");
+    setMethod(initialMethod);
     setAmount(maxAmount > 0 ? Math.round(maxAmount * 100) / 100 : 0);
     setCheckingShift(true);
     void cashDeskApi
@@ -58,7 +60,7 @@ export const PaymentModal: React.FC<Props> = ({
       })
       .catch(() => setShiftOpen(false))
       .finally(() => setCheckingShift(false));
-  }, [open, maxAmount, token]);
+  }, [open, maxAmount, token, initialMethod]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

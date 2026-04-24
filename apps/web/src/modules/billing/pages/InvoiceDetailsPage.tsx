@@ -11,13 +11,14 @@ import {
   type InvoiceDetail,
   type InvoiceStatus,
   type Payment,
+  type PaymentMethod,
 } from "../api/cashDeskApi";
 import { requestJson } from "../../../api/http";
 import { PaymentModal } from "../components/PaymentModal";
 import { InvoiceStatusBadge } from "../components/invoice/InvoiceStatusBadge";
 import { lineItemDisplayLabel } from "../components/invoice/lineItemLabel";
 import { buildReceiptHTML } from "../../../shared/receipt/receiptTemplate";
-import { printReceipt } from "../../../shared/receipt/printReceipt";
+import { printReceipt as browserPrintReceipt } from "../../../shared/receipt/printReceipt";
 import kamilovsClinicLogo from "../../../assets/kamilovs-clinic-logo.png";
 
 type PatientRow = { id: number; fullName: string; phone?: string | null };
@@ -74,6 +75,8 @@ export const InvoiceDetailsPage: React.FC = () => {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [paymentModalOpen, setPaymentModalOpen] = React.useState(false);
+  const [paymentMethodPreset, setPaymentMethodPreset] = React.useState<PaymentMethod>("cash");
+  const [paymentSuccess, setPaymentSuccess] = React.useState<string | null>(null);
 
   const reloadInvoiceOnly = React.useCallback(async (): Promise<InvoiceDetail | null> => {
     if (!token || !Number.isFinite(invoiceId) || invoiceId <= 0) return null;
@@ -164,13 +167,41 @@ export const InvoiceDetailsPage: React.FC = () => {
 
   const remaining =
     invoice != null ? Math.max(0, Math.round((invoice.total - invoice.paidAmount) * 100) / 100) : 0;
+  const effectiveStatus: InvoiceStatus | null =
+    invoice == null
+      ? null
+      : remaining <= 1e-6 && invoice.status !== "cancelled" && invoice.status !== "refunded"
+        ? "paid"
+        : invoice.status;
 
   const showPayButton =
-    canPay && invoice != null && remaining > 0 && invoice.status !== "cancelled" && invoice.status !== "refunded";
+    canPay && invoice != null && remaining > 0 && effectiveStatus !== "cancelled" && effectiveStatus !== "refunded";
 
   const isFullyPaid = invoice != null && remaining <= 1e-6 && invoice.status === "paid";
 
   const paymentMethodLabel = (method: "cash" | "card"): string => (method === "cash" ? "Наличные" : "Терминал");
+
+  const printReceipt = React.useCallback(
+    (targetInvoice: InvoiceDetail, payment: Payment) => {
+      const html = buildReceiptHTML({
+        clinicName: "KAMILOVS CLINIC",
+        logoUrl: kamilovsClinicLogo,
+        patient: patientName || `Пациент #${targetInvoice.patientId}`,
+        doctor: doctorName || null,
+        invoiceId: targetInvoice.number,
+        date: formatDateTimeRu(payment.createdAt),
+        paymentMethod: paymentMethodLabel(payment.method),
+        total: targetInvoice.total,
+        paid: payment.amount,
+        items: targetInvoice.items.map((item) => ({
+          name: lineItemDisplayLabel(item.description),
+          price: item.lineTotal,
+        })),
+      });
+      browserPrintReceipt(html);
+    },
+    [doctorName, patientName]
+  );
 
   const printInvoiceReceipt = async () => {
     if (!invoice || !token) return;
@@ -192,23 +223,20 @@ export const InvoiceDetailsPage: React.FC = () => {
       return;
     }
 
-    const html = buildReceiptHTML({
-      clinicName: "KAMILOVS CLINIC",
-      logoUrl: kamilovsClinicLogo,
-      patient: patientName || `Пациент #${invoice.patientId}`,
-      doctor: doctorName || null,
-      invoiceId: invoice.number,
-      date: formatDateTimeRu(latestPayment.createdAt),
-      paymentMethod: paymentMethodLabel(latestPayment.method),
-      total: invoice.total,
-      paid: latestPayment.amount,
-      items: invoice.items.map((item) => ({
-        name: lineItemDisplayLabel(item.description),
-        price: item.lineTotal,
-      })),
-    });
-    printReceipt(html);
+    printReceipt(invoice, latestPayment);
   };
+
+  const openPaymentModalWithMethod = (method: PaymentMethod) => {
+    setPaymentMethodPreset(method);
+    setPaymentSuccess(null);
+    setPaymentModalOpen(true);
+  };
+
+  React.useEffect(() => {
+    if (!paymentSuccess) return;
+    const timer = window.setTimeout(() => setPaymentSuccess(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [paymentSuccess]);
 
   return (
     <div className="min-h-full bg-[#f8fafc] text-[#334155]">
@@ -231,14 +259,63 @@ export const InvoiceDetailsPage: React.FC = () => {
           <p className="text-sm text-[#64748b]">Счёт не найден.</p>
         ) : (
           <>
-            <header className="invoice-enter invoice-enter-delay-1 space-y-6 border-b border-[#e5e7eb] pb-8">
+            <section className="space-y-4 md:hidden">
+              <div className={`${cardClass} p-4`}>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Пациент</p>
+                <p className="mt-1 text-base font-semibold text-slate-900">
+                  {patientName || `Пациент #${invoice.patientId}`}
+                </p>
+                {patientPhone ? <p className="mt-1 text-sm text-slate-500">{patientPhone}</p> : null}
+              </div>
+
+              <div className={`${cardClass} p-4`}>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Услуги</p>
+                <ul className="mt-2 space-y-2">
+                  {invoice.items.map((row) => (
+                    <li key={row.id} className="flex items-start justify-between gap-3 text-sm">
+                      <span className="text-slate-700">{lineItemDisplayLabel(row.description)}</span>
+                      <span className="shrink-0 font-medium tabular-nums text-slate-900">
+                        {formatSum(row.lineTotal)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className={`${cardClass} p-4`}>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Итого</p>
+                <p className="mt-1 text-3xl font-bold tabular-nums text-emerald-600">{formatSum(remaining)}</p>
+                <p className="mt-1 text-xs text-slate-500">Остаток к оплате</p>
+              </div>
+
+              {showPayButton ? (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => openPaymentModalWithMethod("cash")}
+                    className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm"
+                  >
+                    Наличные
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openPaymentModalWithMethod("card")}
+                    className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm"
+                  >
+                    Терминал
+                  </button>
+                </div>
+              ) : null}
+            </section>
+
+            <header className="invoice-enter invoice-enter-delay-1 hidden space-y-6 border-b border-[#e5e7eb] pb-8 md:block">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="min-w-0 space-y-3">
                   <div className="flex flex-wrap items-center gap-3">
                     <h1 className="text-2xl font-semibold tracking-tight text-[#0f172a] md:text-3xl">
                       Счёт {invoice.number}
                     </h1>
-                    <InvoiceStatusBadge status={invoice.status} />
+                  <InvoiceStatusBadge status={effectiveStatus ?? invoice.status} />
                   </div>
                   <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-[#64748b]">
                     <span>
@@ -256,7 +333,7 @@ export const InvoiceDetailsPage: React.FC = () => {
                   {showPayButton ? (
                     <button
                       type="button"
-                      onClick={() => setPaymentModalOpen(true)}
+                      onClick={() => openPaymentModalWithMethod("cash")}
                       className={btnPrimary}
                     >
                       Принять оплату
@@ -281,6 +358,11 @@ export const InvoiceDetailsPage: React.FC = () => {
                   Счёт полностью оплачен. При необходимости используйте кассу для возвратов по операциям.
                 </p>
               )}
+              {paymentSuccess ? (
+                <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 transition-opacity duration-300">
+                  {paymentSuccess}
+                </p>
+              ) : null}
             </header>
 
             {invoice && token ? (
@@ -290,31 +372,18 @@ export const InvoiceDetailsPage: React.FC = () => {
                 token={token}
                 invoiceId={invoice.id}
                 maxAmount={remaining}
-                invoiceStatus={invoice.status}
+                invoiceStatus={effectiveStatus ?? invoice.status}
+                initialMethod={paymentMethodPreset}
                 onPaid={async (payment) => {
                   const refreshedInvoice = await reloadInvoiceOnly();
                   if (!refreshedInvoice) return;
-                  const html = buildReceiptHTML({
-                    clinicName: "KAMILOVS CLINIC",
-                    logoUrl: kamilovsClinicLogo,
-                    patient: patientName || `Пациент #${refreshedInvoice.patientId}`,
-                    doctor: doctorName || null,
-                    invoiceId: refreshedInvoice.number,
-                    date: formatDateTimeRu(payment.createdAt),
-                    paymentMethod: paymentMethodLabel(payment.method),
-                    total: refreshedInvoice.total,
-                    paid: payment.amount,
-                    items: refreshedInvoice.items.map((item) => ({
-                      name: lineItemDisplayLabel(item.description),
-                      price: item.lineTotal,
-                    })),
-                  });
-                  printReceipt(html);
+                  setPaymentSuccess("Оплата успешно проведена");
+                  printReceipt(refreshedInvoice, payment);
                 }}
               />
             ) : null}
 
-            <section className="invoice-enter invoice-enter-delay-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <section className="invoice-enter invoice-enter-delay-2 hidden gap-3 sm:grid-cols-2 lg:grid-cols-4 md:grid">
               {[
                 {
                   label: "Пациент",
@@ -351,7 +420,9 @@ export const InvoiceDetailsPage: React.FC = () => {
                       </p>
                       {cell.badge != null ? (
                         <div className="mt-2">
-                          <InvoiceStatusBadge status={cell.badge as InvoiceStatus} />
+                          <InvoiceStatusBadge
+                            status={(effectiveStatus ?? (cell.badge as InvoiceStatus)) as InvoiceStatus}
+                          />
                         </div>
                       ) : (
                         <p className="mt-1.5 text-sm font-medium leading-snug text-[#0f172a]">{cell.value}</p>
@@ -362,7 +433,7 @@ export const InvoiceDetailsPage: React.FC = () => {
               ))}
             </section>
 
-            <section className={`${cardClass} invoice-enter invoice-enter-delay-2`}>
+            <section className={`${cardClass} invoice-enter invoice-enter-delay-2 hidden md:block`}>
               <div className="border-b border-[#e5e7eb] px-5 py-4">
                 <h2 className="text-sm font-semibold tracking-tight text-[#0f172a]">Позиции</h2>
                 <p className="mt-0.5 text-xs text-[#64748b]">Услуги и суммы по строкам счёта</p>
@@ -410,7 +481,7 @@ export const InvoiceDetailsPage: React.FC = () => {
               </div>
             </section>
 
-            <section className={`${cardClass} invoice-totals-fade invoice-enter-delay-3 overflow-hidden`}>
+            <section className={`${cardClass} invoice-totals-fade invoice-enter-delay-3 hidden overflow-hidden md:block`}>
               <div className="border-b border-[#e5e7eb] px-5 py-4">
                 <h2 className="text-sm font-semibold tracking-tight text-[#0f172a]">Итоги</h2>
                 <p className="mt-0.5 text-xs text-[#64748b]">Сводка по счёту</p>
@@ -455,7 +526,7 @@ export const InvoiceDetailsPage: React.FC = () => {
               </div>
             </section>
 
-            <div className="invoice-enter invoice-enter-delay-3 flex flex-wrap items-center justify-between gap-3 border-t border-[#e5e7eb] pt-6">
+            <div className="invoice-enter invoice-enter-delay-3 hidden flex-wrap items-center justify-between gap-3 border-t border-[#e5e7eb] pt-6 md:flex">
               <p className="text-xs text-[#94a3b8]">
                 Внутренний документ · не является фискальным чеком
               </p>
@@ -463,7 +534,7 @@ export const InvoiceDetailsPage: React.FC = () => {
                 {showPayButton ? (
                   <button
                     type="button"
-                    onClick={() => setPaymentModalOpen(true)}
+                    onClick={() => openPaymentModalWithMethod("cash")}
                     className={btnPrimary}
                   >
                     Принять оплату
