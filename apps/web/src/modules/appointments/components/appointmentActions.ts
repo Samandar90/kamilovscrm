@@ -26,7 +26,8 @@ export function buildUnifiedAppointmentActions({
   }
 
   if (status === "in_consultation") {
-    actions.push({ key: "complete", label: "Завершить", tone: "primary" });
+    actions.push({ key: "workspace", label: "Рабочее место врача", tone: "primary" });
+    actions.push({ key: "complete", label: "Завершить", tone: "secondary" });
     return actions;
   }
 
