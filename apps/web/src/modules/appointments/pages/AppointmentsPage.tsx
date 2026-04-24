@@ -21,6 +21,7 @@ import {
 } from "../api/appointmentsFlowApi";
 import { AppointmentActionPanel } from "../components/AppointmentActionPanel";
 import { AppointmentCard } from "../components/AppointmentCard";
+import { AppointmentMobileCard } from "../components/AppointmentMobileCard";
 import { AppointmentCreateModal, type FullFormFields } from "../components/AppointmentCreateModal";
 import { AppointmentQuickCreateModal } from "../features/quick-create/AppointmentQuickCreateModal";
 import { useDebouncedAppointmentSlotAvailability } from "../hooks/useDebouncedAppointmentSlotAvailability";
@@ -42,6 +43,8 @@ const secondaryActionButtonClass =
   "inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-2 " +
   "text-sm font-medium tracking-tight text-gray-700 shadow-sm transition-all duration-150 ease-out " +
   "hover:scale-[1.02] hover:bg-gray-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50";
+const MOBILE_WINDOW_INITIAL = 40;
+const MOBILE_WINDOW_STEP = 40;
 
 type InvoiceModalState = { open: boolean; appointment: Appointment | null };
 type ConsultationModalState = {
@@ -84,6 +87,23 @@ function formatTimeOnly(iso: string): string {
   const d = new Date(normalized);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatRangeDateLabel(tab: RangeTab, customDateYmd: string): string {
+  const now = new Date();
+  const toRu = (d: Date) =>
+    d.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "long" });
+  if (tab === "today") return `Сегодня, ${toRu(now)}`;
+  if (tab === "tomorrow") {
+    const d = new Date(now);
+    d.setDate(d.getDate() + 1);
+    return `Завтра, ${toRu(d)}`;
+  }
+  if (customDateYmd && /^\d{4}-\d{2}-\d{2}$/.test(customDateYmd)) {
+    const [y, m, d] = customDateYmd.split("-").map(Number);
+    return toRu(new Date(y, m - 1, d));
+  }
+  return toRu(now);
 }
 
 type RangeTab = "today" | "tomorrow" | "week" | "custom";
@@ -185,6 +205,7 @@ export const AppointmentsPage: React.FC = () => {
   const [rangeTab, setRangeTab] = React.useState<RangeTab>("today");
   const [customDate, setCustomDate] = React.useState(() => todayYmd());
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [mobileWindow, setMobileWindow] = React.useState(MOBILE_WINDOW_INITIAL);
 
   const [quickModalOpen, setQuickModalOpen] = React.useState(false);
   const [quickResumePatient, setQuickResumePatient] = React.useState<Patient | null>(null);
@@ -931,6 +952,19 @@ export const AppointmentsPage: React.FC = () => {
     () => summarizeAppointments(filteredAppointments),
     [filteredAppointments]
   );
+  const mobileAppointments = React.useMemo(
+    () => filteredAppointments.slice(0, mobileWindow),
+    [filteredAppointments, mobileWindow]
+  );
+  const hasMoreMobileAppointments = filteredAppointments.length > mobileAppointments.length;
+  const mobileDateLabel = React.useMemo(
+    () => formatRangeDateLabel(rangeTab, customDate),
+    [rangeTab, customDate]
+  );
+
+  React.useEffect(() => {
+    setMobileWindow(MOBILE_WINDOW_INITIAL);
+  }, [rangeTab, customDate, searchQuery, appointments.length]);
 
   const tabList: { id: RangeTab; label: string }[] = [
     { id: "today", label: "Сегодня" },
@@ -967,7 +1001,7 @@ export const AppointmentsPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-full bg-[#f8fafc] text-[#334155]">
+    <div className="min-h-full bg-[#f8fafc] pb-[100px] text-[#334155] md:pb-0">
       <AppContainer className="page-enter">
         <div className="grid grid-cols-12 gap-6">
       <div className="col-span-12 space-y-6 lg:col-span-8">
@@ -1000,7 +1034,39 @@ export const AppointmentsPage: React.FC = () => {
           }
         />
 
-        <SectionCard className="p-4">
+        <div className="sticky top-0 z-[70] -mx-4 border-b border-slate-200/70 bg-white px-4 pb-2 pt-2 shadow-[0_6px_16px_-10px_rgba(15,23,42,0.16)] md:hidden">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-slate-900">{mobileDateLabel}</p>
+            <div className="flex items-center gap-1.5">
+              {(["today", "tomorrow"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setRangeTab(tab)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                    rangeTab === tab
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {tab === "today" ? "Сегодня" : "Завтра"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="relative mt-2">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              placeholder="Поиск пациента…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 w-full rounded-[10px] border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
+            />
+          </div>
+        </div>
+
+        <SectionCard className="hidden p-4 md:block">
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">Дата</label>
@@ -1074,15 +1140,78 @@ export const AppointmentsPage: React.FC = () => {
           {isLoading ? (
             <PageLoader label="Загрузка записей..." />
           ) : appointments.length === 0 ? (
-            <SectionCard>
+            <>
+            <SectionCard className="md:hidden">
+              <EmptyState title="Нет записей на сегодня" subtitle="" />
+              {canOpenAppointmentCreateModals ? (
+                <div className="mt-3 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={openQuickModal}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    + Создать запись
+                  </button>
+                </div>
+              ) : null}
+            </SectionCard>
+            <SectionCard className="hidden md:block">
               <EmptyState title="Нет записей" subtitle="Добавьте первую запись" />
             </SectionCard>
+            </>
           ) : filteredAppointments.length === 0 ? (
-            <SectionCard>
+            <>
+            <SectionCard className="md:hidden">
+              <EmptyState title="Нет записей на сегодня" subtitle="" />
+              {canOpenAppointmentCreateModals ? (
+                <div className="mt-3 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={openQuickModal}
+                    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+                  >
+                    + Создать запись
+                  </button>
+                </div>
+              ) : null}
+            </SectionCard>
+            <SectionCard className="hidden md:block">
               <EmptyState title={emptyRangeMessage(rangeTab)} subtitle="Добавьте первую запись" />
             </SectionCard>
+            </>
           ) : (
-            <ul className="space-y-3">
+            <>
+            <ul className="space-y-2.5 md:hidden">
+              {mobileAppointments.map((appointment) => {
+                const service = servicesMap[appointment.serviceId];
+                return (
+                  <AppointmentMobileCard
+                    key={appointment.id}
+                    appointment={appointment}
+                    patientName={patientsMap[appointment.patientId] ?? `Пациент #${appointment.patientId}`}
+                    doctorName={doctorsMap[appointment.doctorId] ?? `#${appointment.doctorId}`}
+                    service={service}
+                    timeLabel={formatTimeOnly(appointment.startAt)}
+                    isSubmitting={isSubmitting}
+                    canManageAppointmentFlow={canUpdateApptStatus}
+                    onAdvanceStatus={() => void updateStatus(appointment)}
+                    onOpenDetails={() => setDetailsModal({ open: true, appointment })}
+                  />
+                );
+              })}
+            </ul>
+            {hasMoreMobileAppointments ? (
+              <div className="flex justify-center md:hidden">
+                <button
+                  type="button"
+                  onClick={() => setMobileWindow((n) => n + MOBILE_WINDOW_STEP)}
+                  className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm"
+                >
+                  Показать ещё ({filteredAppointments.length - mobileAppointments.length})
+                </button>
+              </div>
+            ) : null}
+            <ul className="hidden space-y-3 md:block">
               {filteredAppointments.map((appointment) => {
                 const invoice = invoicesByAppointmentId[appointment.id] ?? null;
                 const service = servicesMap[appointment.serviceId];
@@ -1128,6 +1257,7 @@ export const AppointmentsPage: React.FC = () => {
                 );
               })}
             </ul>
+            </>
           )}
         </section>
       </div>
@@ -1140,6 +1270,18 @@ export const AppointmentsPage: React.FC = () => {
       </div>
         </div>
       </AppContainer>
+      {canOpenAppointmentCreateModals ? (
+        <button
+          type="button"
+          onClick={openQuickModal}
+          className="fixed bottom-16 left-0 right-0 z-[90] flex justify-center px-4 transition-transform duration-150 ease-out active:scale-[0.98] md:hidden"
+          aria-label="Создать запись"
+        >
+          <span className="flex min-h-[48px] w-full items-center justify-center rounded-[14px] bg-emerald-600 px-4 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(5,150,105,0.45)]">
+            + Запись
+          </span>
+        </button>
+      ) : null}
 
       {canOpenAppointmentCreateModals && quickModalOpen && !createPatientModalOpen ? (
         <AppointmentQuickCreateModal
