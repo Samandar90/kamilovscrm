@@ -194,6 +194,10 @@ export const AppointmentsPage: React.FC = () => {
     () => Object.fromEntries(patientsList.map((p) => [p.id, p.fullName])),
     [patientsList]
   );
+  const patientPhoneMap = React.useMemo(
+    () => Object.fromEntries(patientsList.map((p) => [p.id, p.phone ?? null])),
+    [patientsList]
+  );
   const [doctorsMap, setDoctorsMap] = React.useState<Record<number, string>>({});
   const [servicesMap, setServicesMap] = React.useState<Record<number, Service>>({});
   const [availableServices, setAvailableServices] = React.useState<Service[]>([]);
@@ -1010,7 +1014,7 @@ export const AppointmentsPage: React.FC = () => {
           subtitle="Управление расписанием пациентов"
           actions={
             canOpenAppointmentCreateModals ? (
-              <div className="flex items-center gap-2">
+              <div className="hidden items-center gap-2 md:flex">
                 <Button
                   type="button"
                   variant="ghost"
@@ -1141,7 +1145,7 @@ export const AppointmentsPage: React.FC = () => {
             <PageLoader label="Загрузка записей..." />
           ) : appointments.length === 0 ? (
             <>
-            <SectionCard className="md:hidden">
+            <SectionCard className="md:hidden border-slate-100 bg-white py-8 shadow-sm">
               <EmptyState title="Нет записей на сегодня" subtitle="" />
               {canOpenAppointmentCreateModals ? (
                 <div className="mt-3 flex justify-center">
@@ -1161,7 +1165,7 @@ export const AppointmentsPage: React.FC = () => {
             </>
           ) : filteredAppointments.length === 0 ? (
             <>
-            <SectionCard className="md:hidden">
+            <SectionCard className="md:hidden border-slate-100 bg-white py-8 shadow-sm">
               <EmptyState title="Нет записей на сегодня" subtitle="" />
               {canOpenAppointmentCreateModals ? (
                 <div className="mt-3 flex justify-center">
@@ -1189,7 +1193,7 @@ export const AppointmentsPage: React.FC = () => {
                     key={appointment.id}
                     appointment={appointment}
                     patientName={patientsMap[appointment.patientId] ?? `Пациент #${appointment.patientId}`}
-                    doctorName={doctorsMap[appointment.doctorId] ?? `#${appointment.doctorId}`}
+                    patientPhone={patientPhoneMap[appointment.patientId]}
                     service={service}
                     timeLabel={formatTimeOnly(appointment.startAt)}
                     isSubmitting={isSubmitting}
@@ -1262,7 +1266,7 @@ export const AppointmentsPage: React.FC = () => {
         </section>
       </div>
 
-      <div className="col-span-12 lg:col-span-4">
+      <div className="col-span-12 hidden lg:col-span-4 lg:block">
         <AppointmentActionPanel
           filterSummary={filteredSummary}
           isLoading={isLoading}

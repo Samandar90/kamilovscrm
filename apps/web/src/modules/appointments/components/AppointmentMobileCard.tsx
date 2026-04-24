@@ -24,7 +24,7 @@ const statusTone: Record<AppointmentStatus, string> = {
 type Props = {
   appointment: Appointment;
   patientName: string;
-  doctorName: string;
+  patientPhone?: string | null;
   service: Service | undefined;
   timeLabel: string;
   isSubmitting: boolean;
@@ -36,7 +36,7 @@ type Props = {
 export const AppointmentMobileCard: React.FC<Props> = ({
   appointment,
   patientName,
-  doctorName,
+  patientPhone,
   service,
   timeLabel,
   isSubmitting,
@@ -45,18 +45,12 @@ export const AppointmentMobileCard: React.FC<Props> = ({
   onOpenDetails,
 }) => {
   const actionLabel =
-    appointment.status === "arrived"
+    appointment.status === "in_consultation"
+      ? "Завершить"
+      : appointment.status === "scheduled" || appointment.status === "confirmed" || appointment.status === "arrived"
       ? "Начать приём"
-      : appointment.status === "in_consultation"
-        ? "Завершить"
-        : appointment.status === "scheduled" || appointment.status === "confirmed"
-          ? "Начать приём"
-          : "Открыть";
-  const actionPrimary =
-    appointment.status === "scheduled" ||
-    appointment.status === "confirmed" ||
-    appointment.status === "arrived" ||
-    appointment.status === "in_consultation";
+      : "Открыть";
+  const actionPrimary = actionLabel !== "Открыть";
   const canAdvance = actionPrimary && canManageAppointmentFlow && !isSubmitting;
 
   return (
@@ -86,7 +80,7 @@ export const AppointmentMobileCard: React.FC<Props> = ({
         </div>
         <div className="mt-2 text-xs text-slate-500">
           <p className="truncate">{service?.name ?? `Услуга #${appointment.serviceId}`}</p>
-          <p className="mt-0.5 truncate">Врач: {doctorName}</p>
+          <p className="mt-0.5 truncate text-slate-400">{patientPhone?.trim() || "Телефон не указан"}</p>
         </div>
         <div className="mt-3 flex gap-2 border-t border-slate-100 pt-2.5" onClick={(e) => e.stopPropagation()}>
           <button
