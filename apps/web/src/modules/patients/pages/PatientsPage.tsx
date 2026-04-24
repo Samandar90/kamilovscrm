@@ -438,10 +438,25 @@ export const PatientsPage: React.FC = () => {
   const showEmptyFilter =
     !loading && normalizedPatients.length > 0 && filteredPatients.length === 0;
 
+  const patientsRootRef = React.useRef<HTMLDivElement>(null);
+  const [searchElevated, setSearchElevated] = React.useState(false);
+
+  React.useEffect(() => {
+    const root = patientsRootRef.current;
+    if (!root) return;
+    const main = root.closest("main");
+    if (!main) return;
+    const onScroll = () => setSearchElevated(main.scrollTop > 2);
+    main.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => main.removeEventListener("scroll", onScroll);
+  }, [loading, showEmptyNoData, showEmptyFilter]);
+
   return (
     <div
+      ref={patientsRootRef}
       className={cn(
-        "page-enter space-y-4 p-4 md:space-y-6 md:p-6",
+        "page-enter space-y-3 p-4 md:space-y-6 md:p-6",
         canCreatePatient && !loading && !showEmptyNoData && "max-md:pb-[100px]"
       )}
     >
@@ -466,7 +481,12 @@ export const PatientsPage: React.FC = () => {
       </header>
 
       {!showEmptyNoData && (
-        <div className="sticky top-0 z-20 -mx-4 border-b border-slate-200/60 bg-slate-50/95 px-4 py-2.5 backdrop-blur-md md:static md:z-0 md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+        <div
+          className={cn(
+            "sticky top-0 z-[70] -mx-4 border-b border-slate-100 bg-white px-4 pb-2 pt-2 transition-[box-shadow] duration-200 md:static md:z-0 md:mx-0 md:border-0 md:bg-transparent md:p-0 md:shadow-none",
+            searchElevated && "max-md:shadow-[0_6px_16px_-6px_rgba(15,23,42,0.1)]"
+          )}
+        >
           <div className="relative w-full md:max-w-xl">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400"
@@ -476,7 +496,7 @@ export const PatientsPage: React.FC = () => {
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className={`${fieldInputClass} h-11 w-full pl-10 pr-3`}
+              className={cn(fieldInputClass, "h-11 w-full pl-10 pr-3 max-md:border-slate-200 max-md:bg-white")}
               aria-label="Поиск по имени и телефону"
               placeholder="Поиск пациента..."
             />
@@ -513,8 +533,8 @@ export const PatientsPage: React.FC = () => {
           <p className="mt-1 text-slate-500">Измените запрос.</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          <ul className="flex flex-col gap-3 md:hidden" aria-label="Список пациентов">
+        <div className="space-y-2.5">
+          <ul className="flex flex-col gap-2.5 md:hidden" aria-label="Список пациентов">
             {windowedPatients.map((patient) => {
               const birthLabel = patient.birthDate?.trim() ? formatDate(patient.birthDate) : null;
               return (
