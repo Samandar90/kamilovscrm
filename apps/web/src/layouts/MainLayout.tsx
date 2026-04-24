@@ -37,12 +37,18 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const title = getTitleForPath(location.pathname);
   const lockMainScroll = location.pathname === "/ai-assistant";
+  const isDoctorWorkspaceScreen = location.pathname.startsWith("/doctor-workspace/");
 
   return (
     <div className="flex h-screen min-w-0 overflow-x-hidden bg-[#f8fafc] text-[#0f172a]">
       <Sidebar />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-12 max-md:h-11 shrink-0 items-center justify-between gap-2 border-b border-slate-200/80 bg-white/95 px-3 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-sm md:gap-4 md:px-5">
+        <header
+          className={cn(
+            "sticky top-0 z-30 flex h-12 max-md:h-11 shrink-0 items-center justify-between gap-2 border-b border-slate-200/80 bg-white/95 px-3 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-sm md:gap-4 md:px-5",
+            isDoctorWorkspaceScreen && "hidden md:flex"
+          )}
+        >
           <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
             <Link
               to="/"
@@ -72,13 +78,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </header>
         <main
           className={cn(
-            "min-h-0 flex-1 bg-[#f8fafc] max-md:pb-16",
+            "min-h-0 flex-1 bg-[#f8fafc]",
+            !isDoctorWorkspaceScreen && "max-md:pb-16",
             lockMainScroll ? "overflow-hidden" : "overflow-auto"
           )}
         >
           {children}
         </main>
-        <MobileBottomNav />
+        {!isDoctorWorkspaceScreen ? <MobileBottomNav /> : null}
       </div>
     </div>
   );

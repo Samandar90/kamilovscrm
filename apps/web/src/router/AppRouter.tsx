@@ -17,6 +17,7 @@ import { ServicesPage } from "../modules/services/pages/ServicesPage";
 import { DoctorsPage } from "../modules/doctors/pages/DoctorsPage";
 import { LoginPage } from "../modules/auth/pages/LoginPage";
 import { AIAssistantPage } from "../modules/ai-assistant/pages/AIAssistantPage";
+import { DoctorWorkspacePage } from "../modules/doctor-workspace/pages/DoctorWorkspacePage";
 import { MainLayout } from "../layouts/MainLayout";
 import { GuestRoute } from "../auth/guards/GuestRoute";
 import { ProtectedRoute } from "../auth/guards/ProtectedRoute";
@@ -100,6 +101,14 @@ export const AppRouter: React.FC = () => {
           element={
             <RoleGuard roles={APPOINTMENTS_PAGE_ROUTE_ROLES}>
               <AppointmentsPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/doctor-workspace/:appointmentId"
+          element={
+            <RoleGuard roles={APPOINTMENTS_PAGE_ROUTE_ROLES}>
+              <DoctorWorkspacePage />
             </RoleGuard>
           }
         />

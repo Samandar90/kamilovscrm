@@ -1,6 +1,6 @@
 import React from "react";
 import { CalendarDays, Plus, Search, Zap } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 import { hasPermission } from "../../../auth/permissions";
 import {
@@ -174,6 +174,7 @@ const emptyFullForm = (): FullFormFields => ({
 
 export const AppointmentsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { token, user } = useAuth();
   const ur = user?.role;
   const canReadPatientsList = canReadPatients(ur);
@@ -606,46 +607,7 @@ export const AppointmentsPage: React.FC = () => {
   };
 
   const openConsultation = (appointment: Appointment) => {
-    void loadServicesByDoctor(appointment.doctorId);
-    const initialServices = (appointment.services ?? []).map((item) => ({
-      serviceId: item.serviceId,
-      name: item.name,
-      price: item.price,
-    }));
-    setConsultationModal({
-      open: true,
-      appointment,
-      diagnosis: appointment.diagnosis ?? "",
-      treatment: appointment.treatment ?? "",
-      notes: appointment.notes ?? "",
-      services: initialServices,
-      carePlanItems: [],
-      carePlanInput: "",
-      selectedServiceId: "",
-    });
-    consultationLastSavedSignatureRef.current = JSON.stringify({
-      diagnosis: appointment.diagnosis ?? "",
-      treatment: appointment.treatment ?? "",
-      notes: appointment.notes ?? "",
-      serviceIds: initialServices.map((item) => item.serviceId),
-    });
-    if (!token) return;
-    void appointmentsFlowApi
-      .listAppointmentAssignedServices(token, appointment.id)
-      .then((rows) => {
-        setConsultationModal((prev) => ({
-          ...prev,
-          services: rows.map((row) => {
-            const service = servicesMap[row.serviceId];
-            return {
-              serviceId: row.serviceId,
-              name: service?.name ?? `Услуга #${row.serviceId}`,
-              price: coercePriceToNumber(service?.price ?? 0),
-            };
-          }),
-        }));
-      })
-      .catch(() => undefined);
+    navigate(`/doctor-workspace/${appointment.id}`);
   };
 
   const closeConsultation = () => {
