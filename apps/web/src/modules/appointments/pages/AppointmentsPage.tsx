@@ -1198,7 +1198,12 @@ export const AppointmentsPage: React.FC = () => {
                     timeLabel={formatTimeOnly(appointment.startAt)}
                     isSubmitting={isSubmitting}
                     canManageAppointmentFlow={canUpdateApptStatus}
-                    onAdvanceStatus={() => void updateStatus(appointment)}
+                    canCreateInvoice={canCreateInvoice}
+                    hasInvoice={Boolean(invoicesByAppointmentId[appointment.id])}
+                    onStart={() => void updateStatus(appointment)}
+                    onComplete={() => void updateStatus(appointment)}
+                    onOpenWorkspace={() => openConsultation(appointment)}
+                    onCreateInvoice={() => setInvoiceModal({ open: true, appointment })}
                     onOpenDetails={() => setDetailsModal({ open: true, appointment })}
                   />
                 );
@@ -1232,10 +1237,8 @@ export const AppointmentsPage: React.FC = () => {
                     isSubmitting={isSubmitting}
                     canManageAppointmentFlow={canUpdateApptStatus}
                     showFinancialDetails={readBilling}
-                    canDoClinical={canDoClinical}
                     canCreateInvoice={canCreateInvoice}
                     onMarkArrived={() => void updateStatus(appointment)}
-                    onStartConsultation={() => void updateStatus(appointment)}
                     onCompleteConsultation={() => void updateStatus(appointment)}
                     onCreateInvoice={() => setInvoiceModal({ open: true, appointment })}
                     onCancelAppointment={() =>

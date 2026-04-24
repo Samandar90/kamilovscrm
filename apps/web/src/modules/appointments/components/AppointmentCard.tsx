@@ -3,9 +3,8 @@ import type { Appointment, InvoiceSummary, Service } from "../api/appointmentsFl
 import { coercePriceToNumber } from "../../../shared/lib/money";
 import { getAllServices } from "../../../shared/lib/appointments/getAllServices";
 import { formatSum } from "../../../utils/formatMoney";
-import { AppointmentPrimaryWorkflowButton } from "./AppointmentPrimaryWorkflowButton";
-import { AppointmentBillingActions } from "./AppointmentBillingActions";
 import { ActionButtons, SectionCard, StatusBadge } from "../../../shared/ui";
+import { buildUnifiedAppointmentActions } from "./appointmentActions";
 
 type WorkflowStage =
   | "scheduled"
@@ -46,10 +45,8 @@ type Props = {
   canManageAppointmentFlow: boolean;
   /** Счета, цены услуг и строки оплаты — только для ролей с биллингом. */
   showFinancialDetails: boolean;
-  canDoClinical: boolean;
   canCreateInvoice: boolean;
   onMarkArrived: () => void;
-  onStartConsultation: () => void;
   onCompleteConsultation: () => void;
   onCreateInvoice: () => void;
   onCancelAppointment: () => void;
@@ -73,10 +70,8 @@ export const AppointmentCard: React.FC<Props> = ({
   isSubmitting,
   canManageAppointmentFlow,
   showFinancialDetails,
-  canDoClinical,
   canCreateInvoice,
   onMarkArrived,
-  onStartConsultation,
   onCompleteConsultation,
   onCreateInvoice,
   onCancelAppointment,
@@ -123,6 +118,30 @@ export const AppointmentCard: React.FC<Props> = ({
         }
       : undefined,
   });
+  const unifiedActions = buildUnifiedAppointmentActions({
+    appointment,
+    canCreateInvoice,
+    hasInvoice: Boolean(invoice),
+  });
+  const onUnifiedAction = (key: string) => {
+    if (key === "start") {
+      onMarkArrived();
+      return;
+    }
+    if (key === "complete") {
+      onCompleteConsultation();
+      return;
+    }
+    if (key === "workspace") {
+      onOpenDoctorWorkspace();
+      return;
+    }
+    if (key === "invoice") {
+      onCreateInvoice();
+      return;
+    }
+    onCardClick();
+  };
 
   return (
     <li className="list-none">
@@ -196,44 +215,21 @@ export const AppointmentCard: React.FC<Props> = ({
               {workflowLabelMap[getWorkflowStage(appointment, invoice)]}
             </span>
             <ActionButtons className="ml-auto items-center">
-              {appointment.status === "in_consultation" && canDoClinical ? (
-                <>
-                  <button
-                    type="button"
-                    className="rounded-xl border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#111827] shadow-sm transition duration-150 ease-out hover:bg-[#f3f4f6] disabled:opacity-50"
-                    disabled={actionsDisabled}
-                    onClick={onOpenDoctorWorkspace}
-                  >
-                    Рабочее место врача
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-xl bg-[#22c55e] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-150 ease-out hover:bg-[#16a34a] disabled:opacity-50"
-                    disabled={actionsDisabled}
-                    onClick={onCompleteConsultation}
-                  >
-                    Завершить приём
-                  </button>
-                </>
-              ) : (
-                <AppointmentPrimaryWorkflowButton
-                  appointment={appointment}
-                  disabled={actionsDisabled}
-                  canUpdateAppointment={canManageAppointmentFlow}
-                  canOpenDoctorWorkspace={canDoClinical}
-                  onMarkArrived={onMarkArrived}
-                  onStartConsultation={onStartConsultation}
-                  onCompleteConsultation={onCompleteConsultation}
-                  onOpenDoctorWorkspace={onOpenDoctorWorkspace}
-                />
-              )}
-              <AppointmentBillingActions
-                appointment={appointment}
-                hasInvoice={Boolean(invoice)}
-                disabled={actionsDisabled}
-                canCreateInvoice={canCreateInvoice}
-                onCreateInvoice={onCreateInvoice}
-              />
+              {unifiedActions.map((action) => (
+                <button
+                  key={action.key}
+                  type="button"
+                  className={
+                    action.tone === "primary"
+                      ? "rounded-xl bg-[#22c55e] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-150 ease-out hover:bg-[#16a34a] disabled:opacity-50"
+                      : "rounded-xl border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#111827] shadow-sm transition duration-150 ease-out hover:bg-[#f3f4f6] disabled:opacity-50"
+                  }
+                  disabled={actionsDisabled || (!canManageAppointmentFlow && action.key !== "open")}
+                  onClick={() => onUnifiedAction(action.key)}
+                >
+                  {action.label}
+                </button>
+              ))}
               {canManageAppointmentFlow && !isCompleted && !isCancelled ? (
                 <button
                   type="button"

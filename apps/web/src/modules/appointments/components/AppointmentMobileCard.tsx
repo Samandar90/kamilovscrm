@@ -1,5 +1,6 @@
 import React from "react";
 import type { Appointment, AppointmentStatus, Service } from "../api/appointmentsFlowApi";
+import { buildUnifiedAppointmentActions } from "./appointmentActions";
 
 const statusLabel: Record<AppointmentStatus, string> = {
   scheduled: "Запланировано",
@@ -29,7 +30,12 @@ type Props = {
   timeLabel: string;
   isSubmitting: boolean;
   canManageAppointmentFlow: boolean;
-  onAdvanceStatus: () => void;
+  canCreateInvoice: boolean;
+  hasInvoice: boolean;
+  onStart: () => void;
+  onComplete: () => void;
+  onOpenWorkspace: () => void;
+  onCreateInvoice: () => void;
   onOpenDetails: () => void;
 };
 
@@ -41,17 +47,26 @@ export const AppointmentMobileCard: React.FC<Props> = ({
   timeLabel,
   isSubmitting,
   canManageAppointmentFlow,
-  onAdvanceStatus,
+  canCreateInvoice,
+  hasInvoice,
+  onStart,
+  onComplete,
+  onOpenWorkspace,
+  onCreateInvoice,
   onOpenDetails,
 }) => {
-  const actionLabel =
-    appointment.status === "in_consultation"
-      ? "Завершить"
-      : appointment.status === "scheduled" || appointment.status === "confirmed" || appointment.status === "arrived"
-      ? "Начать приём"
-      : "Открыть";
-  const actionPrimary = actionLabel !== "Открыть";
-  const canAdvance = actionPrimary && canManageAppointmentFlow && !isSubmitting;
+  const actions = buildUnifiedAppointmentActions({
+    appointment,
+    canCreateInvoice,
+    hasInvoice,
+  });
+  const mapActionClick = (key: string) => {
+    if (key === "start") return onStart;
+    if (key === "complete") return onComplete;
+    if (key === "workspace") return onOpenWorkspace;
+    if (key === "invoice") return onCreateInvoice;
+    return onOpenDetails;
+  };
 
   return (
     <li className="list-none">
@@ -82,26 +97,22 @@ export const AppointmentMobileCard: React.FC<Props> = ({
           <p className="truncate">{service?.name ?? `Услуга #${appointment.serviceId}`}</p>
           <p className="mt-0.5 truncate text-slate-400">{patientPhone?.trim() || "Телефон не указан"}</p>
         </div>
-        <div className="mt-3 flex gap-2 border-t border-slate-100 pt-2.5" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={canAdvance ? onAdvanceStatus : onOpenDetails}
-            className={
-              actionPrimary
-                ? "inline-flex min-h-[38px] flex-1 items-center justify-center rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
-                : "inline-flex min-h-[38px] flex-1 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-            }
-            disabled={isSubmitting}
-          >
-            {actionLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onOpenDetails}
-            className="inline-flex min-h-[38px] items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-          >
-            Открыть
-          </button>
+        <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-2.5" onClick={(e) => e.stopPropagation()}>
+          {actions.map((action) => (
+            <button
+              key={action.key}
+              type="button"
+              onClick={mapActionClick(action.key)}
+              className={
+                action.tone === "primary"
+                  ? "inline-flex min-h-[40px] w-full items-center justify-center rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                  : "inline-flex min-h-[40px] w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+              }
+              disabled={isSubmitting || (!canManageAppointmentFlow && action.key !== "open")}
+            >
+              {action.label}
+            </button>
+          ))}
         </div>
       </article>
     </li>
