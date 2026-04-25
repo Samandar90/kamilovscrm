@@ -4,8 +4,8 @@ import { requestJson } from "../../../api/http";
 import { useAuth } from "../../../auth/AuthContext";
 import { hasPermission } from "../../../auth/permissions";
 import { ListEmptyState } from "../../../components/ui/ListEmptyState";
-import { MultiSelect } from "../../../components/ui/MultiSelect";
 import { Modal } from "../../../components/ui/Modal";
+import { SelectableItemsModal } from "../../../components/ui/SelectableItemsModal";
 import {
   getServicesCached,
   getServicesInstant,
@@ -85,6 +85,7 @@ export const ServicesPage: React.FC = () => {
   const [toast, setToast] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [doctorPickerOpen, setDoctorPickerOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
   const [formState, setFormState] = React.useState<ServiceFormState>(initialFormState);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
@@ -157,6 +158,7 @@ export const ServicesPage: React.FC = () => {
 
   const closeModal = () => {
     setModalOpen(false);
+    setDoctorPickerOpen(false);
     setEditingId(null);
     setFormState(initialFormState);
   };
@@ -255,6 +257,14 @@ export const ServicesPage: React.FC = () => {
       return byName || byCategory;
     });
   }, [services, normalizedSearch]);
+  const selectedDoctorRefs = React.useMemo(
+    () =>
+      formState.doctorIds.map((doctorId) => ({
+        id: doctorId,
+        name: doctorNameById[doctorId] ?? `#${doctorId}`,
+      })),
+    [formState.doctorIds, doctorNameById]
+  );
 
   return (
     <div className="page-enter space-y-6 p-6">
@@ -485,22 +495,40 @@ export const ServicesPage: React.FC = () => {
                 Активна (доступна для новых записей)
               </label>
               <div className="text-sm text-[#334155]">
-                <span className="block">Врачи (multi-select)</span>
+                <span className="block">Врачи</span>
                 <p className="mt-1 text-xs text-[#94a3b8]">Услуга может быть привязана к нескольким врачам.</p>
-                <div className="mt-2">
-                  {doctors.length === 0 ? (
-                    <span className="text-xs text-[#94a3b8]">Нет врачей в справочнике</span>
-                  ) : (
-                    <MultiSelect
-                      options={doctors}
-                      value={formState.doctorIds}
-                      onChange={(next) => setFormState((prev) => ({ ...prev, doctorIds: next }))}
-                      labelKey="name"
-                      placeholder="Найти врача..."
-                      disabled={isSaving}
-                    />
-                  )}
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-[#334155]">
+                    Выбрано врачей: {formState.doctorIds.length}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setDoctorPickerOpen(true)}
+                    disabled={isSaving || doctors.length === 0}
+                    className="inline-flex h-9 items-center rounded-lg border border-[#e2e8f0] bg-white px-3 text-xs font-semibold text-[#0f172a] transition hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {formState.doctorIds.length === 0 ? "+ Добавить врачей" : "Изменить"}
+                  </button>
                 </div>
+                {doctors.length === 0 ? (
+                  <span className="mt-2 block text-xs text-[#94a3b8]">Нет врачей в справочнике</span>
+                ) : selectedDoctorRefs.length > 0 ? (
+                  <CollapsibleChips
+                    items={selectedDoctorRefs}
+                    maxVisible={8}
+                    className="mt-2"
+                    renderItem={(doctor) => (
+                      <span
+                        key={doctor.id}
+                        className="inline-flex whitespace-nowrap rounded-full border border-[#dbeafe] bg-[#eff6ff] px-2.5 py-0.5 text-xs font-medium text-[#1d4ed8]"
+                      >
+                        {doctor.name}
+                      </span>
+                    )}
+                  />
+                ) : (
+                  <span className="mt-2 block text-xs text-[#94a3b8]">Пока ничего не выбрано</span>
+                )}
               </div>
             </div>
             <div className="mt-4 flex justify-end gap-2">
@@ -522,6 +550,21 @@ export const ServicesPage: React.FC = () => {
               </button>
             </div>
         </Modal>
+      )}
+      {canManage && (
+        <SelectableItemsModal
+          isOpen={doctorPickerOpen}
+          title="Выбор врачей"
+          options={doctors}
+          selectedIds={formState.doctorIds}
+          searchPlaceholder="Поиск врачей..."
+          onClose={() => setDoctorPickerOpen(false)}
+          onSave={(nextIds) => {
+            setFormState((prev) => ({ ...prev, doctorIds: nextIds }));
+            setDoctorPickerOpen(false);
+          }}
+          disabled={isSaving}
+        />
       )}
     </div>
   );

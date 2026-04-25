@@ -13,43 +13,24 @@ export function CollapsibleChips<T>({
   maxVisible = 2,
   className = "mt-2",
 }: CollapsibleChipsProps<T>): React.ReactElement | null {
-  const [expanded, setExpanded] = React.useState(false);
-
   if (items.length === 0) {
     return null;
   }
 
   const hiddenCount = Math.max(0, items.length - maxVisible);
-  const visibleItems = expanded ? items : items.slice(0, maxVisible);
+  const visibleItems = items.slice(0, maxVisible);
 
   return (
-    <div
-      className={`${className} overflow-hidden transition-all duration-300 ease-out ${
-        expanded ? "max-h-64" : "max-h-10"
-      }`}
-    >
-      <div className="flex flex-wrap gap-2">
+    <div className={className}>
+      <div className="flex max-h-[52px] flex-wrap items-center gap-1.5 overflow-hidden">
         {visibleItems.map((item, index) => renderItem(item, index))}
-
-        {!expanded && hiddenCount > 0 ? (
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            className="inline-flex cursor-pointer items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200"
-            aria-label={`Показать еще ${hiddenCount}`}
+        {hiddenCount > 0 ? (
+          <span
+            className="inline-flex shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600"
+            aria-label={`Еще ${hiddenCount}`}
           >
             +{hiddenCount}
-          </button>
-        ) : null}
-
-        {expanded && hiddenCount > 0 ? (
-          <button
-            type="button"
-            onClick={() => setExpanded(false)}
-            className="inline-flex cursor-pointer items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 transition hover:bg-slate-200"
-          >
-            Свернуть
-          </button>
+          </span>
         ) : null}
       </div>
     </div>
