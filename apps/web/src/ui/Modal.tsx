@@ -12,7 +12,7 @@ export type ModalProps = {
 };
 
 const defaultPanelClass =
-  "relative z-10 w-full max-w-lg rounded-2xl border border-slate-200/90 bg-white p-6 shadow-[0_24px_48px_-12px_rgba(15,23,42,0.18)]";
+  "relative z-10 w-full max-w-lg rounded-t-2xl border border-slate-200/90 bg-white p-6 shadow-[0_24px_48px_-12px_rgba(15,23,42,0.18)] max-md:max-h-[88dvh] max-md:overflow-y-auto md:rounded-2xl";
 
 export const Modal: React.FC<ModalProps> = ({
   isOpen,
@@ -41,7 +41,7 @@ export const Modal: React.FC<ModalProps> = ({
   const panelClass = className ? cn("relative z-10", className) : defaultPanelClass;
 
   return createPortal(
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[10000] flex items-end justify-center p-0 md:items-center md:p-4">
       <div
         className="modal-backdrop-enter fixed inset-0 bg-slate-900/35 backdrop-blur-sm"
         aria-hidden
@@ -50,7 +50,7 @@ export const Modal: React.FC<ModalProps> = ({
         }}
       />
       <div
-        className={cn("modal-dialog-enter", panelClass)}
+        className={cn("modal-dialog-enter max-md:w-full", panelClass)}
         onMouseDown={(event) => event.stopPropagation()}
       >
         {children}

@@ -132,7 +132,7 @@ export const InvoicesPage: React.FC = () => {
   const emptyFiltered = hasAnyInvoices && filtered.length === 0;
 
   return (
-    <div className="min-h-full bg-[#f8fafc] text-[#334155]">
+    <div className="min-h-full overflow-x-hidden bg-[#f8fafc] pb-[110px] text-[#334155] max-md:[&_button]:min-h-[44px] md:pb-0">
       <AppContainer className="max-w-[1440px] space-y-6">
         <PageHeader
           title="Счета"
@@ -228,7 +228,50 @@ export const InvoicesPage: React.FC = () => {
           }
         >
           {!loading && !(!hasAnyInvoices || emptyFiltered) ? (
-            <div className="overflow-x-auto">
+            <>
+              <div className="space-y-2.5 md:hidden">
+                {filtered.map((invoice) => {
+                  const remainder = Math.max(0, invoice.total - invoice.paidAmount);
+                  return (
+                    <article key={invoice.id} className="rounded-2xl border border-[#e5e7eb] bg-white p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-[#0f172a]">{invoice.number}</p>
+                          <p className="mt-0.5 text-xs text-[#64748b]">
+                            {patientsMap[invoice.patientId] ?? `#${invoice.patientId}`}
+                          </p>
+                        </div>
+                        <StatusBadge tone={statusToneMap[invoice.status]}>{statusLabelMap[invoice.status]}</StatusBadge>
+                      </div>
+                      <div className="mt-3 space-y-1.5 text-sm">
+                        <p className="flex items-center justify-between text-[#64748b]">
+                          <span>К оплате</span>
+                          <span className="font-semibold tabular-nums text-[#16a34a]">{formatSum(invoice.total)}</span>
+                        </p>
+                        <p className="flex items-center justify-between text-[#64748b]">
+                          <span>Оплачено</span>
+                          <span className="font-medium tabular-nums text-[#334155]">{formatSum(invoice.paidAmount)}</span>
+                        </p>
+                        <p className="flex items-center justify-between text-[#64748b]">
+                          <span>Остаток</span>
+                          <span className="font-semibold tabular-nums text-rose-600">{formatSum(remainder)}</span>
+                        </p>
+                      </div>
+                      <div className="mt-3 flex justify-end">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => navigate(`/billing/invoices/${invoice.id}`)}
+                        >
+                          Открыть
+                        </Button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[1100px] border-collapse bg-white text-left text-sm">
                 <thead>
                   <tr className="border-b border-[#e5e7eb] bg-[#f8fafc]">
@@ -309,7 +352,8 @@ export const InvoicesPage: React.FC = () => {
                   })}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           ) : null}
         </DataTable>
       </AppContainer>

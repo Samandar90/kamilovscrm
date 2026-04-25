@@ -38,11 +38,11 @@ export const ModalShell: React.FC<ModalShellProps> = ({
   if (!isOpen || !portalTarget) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[10000] flex items-end justify-center p-0 md:items-center md:p-4">
       <div className="modal-backdrop-enter fixed inset-0 bg-slate-900/40" aria-hidden onMouseDown={onClose} />
       <div
         className={cn(
-          "modal-dialog-enter relative z-10 w-full rounded-xl border border-gray-200 bg-white shadow-[0_24px_48px_-12px_rgba(15,23,42,0.18)]",
+          "modal-dialog-enter relative z-10 w-full rounded-t-2xl border border-gray-200 bg-white shadow-[0_24px_48px_-12px_rgba(15,23,42,0.18)] max-md:max-h-[88dvh] max-md:overflow-y-auto md:rounded-xl",
           maxWidthClassName
         )}
         onMouseDown={(event) => event.stopPropagation()}

@@ -132,7 +132,7 @@ export const AIAssistantPage = () => {
   const analyticsByKey = (key: string) => summary?.cards.find((card) => card.key === key)?.value ?? "—";
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50 max-md:[&_button]:min-h-[44px]">
       <div className="flex h-full min-h-0 w-full flex-1 px-2 pt-2 md:px-4 md:pt-2">
         <div className="mx-auto grid h-full w-full max-w-[1120px] min-h-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div className="chat-wrapper flex h-full min-h-0 w-full justify-center">

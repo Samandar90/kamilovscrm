@@ -583,7 +583,7 @@ export const CashDeskPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-full bg-[#f6f8fb] text-[#334155]">
+    <div className="min-h-full overflow-x-hidden bg-[#f6f8fb] pb-[110px] text-[#334155] max-md:[&_button]:min-h-[44px] md:pb-0">
       <AppContainer className="max-w-[1400px] space-y-5">
       {/* Верхняя зона */}
       <PageHeader

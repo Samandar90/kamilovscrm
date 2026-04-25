@@ -239,7 +239,7 @@ export const InvoiceDetailsPage: React.FC = () => {
   }, [paymentSuccess]);
 
   return (
-    <div className="min-h-full bg-[#f8fafc] text-[#334155]">
+    <div className="min-h-full overflow-x-hidden bg-[#f8fafc] pb-[110px] text-[#334155] max-md:[&_button]:min-h-[44px] md:pb-0">
       <div className="mx-auto max-w-5xl space-y-8 px-5 py-8 md:px-8">
         <button type="button" onClick={() => navigate("/billing/invoices")} className={`${btnGhost} invoice-enter`}>
           <ArrowLeft className="h-4 w-4 text-[#64748b]" strokeWidth={1.75} />

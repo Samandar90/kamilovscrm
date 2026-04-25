@@ -309,7 +309,7 @@ export const DashboardPage: React.FC = () => {
   return (
     <div
       className={cn(
-        "page-enter w-full max-w-none space-y-4 rounded-2xl bg-slate-50/70 p-4 md:space-y-7 md:p-8",
+        "page-enter w-full max-w-none space-y-4 overflow-x-hidden rounded-2xl bg-slate-50/70 p-4 max-md:[&_button]:min-h-[44px] md:space-y-7 md:p-8",
         canQuickPatientBooking && readAppointments && "max-md:pb-[100px]"
       )}
     >

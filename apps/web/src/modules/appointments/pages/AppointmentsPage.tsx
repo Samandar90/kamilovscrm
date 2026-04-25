@@ -965,7 +965,7 @@ export const AppointmentsPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-full bg-[#f8fafc] pb-[100px] text-[#334155] md:pb-0">
+    <div className="min-h-full overflow-x-hidden bg-[#f8fafc] pb-[100px] text-[#334155] max-md:[&_button]:min-h-[44px] md:pb-0">
       <AppContainer className="page-enter">
         <div className="grid grid-cols-12 gap-6">
       <div className="col-span-12 space-y-6 lg:col-span-8">

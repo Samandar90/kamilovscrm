@@ -60,7 +60,7 @@ export const PaymentsReadOnlyPage: React.FC = () => {
   }, [rows, methodFilter, search, invoicesMap, patientsMap]);
 
   return (
-    <div className="min-h-full bg-[#f8fafc] text-[#334155]">
+    <div className="min-h-full overflow-x-hidden bg-[#f8fafc] pb-[110px] text-[#334155] max-md:[&_button]:min-h-[44px] md:pb-0">
       <AppContainer className="max-w-6xl space-y-6">
         <PageHeader
           title="Платежи"
@@ -116,7 +116,31 @@ export const PaymentsReadOnlyPage: React.FC = () => {
             rows.length === 0 ? "Платежи появятся после операций в кассе" : "Измените фильтры или строку поиска"
           }
         >
-          <div className="overflow-x-auto">
+          <div className="space-y-2.5 md:hidden">
+            {filteredRows.map((p) => {
+              const invoice = invoicesMap[p.invoiceId];
+              const patientName = invoice ? patientsMap[invoice.patientId] ?? `Пациент #${invoice.patientId}` : "—";
+              return (
+                <article key={p.id} className="rounded-2xl border border-[#e5e7eb] bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[#0f172a]">{patientName}</p>
+                      <p className="mt-0.5 text-xs text-[#64748b]">{invoice?.number ?? `#${p.invoiceId}`}</p>
+                    </div>
+                    <StatusBadge tone={p.method === "cash" ? "neutral" : "info"}>{METHOD_RU[p.method]}</StatusBadge>
+                  </div>
+                  <p className="mt-2 text-xs tabular-nums text-[#64748b]">{formatDateTimeRu(p.createdAt)}</p>
+                  <p className="mt-2 text-lg font-semibold tabular-nums text-[#16a34a]">{formatSum(p.amount)}</p>
+                  <div className="mt-3">
+                    <Link to={`/billing/invoices/${p.invoiceId}`} className="text-xs font-medium text-[#16a34a] hover:underline">
+                      Открыть счёт
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[980px] text-sm">
               <thead className="bg-[#f8fafc]">
                 <tr className="border-b border-[#e5e7eb]">

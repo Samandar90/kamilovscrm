@@ -456,7 +456,7 @@ export const PatientsPage: React.FC = () => {
     <div
       ref={patientsRootRef}
       className={cn(
-        "page-enter space-y-3 p-4 md:space-y-6 md:p-6",
+        "page-enter space-y-3 overflow-x-hidden p-4 max-md:[&_button]:min-h-[44px] md:space-y-6 md:p-6",
         canCreatePatient && !loading && !showEmptyNoData && "max-md:pb-[100px]"
       )}
     >

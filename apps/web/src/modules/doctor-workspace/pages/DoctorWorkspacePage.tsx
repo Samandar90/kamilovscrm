@@ -291,7 +291,7 @@ export const DoctorWorkspacePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-full bg-[#f8fafc] md:mx-auto md:max-w-3xl md:rounded-2xl md:border md:border-slate-200 md:bg-white md:p-6">
+    <div className="min-h-full overflow-x-hidden bg-[#f8fafc] max-md:[&_button]:min-h-[44px] md:mx-auto md:max-w-3xl md:rounded-2xl md:border md:border-slate-200 md:bg-white md:p-6">
       <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-[#f8fafc] px-4 py-3 md:static md:border-0 md:bg-transparent md:px-0 md:py-0">
         <button
           type="button"
