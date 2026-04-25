@@ -46,7 +46,9 @@ export const AIAssistantPage = () => {
   useEffect(() => {
     const viewport = chatViewportRef.current;
     if (!viewport) return;
-    viewport.scrollTop = viewport.scrollHeight;
+    requestAnimationFrame(() => {
+      viewport.scrollTop = viewport.scrollHeight;
+    });
   }, [messages, sending]);
 
   const clearChat = useCallback(() => {
@@ -95,38 +97,15 @@ export const AIAssistantPage = () => {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50">
-      <div className="mx-auto flex h-full w-full max-w-[700px] flex-1 flex-col px-3 pb-[150px] pt-3 lg:px-4 lg:pb-[110px]">
-        <div className="shrink-0 space-y-3">
+      <div className="mx-auto flex h-full w-full max-w-[700px] flex-1 flex-col px-2 pb-[136px] pt-2 md:px-4 md:pb-[108px] md:pt-3">
+        <div className="shrink-0">
           <AIAssistantHeader trailing={clearChatButton} />
-          <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900">Быстрые команды</h2>
-            <div className="mt-2.5 grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => void sendMessage("Какая выручка сегодня?")}
-                className="rounded-xl border border-slate-200 bg-white p-3 text-left text-sm font-semibold text-slate-800 shadow-sm transition-colors duration-150 hover:bg-slate-50 active:scale-[0.98]"
-              >
-                Выручка
-              </button>
-              <button
-                type="button"
-                onClick={() => void sendMessage("Сколько пациентов сегодня?")}
-                className="rounded-xl border border-slate-200 bg-white p-3 text-left text-sm font-semibold text-slate-800 shadow-sm transition-colors duration-150 hover:bg-slate-50 active:scale-[0.98]"
-              >
-                Пациенты
-              </button>
-              <button
-                type="button"
-                onClick={() => void sendMessage("Какая текущая нагрузка по приёмам?")}
-                className="rounded-xl border border-slate-200 bg-white p-3 text-left text-sm font-semibold text-slate-800 shadow-sm transition-colors duration-150 hover:bg-slate-50 active:scale-[0.98]"
-              >
-                Нагрузка
-              </button>
-            </div>
-          </section>
         </div>
 
-        <div ref={chatViewportRef} className="mt-3 flex min-h-0 flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50/60">
+        <div
+          ref={chatViewportRef}
+          className="mt-2 h-[calc(100dvh-198px)] min-h-0 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50/60 md:mt-3 md:h-[calc(100dvh-184px)]"
+        >
           <ChatMessageList
             messages={messages}
             loadingHistory={loadingHistory}
@@ -136,7 +115,7 @@ export const AIAssistantPage = () => {
         </div>
       </div>
 
-      <div className="fixed bottom-[70px] left-0 right-0 z-30 px-[10px] lg:bottom-4">
+      <div className="fixed bottom-[70px] left-0 right-0 z-30 px-[10px] md:bottom-4">
         <div className="mx-auto w-full max-w-[700px] rounded-2xl bg-white/90 backdrop-blur-sm">
           {chatError ? <p className="pb-1 text-center text-xs font-medium text-red-600">{chatError}</p> : null}
           <ChatInputBar

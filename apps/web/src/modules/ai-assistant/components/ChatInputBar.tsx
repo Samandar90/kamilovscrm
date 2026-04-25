@@ -37,7 +37,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
     <div className={cn("relative", className)}>
       <div
         className={cn(
-          "relative rounded-2xl border border-slate-200 bg-white px-4 py-0 shadow-sm",
+          "relative h-14 rounded-2xl border border-slate-200 bg-white px-[14px] py-0 shadow-sm",
           "transition-[border-color,box-shadow] duration-200",
           "focus-within:border-blue-300/70 focus-within:shadow-[0_8px_24px_-14px_rgba(37,99,235,0.4)]"
         )}
@@ -57,7 +57,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
             }
           }}
           className={cn(
-            "max-h-[140px] min-h-[56px] w-full resize-none border-0 bg-transparent py-[15px] pr-12 text-[16px] leading-relaxed text-slate-900 outline-none ring-0",
+            "h-[56px] w-full resize-none border-0 bg-transparent py-[15px] pr-12 text-[16px] leading-relaxed text-slate-900 outline-none ring-0",
             "placeholder:text-slate-400",
             "focus:ring-0",
             "disabled:cursor-not-allowed disabled:opacity-45"
