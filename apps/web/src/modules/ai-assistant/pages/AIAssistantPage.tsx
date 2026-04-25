@@ -155,7 +155,7 @@ export const AIAssistantPage = () => {
                 <AIAssistantHeader trailing={clearChatButton} />
               </div>
 
-              <div className="mt-1 flex-1 min-h-0 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50/60">
+              <div className="mt-1 flex-1 min-h-0 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50/60 pb-[160px] lg:pb-0">
                 <ChatMessageList
                   messages={messages}
                   loadingHistory={loadingHistory}
@@ -237,7 +237,7 @@ export const AIAssistantPage = () => {
         </div>
       </div>
 
-      <div className="fixed bottom-[70px] left-0 right-0 z-30 px-[10px] lg:hidden">
+      <div className="fixed bottom-[70px] left-0 right-0 z-50 px-[10px] lg:hidden">
         <div className="mx-auto w-full max-w-[700px] rounded-2xl bg-white/90 backdrop-blur-sm">
           {chatError ? <p className="pb-1 text-center text-xs font-medium text-red-600">{chatError}</p> : null}
           <ChatInputBar

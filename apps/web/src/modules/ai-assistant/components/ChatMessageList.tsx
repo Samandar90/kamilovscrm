@@ -26,7 +26,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
   onHintClick,
   messagesEndRef,
 }) => (
-  <div className="flex h-full min-h-0 flex-1 flex-col p-3 pb-[120px] lg:pb-3">
+  <div className="flex h-full min-h-0 flex-1 flex-col p-3 pb-6 lg:pb-3">
     <div className="flex min-h-full flex-col gap-[10px]">
       {loadingHistory ? (
         <p className="py-10 text-center text-sm text-slate-500">Загрузка чата…</p>
@@ -75,7 +75,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
           </div>
         </div>
       ) : null}
-      <div ref={messagesEndRef} className="h-[120px]" />
+      <div ref={messagesEndRef} className="h-[140px]" />
     </div>
   </div>
 );
