@@ -10,6 +10,7 @@ type ChatMessageListProps = {
   loadingHistory?: boolean;
   sending?: boolean;
   onHintClick: (text: string) => void;
+  messagesEndRef?: React.RefObject<HTMLDivElement | null>;
 };
 
 const EMPTY_HINTS = [
@@ -18,8 +19,14 @@ const EMPTY_HINTS = [
   "Какая текущая нагрузка?",
 ];
 
-export const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, loadingHistory = false, sending = false, onHintClick }) => (
-  <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-3">
+export const ChatMessageList: React.FC<ChatMessageListProps> = ({
+  messages,
+  loadingHistory = false,
+  sending = false,
+  onHintClick,
+  messagesEndRef,
+}) => (
+  <div className="flex h-full min-h-0 flex-1 flex-col p-3">
     <div className="flex min-h-full flex-col gap-[10px]">
       {loadingHistory ? (
         <p className="py-10 text-center text-sm text-slate-500">Загрузка чата…</p>
@@ -68,6 +75,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({ messages, load
           </div>
         </div>
       ) : null}
+      <div ref={messagesEndRef} />
     </div>
   </div>
 );

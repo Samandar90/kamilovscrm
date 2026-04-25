@@ -15,7 +15,11 @@ export const AIAssistantPage = () => {
   const [sending, setSending] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
 
-  const chatViewportRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
 
   useEffect(() => {
     if (!user?.id) {
@@ -44,12 +48,12 @@ export const AIAssistantPage = () => {
   }, [user?.id]);
 
   useEffect(() => {
-    const viewport = chatViewportRef.current;
-    if (!viewport) return;
-    requestAnimationFrame(() => {
-      viewport.scrollTop = viewport.scrollHeight;
-    });
-  }, [messages, sending]);
+    scrollToBottom();
+  }, [scrollToBottom]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
   const clearChat = useCallback(() => {
     setChatError(null);
@@ -97,21 +101,23 @@ export const AIAssistantPage = () => {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50">
-      <div className="mx-auto flex h-full w-full max-w-[700px] flex-1 flex-col px-2 pb-[136px] pt-2 md:px-4 md:pb-[108px] md:pt-3">
-        <div className="shrink-0">
-          <AIAssistantHeader trailing={clearChatButton} />
-        </div>
+      <div className="chat-wrapper flex h-full min-h-0 w-full flex-1 justify-center px-2 pt-1 md:px-4 md:pt-2">
+        <div className="chat-container flex h-full w-full max-w-[700px] min-h-0 flex-col pb-[136px] md:pb-[108px]">
+          <div className="shrink-0">
+            <AIAssistantHeader trailing={clearChatButton} />
+          </div>
 
-        <div
-          ref={chatViewportRef}
-          className="mt-2 h-[calc(100dvh-198px)] min-h-0 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50/60 md:mt-3 md:h-[calc(100dvh-184px)]"
-        >
-          <ChatMessageList
-            messages={messages}
-            loadingHistory={loadingHistory}
-            sending={sending}
-            onHintClick={(text) => void sendMessage(text)}
-          />
+          <div
+            className="mt-1 h-[calc(100dvh-190px)] min-h-0 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50/60 md:h-[calc(100dvh-170px)]"
+          >
+            <ChatMessageList
+              messages={messages}
+              loadingHistory={loadingHistory}
+              sending={sending}
+              onHintClick={(text) => void sendMessage(text)}
+              messagesEndRef={messagesEndRef}
+            />
+          </div>
         </div>
       </div>
 
