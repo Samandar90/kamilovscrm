@@ -8,6 +8,7 @@ import type {
   PatientUpdateInput,
 } from "../interfaces/coreTypes";
 import { dbPool } from "../../config/database";
+import { requireClinicId } from "../../tenancy/clinicContext";
 
 type PatientRow = {
   id: number;
@@ -109,6 +110,7 @@ function sanitizePositiveIntIdsForBigintArray(raw: readonly unknown[]): {
 
 export class PostgresPatientsRepository implements IPatientsRepository {
   async findAll(filters: PatientFilters = {}): Promise<Patient[]> {
+    const clinicId = requireClinicId();
     const incDel = filters.includeDeleted === true;
     const searchTerm = typeof filters.search === "string" ? filters.search.trim() : "";
     const hasSearch = searchTerm.length > 0;
@@ -137,6 +139,7 @@ export class PostgresPatientsRepository implements IPatientsRepository {
             SELECT ${SELECT_LIST}
             FROM patients
             WHERE id = ANY($1::bigint[])
+            AND clinic_id = $4
             AND deleted_at IS NULL
             AND (
               full_name ILIKE $2 ESCAPE '\\'
@@ -154,7 +157,7 @@ export class PostgresPatientsRepository implements IPatientsRepository {
             ORDER BY created_at DESC
             LIMIT ${PATIENT_SEARCH_LIMIT}
           `,
-          [safeIds, pattern, searchTerm]
+          [safeIds, pattern, searchTerm, clinicId]
         );
         return scopedResult.rows.map(mapPatientRow);
       }
@@ -163,10 +166,11 @@ export class PostgresPatientsRepository implements IPatientsRepository {
           SELECT ${SELECT_LIST}
           FROM patients
           WHERE id = ANY($1::bigint[])
+          AND clinic_id = $2
           ${incDel ? "" : "AND deleted_at IS NULL"}
           ORDER BY created_at DESC
         `,
-        [safeIds]
+        [safeIds, clinicId]
       );
       return scopedResult.rows.map(mapPatientRow);
     }
@@ -178,6 +182,7 @@ export class PostgresPatientsRepository implements IPatientsRepository {
           SELECT ${SELECT_LIST}
           FROM patients
           WHERE deleted_at IS NULL
+          AND clinic_id = $3
           AND (
             full_name ILIKE $1 ESCAPE '\\'
             OR phone ILIKE $1 ESCAPE '\\'
@@ -194,30 +199,35 @@ export class PostgresPatientsRepository implements IPatientsRepository {
           ORDER BY created_at DESC
           LIMIT ${PATIENT_SEARCH_LIMIT}
         `,
-        [pattern, searchTerm]
+        [pattern, searchTerm, clinicId]
       );
       return result.rows.map(mapPatientRow);
     }
 
-    const result = await dbPool.query<PatientRow>(`
-      SELECT ${SELECT_LIST}
-      FROM patients
-      WHERE deleted_at IS NULL
-      ORDER BY created_at DESC
-    `);
+    const result = await dbPool.query<PatientRow>(
+      `
+        SELECT ${SELECT_LIST}
+        FROM patients
+        WHERE deleted_at IS NULL
+          AND clinic_id = $1
+        ORDER BY created_at DESC
+      `,
+      [clinicId]
+    );
     return result.rows.map(mapPatientRow);
   }
 
   /** По id — в т.ч. архивный (история, просмотр по прямой ссылке). */
   async findById(id: number): Promise<Patient | null> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<PatientRow>(
       `
         SELECT ${SELECT_LIST}
         FROM patients
-        WHERE id = $1
+        WHERE id = $1 AND clinic_id = $2
         LIMIT 1
       `,
-      [id]
+      [id, clinicId]
     );
 
     if (result.rows.length === 0) {
@@ -228,9 +238,11 @@ export class PostgresPatientsRepository implements IPatientsRepository {
   }
 
   async create(data: PatientCreateInput): Promise<Patient> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<PatientRow>(
       `
         INSERT INTO patients (
+          clinic_id,
           full_name,
           phone,
           gender,
@@ -238,16 +250,17 @@ export class PostgresPatientsRepository implements IPatientsRepository {
           source,
           notes
         )
-        VALUES ($1, $2, $3, $4::date, $5, $6)
+        VALUES ($1, $2, $3, $4, $5::date, $6, $7)
         RETURNING ${SELECT_LIST}
       `,
-      [data.fullName, data.phone, data.gender, data.birthDate, data.source ?? null, data.notes ?? null]
+      [clinicId, data.fullName, data.phone, data.gender, data.birthDate, data.source ?? null, data.notes ?? null]
     );
 
     return mapPatientRow(result.rows[0]);
   }
 
   async update(id: number, data: PatientUpdateInput): Promise<Patient | null> {
+    const clinicId = requireClinicId();
     const setClauses: string[] = [];
     const values: Array<string | number | null> = [];
 
@@ -281,12 +294,13 @@ export class PostgresPatientsRepository implements IPatientsRepository {
     }
 
     values.push(id);
+    values.push(clinicId);
 
     const result = await dbPool.query<PatientRow>(
       `
         UPDATE patients
         SET ${setClauses.join(", ")}
-        WHERE id = $${values.length} AND deleted_at IS NULL
+        WHERE id = $${values.length - 1} AND clinic_id = $${values.length} AND deleted_at IS NULL
         RETURNING ${SELECT_LIST}
       `,
       values
@@ -300,14 +314,15 @@ export class PostgresPatientsRepository implements IPatientsRepository {
   }
 
   async delete(id: number): Promise<boolean> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<{ id: number }>(
       `
         UPDATE patients
         SET deleted_at = NOW()
-        WHERE id = $1 AND deleted_at IS NULL
+        WHERE id = $1 AND clinic_id = $2 AND deleted_at IS NULL
         RETURNING id
       `,
-      [id]
+      [id, clinicId]
     );
     return result.rows.length > 0;
   }

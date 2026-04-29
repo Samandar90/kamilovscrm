@@ -9,6 +9,7 @@ import type {
 import { dbPool } from "../../config/database";
 import { ApiError } from "../../middleware/errorHandler";
 import { parseNonNegativeMoneyFromPg, parseNumericInput } from "../../utils/numbers";
+import { requireClinicId } from "../../tenancy/clinicContext";
 
 type ServiceDbRow = {
   id: string | number;
@@ -44,12 +45,17 @@ const replaceServiceDoctors = async (
   serviceId: number,
   doctorIds: number[]
 ): Promise<void> => {
+  const clinicId = requireClinicId();
   await client.query(`DELETE FROM doctor_services WHERE service_id = $1`, [serviceId]);
   const uniqueSorted = [...new Set(doctorIds)].sort((a, b) => a - b);
   for (const doctorId of uniqueSorted) {
     await client.query(
-      `INSERT INTO doctor_services (doctor_id, service_id) VALUES ($1, $2)`,
-      [doctorId, serviceId]
+      `
+        INSERT INTO doctor_services (doctor_id, service_id)
+        SELECT $1, $2
+        WHERE EXISTS (SELECT 1 FROM doctors d WHERE d.id = $1 AND d.clinic_id = $3)
+      `,
+      [doctorId, serviceId, clinicId]
     );
   }
 };
@@ -58,6 +64,7 @@ const assertDoctorsExist = async (
   client: PoolClient | typeof dbPool,
   doctorIds: number[]
 ): Promise<void> => {
+  const clinicId = requireClinicId();
   if (doctorIds.length === 0) return;
   const unique = [...new Set(doctorIds)];
   const result = await client.query<{ c: string }>(
@@ -65,9 +72,10 @@ const assertDoctorsExist = async (
       SELECT COUNT(*)::text AS c
       FROM doctors
       WHERE id = ANY($1::bigint[])
+        AND clinic_id = $2
         AND deleted_at IS NULL
     `,
-    [unique]
+    [unique, clinicId]
   );
   const count = Number(result.rows[0]?.c ?? 0);
   if (count !== unique.length) {
@@ -104,8 +112,9 @@ const groupByService = `
 
 export class PostgresServicesRepository implements IServicesRepository {
   async findAll(filters: ServiceFilters = {}): Promise<Service[]> {
-    const conditions: string[] = ["s.deleted_at IS NULL"];
-    const values: Array<number | boolean> = [];
+    const clinicId = requireClinicId();
+    const conditions: string[] = ["s.deleted_at IS NULL", "s.clinic_id = $1"];
+    const values: Array<number | boolean> = [clinicId];
 
     if (filters.activeOnly === true) {
       conditions.push("s.active = true");
@@ -136,14 +145,15 @@ export class PostgresServicesRepository implements IServicesRepository {
   }
 
   async findById(id: number): Promise<Service | null> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<ServiceDbRow>(
       `
         ${baseSelect}
-        WHERE s.id = $1 AND s.deleted_at IS NULL
+        WHERE s.id = $1 AND s.deleted_at IS NULL AND s.clinic_id = $2
         ${groupByService}
         LIMIT 1
       `,
-      [id]
+      [id, clinicId]
     );
     if (result.rows.length === 0) {
       return null;
@@ -152,6 +162,7 @@ export class PostgresServicesRepository implements IServicesRepository {
   }
 
   async create(data: ServiceCreateInput): Promise<Service> {
+    const clinicId = requireClinicId();
     const doctorIds = data.doctorIds ?? [];
     const name = data.name.trim();
 
@@ -162,8 +173,8 @@ export class PostgresServicesRepository implements IServicesRepository {
 
       const insertResult = await client.query<ServiceDbRow>(
         `
-          INSERT INTO services (name, price, duration, active)
-          VALUES ($1, $2, $3, $4)
+          INSERT INTO services (clinic_id, name, price, duration, active)
+          VALUES ($1, $2, $3, $4, $5)
           RETURNING
             id,
             name,
@@ -173,7 +184,7 @@ export class PostgresServicesRepository implements IServicesRepository {
             created_at,
             ARRAY[]::bigint[] AS doctor_ids
         `,
-        [name, data.price, data.duration, data.active]
+        [clinicId, name, data.price, data.duration, data.active]
       );
       const row = insertResult.rows[0];
       const serviceId = Number(row.id);
@@ -195,13 +206,14 @@ export class PostgresServicesRepository implements IServicesRepository {
   }
 
   async update(id: number, data: ServiceUpdateInput): Promise<Service | null> {
+    const clinicId = requireClinicId();
     const client = await dbPool.connect();
     try {
       await client.query("BEGIN");
 
       const existing = await client.query<{ id: string | number }>(
-        `SELECT id FROM services WHERE id = $1 AND deleted_at IS NULL FOR UPDATE`,
-        [id]
+        `SELECT id FROM services WHERE id = $1 AND deleted_at IS NULL AND clinic_id = $2 FOR UPDATE`,
+        [id, clinicId]
       );
       if (existing.rows.length === 0) {
         await client.query("ROLLBACK");
@@ -234,11 +246,12 @@ export class PostgresServicesRepository implements IServicesRepository {
 
       if (setClauses.length > 0) {
         values.push(id);
+        values.push(clinicId);
         const updateResult = await client.query(
           `
             UPDATE services
             SET ${setClauses.join(", ")}
-            WHERE id = $${values.length}
+            WHERE id = $${values.length - 1} AND clinic_id = $${values.length}
             RETURNING id
           `,
           values
@@ -265,12 +278,13 @@ export class PostgresServicesRepository implements IServicesRepository {
   }
 
   async delete(id: number): Promise<boolean> {
+    const clinicId = requireClinicId();
     const client = await dbPool.connect();
     try {
       await client.query("BEGIN");
       const result = await client.query<{ id: number }>(
-        `DELETE FROM services WHERE id = $1 RETURNING id`,
-        [id]
+        `DELETE FROM services WHERE id = $1 AND clinic_id = $2 RETURNING id`,
+        [id, clinicId]
       );
       if (result.rows.length === 0) {
         await client.query("ROLLBACK");
@@ -288,17 +302,21 @@ export class PostgresServicesRepository implements IServicesRepository {
   }
 
   async isServiceAssignedToDoctor(serviceId: number, doctorId: number): Promise<boolean> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<{ exists: boolean }>(
       `
         SELECT EXISTS(
           SELECT 1
           FROM doctor_services ds
           INNER JOIN services s ON s.id = ds.service_id AND s.deleted_at IS NULL
+          INNER JOIN doctors d ON d.id = ds.doctor_id
           WHERE ds.service_id = $1
             AND ds.doctor_id = $2
+            AND s.clinic_id = $3
+            AND d.clinic_id = $3
         ) AS exists
       `,
-      [serviceId, doctorId]
+      [serviceId, doctorId, clinicId]
     );
     return result.rows[0]?.exists === true;
   }

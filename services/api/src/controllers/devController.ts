@@ -42,8 +42,8 @@ export const createAdminDevController = async (_req: Request, res: Response) => 
     } else {
       await dbPool.query(
         `
-          INSERT INTO users (username, password_hash, full_name, role, is_active, doctor_id)
-          VALUES ($1, $2, $3, $4, TRUE, NULL)
+          INSERT INTO users (clinic_id, username, password_hash, full_name, role, is_active, doctor_id)
+          VALUES (1, $1, $2, $3, $4, TRUE, NULL)
         `,
         [ADMIN_USERNAME, passwordHash, ADMIN_FULL_NAME, ADMIN_ROLE]
       );
@@ -64,6 +64,7 @@ export const createAdminDevController = async (_req: Request, res: Response) => 
       const now = new Date().toISOString();
       db.users.push({
         id: nextId(),
+        clinicId: 1,
         username: ADMIN_USERNAME,
         password: passwordHash,
         fullName: ADMIN_FULL_NAME,

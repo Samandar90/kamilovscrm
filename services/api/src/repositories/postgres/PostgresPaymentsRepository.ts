@@ -12,6 +12,7 @@ import { normalizePaymentMethod } from "../interfaces/billingTypes";
 import { dbPool } from "../../config/database";
 import { ApiError } from "../../middleware/errorHandler";
 import { parseMoneyColumn } from "../../utils/numbers";
+import { requireClinicId } from "../../tenancy/clinicContext";
 
 type PaymentRow = {
   id: string | number;
@@ -54,8 +55,9 @@ const PAID_SUM_EXPR = `
 
 export class PostgresPaymentsRepository implements IPaymentsRepository {
   async findAll(filters: PaymentFilters = {}): Promise<Payment[]> {
-    const clauses: string[] = ["deleted_at IS NULL"];
-    const values: Array<number | string> = [];
+    const clinicId = requireClinicId();
+    const clauses: string[] = ["deleted_at IS NULL", "clinic_id = $1"];
+    const values: Array<number | string> = [clinicId];
 
     if (filters.invoiceId !== undefined) {
       values.push(filters.invoiceId);
@@ -90,6 +92,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
   }
 
   async findById(id: number): Promise<Payment | null> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<PaymentRow>(
       `
         SELECT
@@ -103,11 +106,11 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
           deleted_at,
           void_reason
         FROM payments
-        WHERE id = $1
+        WHERE id = $1 AND clinic_id = $2
           AND deleted_at IS NULL
         LIMIT 1
       `,
-      [id]
+      [id, clinicId]
     );
     if (result.rows.length === 0) {
       return null;
@@ -116,6 +119,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
   }
 
   async findByIdIncludingVoided(id: number): Promise<Payment | null> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<PaymentRow>(
       `
         SELECT
@@ -129,10 +133,10 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
           deleted_at,
           void_reason
         FROM payments
-        WHERE id = $1
+        WHERE id = $1 AND clinic_id = $2
         LIMIT 1
       `,
-      [id]
+      [id, clinicId]
     );
     if (result.rows.length === 0) {
       return null;
@@ -144,6 +148,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
     userId: number,
     key: string
   ): Promise<Payment | null> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<PaymentRow>(
       `
         SELECT
@@ -159,11 +164,12 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
         FROM payments
         WHERE created_by = $1
           AND idempotency_key = $2
+          AND clinic_id = $3
           AND idempotency_key_client_supplied = true
           AND deleted_at IS NULL
         LIMIT 1
       `,
-      [userId, key]
+      [userId, key, clinicId]
     );
     if (result.rows.length === 0) {
       return null;
@@ -172,9 +178,11 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
   }
 
   async create(input: PaymentCreateInput): Promise<Payment> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<PaymentRow>(
       `
         INSERT INTO payments (
+          clinic_id,
           invoice_id,
           amount,
           method,
@@ -182,7 +190,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
           idempotency_key_client_supplied,
           created_by
         )
-        VALUES ($1, $2, $3, $4, $5, $6)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING
           id,
           invoice_id,
@@ -195,6 +203,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
           void_reason
       `,
       [
+        clinicId,
         input.invoiceId,
         input.amount,
         input.method,
@@ -210,6 +219,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
     input: PaymentCreateInput,
     nextInvoiceStatus: InvoiceStatus
   ): Promise<Payment> {
+    const clinicId = requireClinicId();
     const client = await dbPool.connect();
     try {
       await client.query("BEGIN");
@@ -234,11 +244,12 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
             FROM payments
             WHERE created_by = $1
               AND idempotency_key = $2
+              AND clinic_id = $3
               AND idempotency_key_client_supplied = true
               AND deleted_at IS NULL
             LIMIT 1
           `,
-          [input.createdByUserId, input.idempotencyKey]
+          [input.createdByUserId, input.idempotencyKey, clinicId]
         );
         if (existingRes.rows.length > 0) {
           const er = existingRes.rows[0];
@@ -262,10 +273,10 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
         `
           SELECT total::numeric
           FROM invoices
-          WHERE id = $1 AND deleted_at IS NULL
+          WHERE id = $1 AND clinic_id = $2 AND deleted_at IS NULL
           FOR UPDATE
         `,
-        [input.invoiceId]
+        [input.invoiceId, clinicId]
       );
       if (inv.rows.length === 0) {
         await client.query("ROLLBACK");
@@ -307,6 +318,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
       const ins = await client.query<PaymentRow>(
         `
           INSERT INTO payments (
+            clinic_id,
             invoice_id,
             amount,
             method,
@@ -314,7 +326,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
             idempotency_key_client_supplied,
             created_by
           )
-          VALUES ($1, $2, $3, $4, $5, $6)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
           RETURNING
             id,
             invoice_id,
@@ -327,6 +339,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
             void_reason
         `,
         [
+          clinicId,
           input.invoiceId,
           input.amount,
           input.method,
@@ -340,10 +353,10 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
         `
           UPDATE invoices
           SET status = $2, updated_at = NOW()
-          WHERE id = $1 AND deleted_at IS NULL
+          WHERE id = $1 AND clinic_id = $3 AND deleted_at IS NULL
           RETURNING id
         `,
-        [input.invoiceId, nextInvoiceStatus]
+        [input.invoiceId, nextInvoiceStatus, clinicId]
       );
       if (upd.rows.length === 0) {
         await client.query("ROLLBACK");
@@ -365,6 +378,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
   }
 
   async delete(id: number, voidReason: string | null): Promise<boolean> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<{ id: number }>(
       `
         UPDATE payments
@@ -372,11 +386,11 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
           deleted_at = NOW(),
           void_reason = $2,
           updated_at = NOW()
-        WHERE id = $1
+        WHERE id = $1 AND clinic_id = $3
           AND deleted_at IS NULL
         RETURNING id
       `,
-      [id, voidReason]
+      [id, voidReason, clinicId]
     );
     return result.rows.length > 0;
   }
@@ -384,6 +398,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
   async deletePaymentUpdateInvoiceWithOptionalCash(
     input: PaymentDeleteWithInvoiceAndCashInput
   ): Promise<{ deleted: boolean }> {
+    const clinicId = requireClinicId();
     const client = await dbPool.connect();
     try {
       await client.query("BEGIN");
@@ -395,11 +410,11 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
             deleted_at = NOW(),
             void_reason = $2,
             updated_at = NOW()
-          WHERE id = $1
+          WHERE id = $1 AND clinic_id = $3
             AND deleted_at IS NULL
           RETURNING id
         `,
-        [input.paymentId, input.voidReason]
+        [input.paymentId, input.voidReason, clinicId]
       );
       if (del.rows.length === 0) {
         await client.query("ROLLBACK");
@@ -410,10 +425,10 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
         `
           UPDATE invoices
           SET status = $2, updated_at = NOW()
-          WHERE id = $1 AND deleted_at IS NULL
+          WHERE id = $1 AND clinic_id = $3 AND deleted_at IS NULL
           RETURNING id
         `,
-        [input.invoiceId, input.nextInvoiceStatus]
+        [input.invoiceId, input.nextInvoiceStatus, clinicId]
       );
       if (invUpd.rows.length === 0) {
         await client.query("ROLLBACK");
@@ -435,6 +450,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
   }
 
   async findInvoiceByIdForPayment(id: number): Promise<InvoiceForPayment | null> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<{
       id: string | number;
       appointment_id: string | number | null;
@@ -452,11 +468,12 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
         FROM invoices i
         LEFT JOIN payments p ON p.invoice_id = i.id
         WHERE i.id = $1
+          AND i.clinic_id = $2
           AND i.deleted_at IS NULL
         GROUP BY i.id, i.status, i.total
         LIMIT 1
       `,
-      [id]
+      [id, clinicId]
     );
     if (result.rows.length === 0) {
       return null;
@@ -476,19 +493,21 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
     _paidAmount: number,
     status: InvoiceStatus
   ): Promise<boolean> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<{ id: number }>(
       `
         UPDATE invoices
         SET status = $2, updated_at = NOW()
-        WHERE id = $1 AND deleted_at IS NULL
+        WHERE id = $1 AND clinic_id = $3 AND deleted_at IS NULL
         RETURNING id
       `,
-      [invoiceId, status]
+      [invoiceId, status, clinicId]
     );
     return result.rows.length > 0;
   }
 
   async applyRefund(input: PaymentRefundApplyInput): Promise<{ cashWrittenInRepo: boolean }> {
+    const clinicId = requireClinicId();
     const client = await dbPool.connect();
     try {
       await client.query("BEGIN");
@@ -504,11 +523,12 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
             refunded_amount = COALESCE(refunded_amount, 0) + $1::numeric,
             updated_at = NOW()
           WHERE id = $2
+            AND clinic_id = $3
             AND deleted_at IS NULL
             AND (amount - COALESCE(refunded_amount, 0)) >= $1::numeric
           RETURNING id, amount, refunded_amount
         `,
-        [input.refundAmount, input.paymentId]
+        [input.refundAmount, input.paymentId, clinicId]
       );
 
       if (upd.rows.length === 0) {
@@ -527,9 +547,9 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
               deleted_at = NOW(),
               void_reason = $2,
               updated_at = NOW()
-            WHERE id = $1
+            WHERE id = $1 AND clinic_id = $3
           `,
-          [input.paymentId, input.reason]
+          [input.paymentId, input.reason, clinicId]
         );
       }
 
@@ -537,10 +557,10 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
         `
           UPDATE invoices
           SET status = $1, updated_at = NOW()
-          WHERE id = $2 AND deleted_at IS NULL
+          WHERE id = $2 AND clinic_id = $3 AND deleted_at IS NULL
           RETURNING id
         `,
-        [input.newInvoiceStatus, input.invoiceId]
+        [input.newInvoiceStatus, input.invoiceId, clinicId]
       );
       if (invUpd.rows.length === 0) {
         await client.query("ROLLBACK");

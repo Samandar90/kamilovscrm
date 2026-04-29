@@ -16,6 +16,7 @@ export const verifyAccessToken = (token: string): AuthTokenPayload => {
   const payload = decoded as Partial<AuthTokenPayload>;
   if (
     typeof payload.userId !== "number" ||
+    typeof payload.clinicId !== "number" ||
     typeof payload.username !== "string" ||
     typeof payload.role !== "string"
   ) {
@@ -40,6 +41,7 @@ export const verifyAccessToken = (token: string): AuthTokenPayload => {
 
   return {
     userId: payload.userId,
+    clinicId: payload.clinicId,
     username: payload.username,
     role: payload.role as AuthTokenPayload["role"],
     ...(doctorId !== undefined ? { doctorId } : {}),

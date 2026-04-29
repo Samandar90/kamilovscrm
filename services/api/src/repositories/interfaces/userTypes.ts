@@ -9,6 +9,7 @@ export const USER_MANAGEMENT_ROLES = USER_ROLES;
 
 export type User = {
   id: number;
+  clinicId: number;
   username: string;
   /** bcrypt hash from `password_hash` */
   password: string;
@@ -60,6 +61,7 @@ export type LoginInput = {
 
 export type AuthTokenPayload = {
   userId: number;
+  clinicId: number;
   username: string;
   role: UserRole;
   /** Колонка `users.doctor_id`. После `requireAuth` доступно как `req.auth.doctorId`. */

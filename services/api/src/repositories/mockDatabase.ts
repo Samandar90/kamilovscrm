@@ -156,6 +156,7 @@ export type ExpenseRecord = {
 
 export type UserRecord = {
   id: number;
+  clinicId: number;
   username: string;
   password: string;
   fullName: string;
@@ -221,6 +222,7 @@ export const ensureMockSeedData = (): void => {
   mockDb.users = [
     {
       id: createId(),
+      clinicId: 1,
       username: "admin",
       password: hashPasswordSync("admin123"),
       fullName: "Administrator",

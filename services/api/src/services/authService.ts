@@ -178,8 +178,12 @@ export class AuthService {
   }
 
   private async buildTokenPayload(user: User): Promise<AuthTokenPayload> {
+    if (!Number.isInteger(user.clinicId) || user.clinicId <= 0) {
+      throw new ApiError(403, "User clinic is not configured");
+    }
     const base: AuthTokenPayload = {
       userId: user.id,
+      clinicId: user.clinicId,
       username: user.username,
       role: user.role,
       doctorId: user.role === "doctor" ? user.doctorId ?? null : null,

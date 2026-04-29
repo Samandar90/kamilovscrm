@@ -10,6 +10,7 @@ declare global {
     interface Request {
       auth?: AuthTokenPayload;
       user?: AuthUserPayload;
+      clinicId?: number;
     }
   }
 }
