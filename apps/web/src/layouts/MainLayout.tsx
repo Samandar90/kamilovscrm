@@ -41,6 +41,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const lockMainScroll = location.pathname === "/ai-assistant";
   const isDoctorWorkspaceScreen = location.pathname.startsWith("/doctor-workspace/");
 
+  React.useEffect(() => {
+    document.title = `${BRANDING.productName} — ${title}`;
+  }, [title]);
+
   return (
     <div className="flex h-screen min-w-0 overflow-x-hidden bg-[#f8fafc] text-[#0f172a]">
       <Sidebar />

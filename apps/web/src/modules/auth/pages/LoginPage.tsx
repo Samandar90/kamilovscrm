@@ -38,6 +38,10 @@ export const LoginPage: React.FC = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
+  React.useEffect(() => {
+    document.title = `${BRANDING.productName} — Вход`;
+  }, []);
+
   const canSubmit = Boolean(username.trim() && password.trim());
 
   const onSubmit = async (event: React.FormEvent) => {
