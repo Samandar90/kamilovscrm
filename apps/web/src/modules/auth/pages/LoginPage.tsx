@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
@@ -159,6 +159,16 @@ export const LoginPage: React.FC = () => {
             >
               {isLoading ? "Вход..." : "Войти"}
             </button>
+
+            <p className="text-center text-sm text-slate-500">
+              Нет аккаунта?{" "}
+              <Link
+                to="/register"
+                className="font-medium text-[#2563EB] transition-colors hover:text-[#1D4ED8]"
+              >
+                Зарегистрироваться
+              </Link>
+            </p>
           </form>
         </motion.div>
       </div>

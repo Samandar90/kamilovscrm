@@ -16,6 +16,7 @@ import { UsersPage } from "../modules/users/pages/UsersPage";
 import { ServicesPage } from "../modules/services/pages/ServicesPage";
 import { DoctorsPage } from "../modules/doctors/pages/DoctorsPage";
 import { LoginPage } from "../modules/auth/pages/LoginPage";
+import { RegisterPage } from "../modules/auth/pages/RegisterPage";
 import { AIAssistantPage } from "../modules/ai-assistant/pages/AIAssistantPage";
 import { DoctorWorkspacePage } from "../modules/doctor-workspace/pages/DoctorWorkspacePage";
 import { MainLayout } from "../layouts/MainLayout";
@@ -58,6 +59,14 @@ export const AppRouter: React.FC = () => {
         element={
           <GuestRoute>
             <LoginPage />
+          </GuestRoute>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <GuestRoute>
+            <RegisterPage />
           </GuestRoute>
         }
       />

@@ -18,7 +18,27 @@ export type LoginInput = {
   password: string;
 };
 
+export type OnboardingInput = {
+  clinicName: string;
+  clinicSlug: string;
+  username: string;
+  password: string;
+  fullName: string;
+};
+
 export type AuthResponse = {
   accessToken?: string;
   user?: PublicUser;
+};
+
+export type OnboardingResponse = {
+  token: string;
+  user: PublicUser;
+  clinic: {
+    id: number;
+    name: string;
+    slug: string | null;
+    logoUrl: string;
+    primaryColor: string;
+  };
 };
