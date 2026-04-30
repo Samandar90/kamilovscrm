@@ -5,7 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { Button } from "../ui/Button";
 import { cn } from "../ui/utils/cn";
 import { MobileBottomNav } from "../shared/ui/MobileBottomNav";
-import { Logo } from "../shared/ui/Logo";
+import { Logo } from "@/shared/ui/Logo";
 import { BRANDING } from "../shared/config/branding";
 
 const routeTitleMap: Record<string, string> = {
@@ -51,18 +51,16 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             isDoctorWorkspaceScreen && "hidden md:flex"
           )}
         >
-          <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
-            <div>
-              <Logo size={24} />
-            </div>
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <Logo size={24} withText={false} className="shrink-0" />
             <Link
               to="/"
-              className="hidden truncate text-sm font-semibold tracking-tight text-slate-900 transition-colors hover:text-emerald-700 md:inline"
+              className="truncate text-sm font-semibold tracking-tight text-slate-900 transition-colors hover:text-emerald-700"
             >
               {BRANDING.productName}
             </Link>
-            <span className="hidden shrink-0 text-slate-300 md:inline">/</span>
-            <h1 className="min-w-0 truncate text-xs font-medium text-slate-800 md:text-sm md:text-slate-500">
+            <span className="shrink-0 text-slate-300">/</span>
+            <h1 className="min-w-0 truncate text-sm font-medium text-slate-500">
               {title}
             </h1>
           </div>
