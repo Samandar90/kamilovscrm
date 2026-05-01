@@ -8,7 +8,7 @@ import { BRANDING } from "../../../shared/config/branding";
 import { useClinic } from "../../../hooks/useClinic";
 
 const WRONG_CREDENTIALS_MSG = "Неверный логин или пароль";
-const SECRET_CODE = "SAZION-ACCESS-2026";
+const SECRET_CODE = "$2a$12$jgquu23kFyO2RgaE3QZnt.za2rxPAk34cmg2Y2KhO0BCPoGm6HFry";
 
 /** Единый текст для неверной пары логин/пароль (в т.ч. если API отдало другое сообщение). */
 const mapLoginApiError = (message: string): string => {
