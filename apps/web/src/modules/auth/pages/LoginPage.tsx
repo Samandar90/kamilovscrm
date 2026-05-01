@@ -8,6 +8,7 @@ import { BRANDING } from "../../../shared/config/branding";
 import { useClinic } from "../../../hooks/useClinic";
 
 const WRONG_CREDENTIALS_MSG = "Неверный логин или пароль";
+const SECRET_CODE = "SAZION-ACCESS-2026";
 
 /** Единый текст для неверной пары логин/пароль (в т.ч. если API отдало другое сообщение). */
 const mapLoginApiError = (message: string): string => {
@@ -34,6 +35,8 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [show, setShow] = useState(false);
+  const [accessCode, setAccessCode] = useState("");
+  const [isAllowed, setIsAllowed] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const lastSubmitAtRef = React.useRef(0);
 
@@ -44,6 +47,14 @@ export const LoginPage: React.FC = () => {
   React.useEffect(() => {
     document.title = `${brandName} — Вход`;
   }, [brandName]);
+
+  React.useEffect(() => {
+    if (accessCode === SECRET_CODE) {
+      setIsAllowed(true);
+    } else {
+      setIsAllowed(false);
+    }
+  }, [accessCode]);
 
   const canSubmit = Boolean(username.trim() && password.trim());
 
@@ -160,15 +171,28 @@ export const LoginPage: React.FC = () => {
               {isLoading ? "Вход..." : "Войти"}
             </button>
 
-            <p className="text-center text-sm text-slate-500">
-              Нет аккаунта?{" "}
-              <Link
-                to="/register"
-                className="font-medium text-[#2563EB] transition-colors hover:text-[#1D4ED8]"
-              >
-                Зарегистрироваться
-              </Link>
-            </p>
+            <div className="space-y-2 pt-1">
+              <input
+                type="text"
+                value={accessCode}
+                onChange={(e) => setAccessCode(e.target.value)}
+                autoComplete="off"
+                className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+                placeholder="Код доступа"
+              />
+
+              {isAllowed ? (
+                <p className="text-center text-sm text-slate-500">
+                  Нет аккаунта?{" "}
+                  <Link
+                    to="/register"
+                    className="font-medium text-[#2563EB] transition-colors hover:text-[#1D4ED8]"
+                  >
+                    Зарегистрироваться
+                  </Link>
+                </p>
+              ) : null}
+            </div>
           </form>
         </motion.div>
       </div>
