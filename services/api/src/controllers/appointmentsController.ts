@@ -202,6 +202,8 @@ export const addAppointmentServiceController = async (req: Request, res: Respons
     id: assignment.id,
     appointmentId: assignment.appointmentId,
     serviceId: assignment.serviceId,
+    price: assignment.price,
+    quantity: assignment.quantity,
     createdAt: assignment.createdAt,
   });
 };
@@ -215,6 +217,8 @@ export const listAppointmentServicesController = async (req: Request, res: Respo
       id: row.id,
       appointmentId: row.appointmentId,
       serviceId: row.serviceId,
+      price: row.price,
+      quantity: row.quantity,
       createdAt: row.createdAt,
     }))
   );
@@ -247,6 +251,8 @@ export const syncAppointmentServicesController = async (req: Request, res: Respo
       id: row.id,
       appointmentId: row.appointmentId,
       serviceId: row.serviceId,
+      price: row.price,
+      quantity: row.quantity,
       createdAt: row.createdAt,
     }))
   );

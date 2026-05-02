@@ -6,12 +6,14 @@ import type {
   AppointmentBillingStatus,
   AppointmentCreateInput,
   AppointmentFilters,
+  AppointmentInvoiceLine,
   AppointmentServiceAssignment,
   AppointmentStatus,
   AppointmentUpdateInput,
 } from "./interfaces/coreTypes";
 import {
   type AppointmentRecord,
+  type AppointmentServiceRecord,
   getMockDb,
   nextId,
 } from "./mockDatabase";
@@ -40,7 +42,7 @@ const attachServices = (
         return {
           serviceId: item.serviceId,
           name: service?.name ?? `#${item.serviceId}`,
-          price: service?.price ?? 0,
+          price: item.price ?? service?.price ?? 0,
         };
       });
     return { ...row, services };
@@ -94,6 +96,18 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
       updatedAt: now,
     };
     getMockDb().appointments.push(created);
+    const catalogPrice =
+      getMockDb().services.find((item) => item.id === created.serviceId)?.price ?? 0;
+    const linePrice = created.price ?? catalogPrice;
+    getMockDb().appointmentServices.push({
+      id: nextId(),
+      appointmentId: created.id,
+      serviceId: created.serviceId,
+      price: linePrice,
+      quantity: 1,
+      createdBy: null,
+      createdAt: now,
+    });
     return toAppointment(created);
   }
 
@@ -102,6 +116,15 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
     const idx = db.appointments.findIndex((item) => item.id === id);
     if (idx < 0) return null;
     db.appointments[idx] = { ...db.appointments[idx], ...input, updatedAt: new Date().toISOString() };
+    const primary = db.appointmentServices
+      .filter((item) => item.appointmentId === id)
+      .sort((a, b) => a.id - b.id)[0];
+    if (primary) {
+      primary.serviceId = db.appointments[idx].serviceId;
+      if (db.appointments[idx].price != null) {
+        primary.price = db.appointments[idx].price ?? primary.price;
+      }
+    }
     return toAppointment(db.appointments[idx]);
   }
 
@@ -110,6 +133,12 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
     const idx = db.appointments.findIndex((item) => item.id === id);
     if (idx < 0) return null;
     db.appointments[idx] = { ...db.appointments[idx], price, updatedAt: new Date().toISOString() };
+    const primary = db.appointmentServices
+      .filter((item) => item.appointmentId === id)
+      .sort((a, b) => a.id - b.id)[0];
+    if (primary) {
+      primary.price = price;
+    }
     return toAppointment(db.appointments[idx]);
   }
 
@@ -211,15 +240,26 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
     serviceId: number,
     createdBy: number | null
   ): Promise<AppointmentServiceAssignment> {
-    const created: AppointmentServiceAssignment = {
+    const unitPrice = (await this.getServicePrice(serviceId)) ?? 0;
+    const created: AppointmentServiceRecord = {
       id: nextId(),
       appointmentId,
       serviceId,
+      price: unitPrice,
+      quantity: 1,
       createdBy,
       createdAt: new Date().toISOString(),
     };
     getMockDb().appointmentServices.push(created);
-    return created;
+    return {
+      id: created.id,
+      appointmentId: created.appointmentId,
+      serviceId: created.serviceId,
+      price: created.price,
+      quantity: created.quantity,
+      createdBy: created.createdBy,
+      createdAt: created.createdAt,
+    };
   }
 
   async deleteServiceAssignment(appointmentId: number, serviceId: number): Promise<boolean> {
@@ -239,30 +279,83 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
     createdBy: number | null
   ): Promise<AppointmentServiceAssignment[]> {
     const db = getMockDb();
+    const appt = db.appointments.find((a) => a.id === appointmentId);
+    if (!appt) {
+      return [];
+    }
+    const primaryServiceId = appt.serviceId;
+    const primaryUnit =
+      appt.price ?? (await this.getServicePrice(primaryServiceId)) ?? 0;
     const unique = Array.from(new Set(serviceIds.filter((id) => Number.isInteger(id) && id > 0)));
     db.appointmentServices = db.appointmentServices.filter(
       (item) => item.appointmentId !== appointmentId
     );
+    const now = new Date().toISOString();
+    db.appointmentServices.push({
+      id: nextId(),
+      appointmentId,
+      serviceId: primaryServiceId,
+      price: primaryUnit,
+      quantity: 1,
+      createdBy,
+      createdAt: now,
+    });
     for (const serviceId of unique) {
+      if (serviceId === primaryServiceId) continue;
+      const cat = (await this.getServicePrice(serviceId)) ?? 0;
       db.appointmentServices.push({
         id: nextId(),
         appointmentId,
         serviceId,
+        price: cat,
+        quantity: 1,
         createdBy,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
       });
     }
     return db.appointmentServices
       .filter((item) => item.appointmentId === appointmentId)
       .sort((a, b) => a.id - b.id)
-      .map((item) => ({ ...item }));
+      .map((item) => ({
+        id: item.id,
+        appointmentId: item.appointmentId,
+        serviceId: item.serviceId,
+        price: item.price,
+        quantity: item.quantity,
+        createdBy: item.createdBy,
+        createdAt: item.createdAt,
+      }));
   }
 
   async listServiceAssignments(appointmentId: number): Promise<AppointmentServiceAssignment[]> {
     return getMockDb().appointmentServices
       .filter((item) => item.appointmentId === appointmentId)
       .sort((a, b) => a.id - b.id)
-      .map((item) => ({ ...item }));
+      .map((item) => ({
+        id: item.id,
+        appointmentId: item.appointmentId,
+        serviceId: item.serviceId,
+        price: item.price,
+        quantity: item.quantity,
+        createdBy: item.createdBy,
+        createdAt: item.createdAt,
+      }));
+  }
+
+  async listAppointmentInvoiceLines(appointmentId: number): Promise<AppointmentInvoiceLine[]> {
+    const db = getMockDb();
+    return db.appointmentServices
+      .filter((item) => item.appointmentId === appointmentId)
+      .sort((a, b) => a.id - b.id)
+      .map((item) => {
+        const service = db.services.find((s) => s.id === item.serviceId);
+        return {
+          serviceId: item.serviceId,
+          serviceName: service?.name ?? `Услуга #${item.serviceId}`,
+          unitPrice: item.price,
+          quantity: item.quantity,
+        };
+      });
   }
 
   async updateBillingStatus(

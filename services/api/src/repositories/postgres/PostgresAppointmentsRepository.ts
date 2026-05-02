@@ -5,6 +5,7 @@ import type {
   AppointmentBillingStatus,
   AppointmentCreateInput,
   AppointmentFilters,
+  AppointmentInvoiceLine,
   AppointmentServiceAssignment,
   AppointmentStatus,
   AppointmentUpdateInput,
@@ -16,7 +17,7 @@ import {
   assertOptionalAppointmentTimestampForDb,
 } from "../../utils/appointmentTimestamps";
 import { normalizeToLocalDateTime } from "../../utils/localDateTime";
-import { parseNumericFromPg, parseNumericInput } from "../../utils/numbers";
+import { parseNumericFromPg, parseNumericInput, roundMoney2 } from "../../utils/numbers";
 import { requireClinicId } from "../../tenancy/clinicContext";
 
 type AppointmentRow = {
@@ -43,6 +44,8 @@ type AppointmentServiceRow = {
   id: number;
   appointment_id: number;
   service_id: number;
+  price: string | number;
+  quantity: string | number;
   created_by: number | null;
   created_at: string | Date;
 };
@@ -51,7 +54,7 @@ type AppointmentAssignedServiceWithDetailsRow = {
   appointment_id: number;
   service_id: number;
   service_name: string;
-  service_price: string | number;
+  line_price: string | number;
 };
 
 /** Любой ввод цены (JSON-строка с пробелами) → число для NUMERIC в PostgreSQL. */
@@ -67,6 +70,12 @@ const coerceAppointmentPriceForDb = (value: unknown): number | null => {
     throw new ApiError(400, "Цена не может быть отрицательной");
   }
   return Math.round(n);
+};
+
+const parseAppointmentServiceQuantity = (value: unknown): number => {
+  const n = parseNumericFromPg(value as string | number | null | undefined);
+  const q = n == null ? 1 : roundMoney2(n);
+  return q > 0 ? q : 1;
 };
 
 const mapAppointmentRow = (row: AppointmentRow): Appointment => ({
@@ -103,7 +112,7 @@ const attachAssignedServices = async (
         aps.appointment_id,
         s.id AS service_id,
         s.name AS service_name,
-        s.price AS service_price
+        aps.price AS line_price
       FROM appointment_services aps
       INNER JOIN services s ON s.id = aps.service_id
       WHERE aps.appointment_id = ANY($1::bigint[])
@@ -120,7 +129,7 @@ const attachAssignedServices = async (
     list.push({
       serviceId: Number(row.service_id),
       name: String(row.service_name),
-      price: parseNumericFromPg(row.service_price) ?? 0,
+      price: roundMoney2(parseNumericFromPg(row.line_price) ?? 0),
     });
     grouped.set(key, list);
   }
@@ -152,6 +161,58 @@ const SELECT_LIST = `
 `;
 
 export class PostgresAppointmentsRepository implements IAppointmentsRepository {
+  /**
+   * Первая строка (MIN(id)) — снимок основной услуги записи, всегда соответствует appointments.service_id и price.
+   */
+  private async syncPrimaryAppointmentServiceRow(appointmentId: number): Promise<void> {
+    const clinicId = requireClinicId();
+    const updated = await dbPool.query(
+      `
+        UPDATE appointment_services AS aps
+        SET
+          service_id = ap.service_id,
+          price = COALESCE(ap.price::numeric, 0),
+          quantity = 1
+        FROM appointments AS ap
+        WHERE ap.id = $1
+          AND ap.clinic_id = $2
+          AND ap.deleted_at IS NULL
+          AND aps.appointment_id = ap.id
+          AND aps.id = (
+            SELECT MIN(s2.id)
+            FROM appointment_services s2
+            WHERE s2.appointment_id = ap.id
+          )
+      `,
+      [appointmentId, clinicId]
+    );
+    if (updated.rowCount === 0) {
+      await dbPool.query(
+        `
+          INSERT INTO appointment_services (appointment_id, service_id, price, quantity, created_by)
+          SELECT a.id, a.service_id, COALESCE(a.price::numeric, 0), 1, NULL
+          FROM appointments a
+          WHERE a.id = $1
+            AND a.clinic_id = $2
+            AND a.deleted_at IS NULL
+        `,
+        [appointmentId, clinicId]
+      );
+    }
+  }
+
+  private mapAssignmentRow(row: AppointmentServiceRow): AppointmentServiceAssignment {
+    return {
+      id: Number(row.id),
+      appointmentId: Number(row.appointment_id),
+      serviceId: Number(row.service_id),
+      price: roundMoney2(parseNumericFromPg(row.price) ?? 0),
+      quantity: parseAppointmentServiceQuantity(row.quantity),
+      createdBy: row.created_by == null ? null : Number(row.created_by),
+      createdAt: normalizeToLocalDateTime(row.created_at),
+    };
+  }
+
   async findAll(filters: AppointmentFilters = {}): Promise<Appointment[]> {
     const clinicId = requireClinicId();
     const whereClauses: string[] = ["deleted_at IS NULL", "clinic_id = $1"];
@@ -278,7 +339,16 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
         data.notes ?? null,
       ]
     );
-    return mapAppointmentRow(result.rows[0]);
+    const mapped = mapAppointmentRow(result.rows[0]);
+    const primaryPrice = mapped.price == null ? 0 : roundMoney2(mapped.price);
+    await dbPool.query(
+      `
+        INSERT INTO appointment_services (appointment_id, service_id, price, quantity, created_by)
+        VALUES ($1, $2, $3, 1, NULL)
+      `,
+      [mapped.id, mapped.serviceId, primaryPrice]
+    );
+    return mapped;
   }
 
   async update(id: number, data: AppointmentUpdateInput): Promise<Appointment | null> {
@@ -375,6 +445,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     if (result.rows.length === 0) {
       return null;
     }
+    await this.syncPrimaryAppointmentServiceRow(id);
     return mapAppointmentRow(result.rows[0]);
   }
 
@@ -394,6 +465,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     if (result.rows.length === 0) {
       return null;
     }
+    await this.syncPrimaryAppointmentServiceRow(id);
     return mapAppointmentRow(result.rows[0]);
   }
 
@@ -668,25 +740,24 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     createdBy: number | null
   ): Promise<AppointmentServiceAssignment> {
     const clinicId = requireClinicId();
+    const catalog = await this.getServicePrice(serviceId);
+    const unitPrice = roundMoney2(catalog ?? 0);
     const result = await dbPool.query<AppointmentServiceRow>(
       `
-        INSERT INTO appointment_services (appointment_id, service_id, created_by)
-        SELECT $1, $2, $3
+        INSERT INTO appointment_services (appointment_id, service_id, price, quantity, created_by)
+        SELECT $1, $2, $3, 1, $4
         WHERE EXISTS (
-          SELECT 1 FROM appointments a WHERE a.id = $1 AND a.clinic_id = $4
+          SELECT 1 FROM appointments a WHERE a.id = $1 AND a.clinic_id = $5
         )
-        RETURNING id, appointment_id, service_id, created_by, created_at
+        RETURNING id, appointment_id, service_id, price, quantity, created_by, created_at
       `,
-      [appointmentId, serviceId, createdBy, clinicId]
+      [appointmentId, serviceId, unitPrice, createdBy, clinicId]
     );
     const row = result.rows[0];
-    return {
-      id: Number(row.id),
-      appointmentId: Number(row.appointment_id),
-      serviceId: Number(row.service_id),
-      createdBy: row.created_by == null ? null : Number(row.created_by),
-      createdAt: normalizeToLocalDateTime(row.created_at),
-    };
+    if (!row) {
+      throw new ApiError(404, "Appointment not found");
+    }
+    return this.mapAssignmentRow(row);
   }
 
   async deleteServiceAssignment(appointmentId: number, serviceId: number): Promise<boolean> {
@@ -713,9 +784,29 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     createdBy: number | null
   ): Promise<AppointmentServiceAssignment[]> {
     const clinicId = requireClinicId();
+    const apResult = await dbPool.query<{ service_id: number; price: string | number | null }>(
+      `
+        SELECT service_id, price
+        FROM appointments
+        WHERE id = $1 AND clinic_id = $2 AND deleted_at IS NULL
+        LIMIT 1
+      `,
+      [appointmentId, clinicId]
+    );
+    if (apResult.rows.length === 0) {
+      throw new ApiError(404, "Appointment not found");
+    }
+    const primaryServiceId = Number(apResult.rows[0].service_id);
+    const appointmentPriceSnapshot = parseNumericFromPg(apResult.rows[0].price);
+    const primaryUnitPrice =
+      appointmentPriceSnapshot != null
+        ? roundMoney2(appointmentPriceSnapshot)
+        : roundMoney2((await this.getServicePrice(primaryServiceId)) ?? 0);
+
     const uniqueServiceIds = Array.from(
       new Set(serviceIds.filter((id) => Number.isInteger(id) && id > 0))
     );
+
     const client = await dbPool.connect();
     try {
       await client.query("BEGIN");
@@ -727,19 +818,38 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
         `,
         [appointmentId, clinicId]
       );
+
+      const insertedPrimary = await client.query(
+        `
+          INSERT INTO appointment_services (appointment_id, service_id, price, quantity, created_by)
+          SELECT $1, $2, $3, 1, $4
+          WHERE EXISTS (SELECT 1 FROM appointments a WHERE a.id = $1 AND a.clinic_id = $5)
+        `,
+        [appointmentId, primaryServiceId, primaryUnitPrice, createdBy, clinicId]
+      );
+      if (insertedPrimary.rowCount === 0) {
+        throw new ApiError(404, "Appointment not found");
+      }
+
       for (const serviceId of uniqueServiceIds) {
+        if (serviceId === primaryServiceId) continue;
+        const catalog = await this.getServicePrice(serviceId);
+        if (catalog == null) {
+          throw new ApiError(404, `Service ${serviceId} not found`);
+        }
         await client.query(
           `
-            INSERT INTO appointment_services (appointment_id, service_id, created_by)
-            SELECT $1, $2, $3
-            WHERE EXISTS (SELECT 1 FROM appointments a WHERE a.id = $1 AND a.clinic_id = $4)
+            INSERT INTO appointment_services (appointment_id, service_id, price, quantity, created_by)
+            SELECT $1, $2, $3, 1, $4
+            WHERE EXISTS (SELECT 1 FROM appointments a WHERE a.id = $1 AND a.clinic_id = $5)
           `,
-          [appointmentId, serviceId, createdBy, clinicId]
+          [appointmentId, serviceId, roundMoney2(catalog), createdBy, clinicId]
         );
       }
+
       const result = await client.query<AppointmentServiceRow>(
         `
-          SELECT id, appointment_id, service_id, created_by, created_at
+          SELECT id, appointment_id, service_id, price, quantity, created_by, created_at
           FROM appointment_services
           WHERE appointment_id = $1
             AND EXISTS (SELECT 1 FROM appointments a WHERE a.id = $1 AND a.clinic_id = $2)
@@ -748,13 +858,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
         [appointmentId, clinicId]
       );
       await client.query("COMMIT");
-      return result.rows.map((row) => ({
-        id: Number(row.id),
-        appointmentId: Number(row.appointment_id),
-        serviceId: Number(row.service_id),
-        createdBy: row.created_by == null ? null : Number(row.created_by),
-        createdAt: normalizeToLocalDateTime(row.created_at),
-      }));
+      return result.rows.map((row) => this.mapAssignmentRow(row));
     } catch (error) {
       try {
         await client.query("ROLLBACK");
@@ -771,7 +875,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     const clinicId = requireClinicId();
     const result = await dbPool.query<AppointmentServiceRow>(
       `
-        SELECT id, appointment_id, service_id, created_by, created_at
+        SELECT id, appointment_id, service_id, price, quantity, created_by, created_at
         FROM appointment_services
         WHERE appointment_id = $1
           AND EXISTS (SELECT 1 FROM appointments a WHERE a.id = $1 AND a.clinic_id = $2)
@@ -779,12 +883,38 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       `,
       [appointmentId, clinicId]
     );
+    return result.rows.map((row) => this.mapAssignmentRow(row));
+  }
+
+  async listAppointmentInvoiceLines(appointmentId: number): Promise<AppointmentInvoiceLine[]> {
+    const clinicId = requireClinicId();
+    const result = await dbPool.query<{
+      service_id: number;
+      service_name: string;
+      price: string | number;
+      quantity: string | number;
+    }>(
+      `
+        SELECT aps.service_id, s.name AS service_name, aps.price, aps.quantity
+        FROM appointment_services aps
+        INNER JOIN services s ON s.id = aps.service_id AND s.clinic_id = $2
+        WHERE aps.appointment_id = $1
+          AND EXISTS (
+            SELECT 1
+            FROM appointments a
+            WHERE a.id = $1
+              AND a.clinic_id = $2
+              AND a.deleted_at IS NULL
+          )
+        ORDER BY aps.id ASC
+      `,
+      [appointmentId, clinicId]
+    );
     return result.rows.map((row) => ({
-      id: Number(row.id),
-      appointmentId: Number(row.appointment_id),
       serviceId: Number(row.service_id),
-      createdBy: row.created_by == null ? null : Number(row.created_by),
-      createdAt: normalizeToLocalDateTime(row.created_at),
+      serviceName: String(row.service_name),
+      unitPrice: roundMoney2(parseNumericFromPg(row.price) ?? 0),
+      quantity: parseAppointmentServiceQuantity(row.quantity),
     }));
   }
 

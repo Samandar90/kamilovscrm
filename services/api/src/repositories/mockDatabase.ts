@@ -76,6 +76,8 @@ export type AppointmentServiceRecord = {
   id: number;
   appointmentId: number;
   serviceId: number;
+  price: number;
+  quantity: number;
   createdBy: number | null;
   createdAt: string;
 };

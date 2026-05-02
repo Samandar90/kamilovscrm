@@ -3,6 +3,7 @@ import type {
   AppointmentBillingStatus,
   AppointmentCreateInput,
   AppointmentFilters,
+  AppointmentInvoiceLine,
   AppointmentServiceAssignment,
   AppointmentUpdateInput,
 } from "./coreTypes";
@@ -45,6 +46,8 @@ export interface IAppointmentsRepository {
     createdBy: number | null
   ): Promise<AppointmentServiceAssignment[]>;
   listServiceAssignments(appointmentId: number): Promise<AppointmentServiceAssignment[]>;
+  /** Позиции счёта: цены и количества из appointment_services (не из каталога). */
+  listAppointmentInvoiceLines(appointmentId: number): Promise<AppointmentInvoiceLine[]>;
   updateBillingStatus(
     appointmentId: number,
     billingStatus: AppointmentBillingStatus

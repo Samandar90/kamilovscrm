@@ -155,8 +155,19 @@ export type AppointmentServiceAssignment = {
   id: number;
   appointmentId: number;
   serviceId: number;
+  /** Снимок цены на момент сохранения (для счёта и UI). */
+  price: number;
+  quantity: number;
   createdBy: number | null;
   createdAt: string;
+};
+
+/** Строки для выставления счёта: только данные из appointment_services + название услуги. */
+export type AppointmentInvoiceLine = {
+  serviceId: number;
+  serviceName: string;
+  unitPrice: number;
+  quantity: number;
 };
 
 export type AppointmentServiceAssignedSummary = {

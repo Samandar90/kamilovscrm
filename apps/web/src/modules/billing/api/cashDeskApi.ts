@@ -117,6 +117,9 @@ export type AppointmentAssignedService = {
   id: number;
   appointmentId: number;
   serviceId: number;
+  price: number;
+  quantity: number;
+  createdAt: string;
 };
 
 export const cashDeskApi = {
