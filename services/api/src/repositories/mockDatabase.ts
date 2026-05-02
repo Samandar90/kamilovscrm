@@ -109,6 +109,7 @@ export type InvoiceItemRecord = {
 
 export type PaymentRecord = {
   id: number;
+  clinicId?: number;
   invoiceId: number;
   amount: number;
   refundedAmount: number;

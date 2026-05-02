@@ -62,7 +62,12 @@ export const getPaymentByIdController = async (req: Request, res: Response) => {
 
 export const createPaymentController = async (req: Request, res: Response) => {
   const auth = getAuthPayload(req);
-  const created = await services.payments.create(auth, req.body);
+  const rawClinicId = req.clinicId;
+  if (rawClinicId === undefined || !Number.isInteger(rawClinicId) || rawClinicId <= 0) {
+    throw new ApiError(401, "Clinic context is missing");
+  }
+  const clinicId: number = rawClinicId;
+  const created = await services.payments.create(auth, req.body, clinicId);
   return res.status(201).json(created);
 };
 

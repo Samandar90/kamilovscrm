@@ -81,6 +81,7 @@ export class MockPaymentsRepository implements IPaymentsRepository {
     const now = new Date().toISOString();
     const created: PaymentRecord = {
       id: nextId(),
+      clinicId: input.clinicId,
       invoiceId: input.invoiceId,
       amount: input.amount,
       refundedAmount: 0,

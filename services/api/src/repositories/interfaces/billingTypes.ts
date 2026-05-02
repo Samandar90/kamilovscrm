@@ -90,6 +90,8 @@ export type PaymentFilters = {
 };
 
 export type PaymentCreateInput = {
+  /** Клиника из JWT / req.clinicId — обязательна для INSERT (payments.clinic_id NOT NULL). */
+  clinicId: number;
   invoiceId: number;
   amount: number;
   method: PaymentMethod;

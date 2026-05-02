@@ -80,7 +80,18 @@ export class PaymentsService {
     return this.paymentsRepository.findById(id);
   }
 
-  async create(_auth: AuthTokenPayload, payload: CreatePaymentPayload): Promise<Payment> {
+  async create(
+    _auth: AuthTokenPayload,
+    payload: CreatePaymentPayload,
+    clinicId: number
+  ): Promise<Payment> {
+    if (!Number.isInteger(clinicId) || clinicId <= 0) {
+      throw new ApiError(401, "Clinic context is missing");
+    }
+    if (clinicId !== _auth.clinicId) {
+      throw new ApiError(403, "Clinic mismatch");
+    }
+
     const amount = roundMoney(payload.amount);
     if (amount <= 0) {
       throw new ApiError(400, "Сумма оплаты должна быть больше нуля");
@@ -160,6 +171,7 @@ export class PaymentsService {
     }
 
     const paymentInput: PaymentCreateInput = {
+      clinicId,
       invoiceId: payload.invoiceId,
       amount,
       method: payload.method,

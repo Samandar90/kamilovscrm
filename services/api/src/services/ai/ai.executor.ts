@@ -38,7 +38,8 @@ export type AIExecutorDependencies = {
   paymentsService: {
     create: (
       auth: AuthTokenPayload,
-      payload: { invoiceId: number; amount: number; method: "cash" | "card" }
+      payload: { invoiceId: number; amount: number; method: "cash" | "card" },
+      clinicId: number
     ) => Promise<{ id: number; amount: number }>;
   };
   cashRegisterService: {
@@ -93,11 +94,15 @@ export class AIExecutorService {
     }
 
     if (action.type === "CREATE_PAYMENT") {
-      const payment = await this.deps.paymentsService.create(auth, {
-        invoiceId: action.payload.invoiceId,
-        amount: action.payload.amount,
-        method: action.payload.method,
-      });
+      const payment = await this.deps.paymentsService.create(
+        auth,
+        {
+          invoiceId: action.payload.invoiceId,
+          amount: action.payload.amount,
+          method: action.payload.method,
+        },
+        auth.clinicId
+      );
       return `✔ Оплата проведена: ${formatSum(payment.amount)}`;
     }
 

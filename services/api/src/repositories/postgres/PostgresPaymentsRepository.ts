@@ -12,7 +12,19 @@ import { normalizePaymentMethod } from "../interfaces/billingTypes";
 import { dbPool } from "../../config/database";
 import { ApiError } from "../../middleware/errorHandler";
 import { parseMoneyColumn } from "../../utils/numbers";
-import { requireClinicId } from "../../tenancy/clinicContext";
+import { getClinicId, requireClinicId } from "../../tenancy/clinicContext";
+
+const resolvePaymentClinicId = (input: PaymentCreateInput): number => {
+  const clinicId = input.clinicId;
+  if (!Number.isInteger(clinicId) || clinicId <= 0) {
+    throw new ApiError(400, "clinicId is required");
+  }
+  const ctx = getClinicId();
+  if (ctx != null && ctx !== clinicId) {
+    throw new ApiError(403, "Clinic mismatch");
+  }
+  return clinicId;
+};
 
 type PaymentRow = {
   id: string | number;
@@ -178,7 +190,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
   }
 
   async create(input: PaymentCreateInput): Promise<Payment> {
-    const clinicId = requireClinicId();
+    const clinicId = resolvePaymentClinicId(input);
     const result = await dbPool.query<PaymentRow>(
       `
         INSERT INTO payments (
@@ -219,7 +231,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
     input: PaymentCreateInput,
     nextInvoiceStatus: InvoiceStatus
   ): Promise<Payment> {
-    const clinicId = requireClinicId();
+    const clinicId = resolvePaymentClinicId(input);
     const client = await dbPool.connect();
     try {
       await client.query("BEGIN");
