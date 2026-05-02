@@ -145,6 +145,7 @@ export class MockCashRegisterRepository implements ICashRegisterRepository {
   ): Promise<CashRegisterEntry> {
     const created = {
       id: nextId(),
+      clinicId: input.clinicId,
       shiftId: input.shiftId,
       paymentId: input.paymentId ?? null,
       type: input.type,

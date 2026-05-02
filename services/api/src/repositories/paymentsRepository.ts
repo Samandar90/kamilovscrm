@@ -5,6 +5,7 @@ import {
   type InvoiceForPayment,
   type InvoiceStatus,
   type Payment,
+  type PaymentCreateAtomicExtras,
   type PaymentCreateInput,
   type PaymentDeleteWithInvoiceAndCashInput,
   type PaymentFilters,
@@ -100,7 +101,8 @@ export class MockPaymentsRepository implements IPaymentsRepository {
 
   async createPaymentAndUpdateInvoice(
     input: PaymentCreateInput,
-    nextInvoiceStatus: InvoiceStatus
+    nextInvoiceStatus: InvoiceStatus,
+    atomicExtras?: PaymentCreateAtomicExtras
   ): Promise<Payment> {
     const roundMoney = (value: number): number =>
       Math.round((value + Number.EPSILON) * 100) / 100;
@@ -141,6 +143,36 @@ export class MockPaymentsRepository implements IPaymentsRepository {
     const payment = await this.create(input);
     const newPaid = roundMoney(paidSoFar + input.amount);
     await this.updateInvoicePaymentState(input.invoiceId, newPaid, nextInvoiceStatus);
+
+    if (atomicExtras) {
+      getMockDb().cashRegisterEntries.push({
+        id: nextId(),
+        clinicId: input.clinicId,
+        shiftId: atomicExtras.shiftId,
+        paymentId: payment.id,
+        type: "payment",
+        amount: atomicExtras.cashAmount,
+        method: atomicExtras.cashMethod,
+        note: atomicExtras.cashNote ?? null,
+        createdAt: new Date().toISOString(),
+      });
+      if (
+        atomicExtras.appointmentId != null &&
+        atomicExtras.appointmentBillingStatus != null
+      ) {
+        const db = getMockDb();
+        const aptIdx = db.appointments.findIndex((a) => a.id === atomicExtras.appointmentId);
+        if (aptIdx < 0) {
+          throw new ApiError(404, "Приём не найден");
+        }
+        db.appointments[aptIdx] = {
+          ...db.appointments[aptIdx],
+          billingStatus: atomicExtras.appointmentBillingStatus,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+    }
+
     return payment;
   }
 

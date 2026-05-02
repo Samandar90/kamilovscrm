@@ -3,6 +3,7 @@ import type {
   InvoiceForPayment,
   InvoiceStatus,
   Payment,
+  PaymentCreateAtomicExtras,
   PaymentCreateInput,
   PaymentDeleteWithInvoiceAndCashInput,
   PaymentFilters,
@@ -229,7 +230,8 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
 
   async createPaymentAndUpdateInvoice(
     input: PaymentCreateInput,
-    nextInvoiceStatus: InvoiceStatus
+    nextInvoiceStatus: InvoiceStatus,
+    atomicExtras?: PaymentCreateAtomicExtras
   ): Promise<Payment> {
     const clinicId = resolvePaymentClinicId(input);
     const client = await dbPool.connect();
@@ -310,9 +312,9 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
               0
             )::numeric AS s
           FROM payments p
-          WHERE p.invoice_id = $1
+          WHERE p.invoice_id = $1 AND p.clinic_id = $2
         `,
-        [input.invoiceId]
+        [input.invoiceId, clinicId]
       );
       const paidSoFar = num(paidRes.rows[0]?.s ?? 0);
       const remaining = Math.round((total - paidSoFar + Number.EPSILON) * 100) / 100;
@@ -375,8 +377,72 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
         throw new ApiError(404, "Счёт не найден");
       }
 
+      const paymentRow = ins.rows[0];
+
+      if (atomicExtras) {
+        const shiftCheck = await client.query<{ id: number }>(
+          `
+            SELECT id
+            FROM cash_register_shifts
+            WHERE id = $1 AND closed_at IS NULL
+            FOR UPDATE
+          `,
+          [atomicExtras.shiftId]
+        );
+        if (shiftCheck.rows.length === 0) {
+          await client.query("ROLLBACK");
+          throw new ApiError(409, "Сначала откройте кассовую смену");
+        }
+
+        await client.query(
+          `
+            INSERT INTO cash_register_entries (
+              clinic_id,
+              shift_id,
+              payment_id,
+              type,
+              amount,
+              method,
+              note
+            )
+            VALUES ($1, $2, $3, 'payment', $4, $5, $6)
+          `,
+          [
+            clinicId,
+            atomicExtras.shiftId,
+            Number(paymentRow.id),
+            atomicExtras.cashAmount,
+            atomicExtras.cashMethod,
+            atomicExtras.cashNote ?? null,
+          ]
+        );
+
+        if (
+          atomicExtras.appointmentId != null &&
+          atomicExtras.appointmentBillingStatus != null
+        ) {
+          const aptUpd = await client.query<{ id: number }>(
+            `
+              UPDATE appointments
+              SET billing_status = $1, updated_at = NOW()
+              WHERE id = $2 AND clinic_id = $3 AND deleted_at IS NULL
+              RETURNING id
+            `,
+            [
+              atomicExtras.appointmentBillingStatus,
+              atomicExtras.appointmentId,
+              clinicId,
+            ]
+          );
+          if (aptUpd.rows.length === 0) {
+            await client.query("ROLLBACK");
+            throw new ApiError(404, "Приём не найден");
+          }
+        }
+      }
+
       await client.query("COMMIT");
-      return mapPayment(ins.rows[0]);
+      return mapPayment(paymentRow);
     } catch (err) {
       try {
         await client.query("ROLLBACK");
@@ -520,6 +586,9 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
 
   async applyRefund(input: PaymentRefundApplyInput): Promise<{ cashWrittenInRepo: boolean }> {
     const clinicId = requireClinicId();
+    if (!Number.isInteger(input.clinicId) || input.clinicId !== clinicId) {
+      throw new ApiError(403, "Clinic mismatch");
+    }
     const client = await dbPool.connect();
     try {
       await client.query("BEGIN");
@@ -582,6 +651,7 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
       await client.query(
         `
           INSERT INTO cash_register_entries (
+            clinic_id,
             shift_id,
             payment_id,
             type,
@@ -589,9 +659,10 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
             method,
             note
           )
-          VALUES ($1, $2, 'refund', $3, $4, $5)
+          VALUES ($1, $2, $3, 'refund', $4, $5, $6)
         `,
         [
+          input.clinicId,
           input.shiftId,
           input.paymentId,
           input.refundAmount,

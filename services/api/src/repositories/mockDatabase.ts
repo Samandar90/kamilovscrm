@@ -138,6 +138,7 @@ export type CashRegisterShiftRecord = {
 
 export type CashRegisterEntryRecord = {
   id: number;
+  clinicId: number;
   shiftId: number;
   paymentId: number | null;
   type: CashEntryType;

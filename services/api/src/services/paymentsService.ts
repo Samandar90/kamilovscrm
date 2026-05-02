@@ -186,26 +186,25 @@ export class PaymentsService {
       newPaidAmount
     );
 
+    const appointmentBilling =
+      invoice.appointmentId != null
+        ? nextStatus === "paid"
+          ? ("paid" as const)
+          : ("ready_for_payment" as const)
+        : null;
+
     const createdPayment = await this.paymentsRepository.createPaymentAndUpdateInvoice(
       paymentInput,
-      nextStatus
+      nextStatus,
+      {
+        shiftId: activeShift.id,
+        cashAmount: amount,
+        cashMethod: payload.method,
+        cashNote: `Оплата по счёту #${invoice.id}`,
+        appointmentId: invoice.appointmentId,
+        appointmentBillingStatus: appointmentBilling,
+      }
     );
-    if (invoice.appointmentId) {
-      const targetBilling = nextStatus === "paid" ? "paid" : "ready_for_payment";
-      await this.appointmentsRepository.updateBillingStatus(
-        invoice.appointmentId,
-        targetBilling
-      );
-    }
-
-    await this.cashRegisterRepository.createCashRegisterEntry({
-      shiftId: activeShift.id,
-      paymentId: createdPayment.id,
-      type: "payment",
-      amount,
-      method: payload.method,
-      note: `Оплата по счёту #${invoice.id}`,
-    });
 
     invalidateClinicFactsCache();
     return createdPayment;
@@ -290,6 +289,7 @@ export class PaymentsService {
     const cashNote = `Возврат по оплате #${payment.id}: ${reason}`;
 
     const { cashWrittenInRepo } = await this.paymentsRepository.applyRefund({
+      clinicId: _auth.clinicId,
       paymentId: payment.id,
       refundAmount,
       reason,
@@ -302,6 +302,7 @@ export class PaymentsService {
 
     if (!cashWrittenInRepo) {
       await this.cashRegisterRepository.createCashRegisterEntry({
+        clinicId: _auth.clinicId,
         shiftId: activeShift.id,
         paymentId: payment.id,
         type: "refund",
@@ -373,6 +374,7 @@ export class PaymentsService {
       const activeShift = await this.cashRegisterRepository.findActiveShift();
       if (activeShift) {
         await this.cashRegisterRepository.createCashRegisterEntry({
+          clinicId: _auth.clinicId,
           shiftId: activeShift.id,
           paymentId: id,
           type: "void",

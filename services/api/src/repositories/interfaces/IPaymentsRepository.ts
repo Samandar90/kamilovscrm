@@ -2,6 +2,7 @@ import type {
   InvoiceForPayment,
   InvoiceStatus,
   Payment,
+  PaymentCreateAtomicExtras,
   PaymentCreateInput,
   PaymentDeleteWithInvoiceAndCashInput,
   PaymentFilters,
@@ -28,7 +29,8 @@ export interface IPaymentsRepository {
    */
   createPaymentAndUpdateInvoice(
     input: PaymentCreateInput,
-    nextInvoiceStatus: InvoiceStatus
+    nextInvoiceStatus: InvoiceStatus,
+    atomicExtras?: PaymentCreateAtomicExtras
   ): Promise<Payment>;
   delete(id: number, voidReason: string | null): Promise<boolean>;
   /**

@@ -14,6 +14,8 @@ import { normalizePaymentMethod } from "../interfaces/billingTypes";
 import { dbPool } from "../../config/database";
 import { env } from "../../config/env";
 import { parseMoneyColumn } from "../../utils/numbers";
+import { requireClinicId } from "../../tenancy/clinicContext";
+import { ApiError } from "../../middleware/errorHandler";
 
 type ShiftRow = {
   id: string | number;
@@ -349,9 +351,14 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
   }
 
   async createCashRegisterEntry(input: CreateCashRegisterEntryInput): Promise<CashRegisterEntry> {
+    const clinicId = requireClinicId();
+    if (!Number.isInteger(input.clinicId) || input.clinicId !== clinicId) {
+      throw new ApiError(403, "Clinic mismatch");
+    }
     const result = await dbPool.query<EntryRow>(
       `
         INSERT INTO cash_register_entries (
+          clinic_id,
           shift_id,
           payment_id,
           type,
@@ -359,7 +366,7 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
           method,
           note
         )
-        VALUES ($1, $2, $3, $4, $5, $6)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING
           id,
           shift_id,
@@ -371,6 +378,7 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
           created_at
       `,
       [
+        clinicId,
         input.shiftId,
         input.paymentId ?? null,
         input.type,

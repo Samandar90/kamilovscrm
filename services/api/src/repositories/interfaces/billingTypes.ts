@@ -1,3 +1,5 @@
+import type { AppointmentBillingStatus } from "./coreTypes";
+
 export const INVOICE_STATUSES = [
   "draft",
   "issued",
@@ -105,8 +107,22 @@ export type PaymentCreateInput = {
   createdByUserId: number;
 };
 
+/**
+ * Запись кассы и billing_status приёма — в той же транзакции, что платёж + счёт (Postgres).
+ * Если не передано — поведение как раньше (только платёж + статус счёта).
+ */
+export type PaymentCreateAtomicExtras = {
+  shiftId: number;
+  cashAmount: number;
+  cashMethod: PaymentMethod;
+  cashNote: string;
+  appointmentId: number | null;
+  appointmentBillingStatus: AppointmentBillingStatus | null;
+};
+
 /** Атомарное применение возврата (Postgres: включая кассу в одной транзакции). */
 export type PaymentRefundApplyInput = {
+  clinicId: number;
   paymentId: number;
   refundAmount: number;
   reason: string;
@@ -217,6 +233,7 @@ export type FindEntriesFilters = {
 };
 
 export type CreateCashRegisterEntryInput = {
+  clinicId: number;
   shiftId: number;
   paymentId?: number | null;
   type: CashEntryType;
