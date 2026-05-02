@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS cash_register_entries (
   amount NUMERIC(12,2) NOT NULL CHECK (amount >= 0),
   method TEXT NOT NULL CHECK (method IN ('cash', 'card')),
   note TEXT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  clinic_id BIGINT NOT NULL
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_cash_register_single_active_shift

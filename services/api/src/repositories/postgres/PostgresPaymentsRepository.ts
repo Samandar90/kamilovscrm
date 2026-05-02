@@ -326,7 +326,15 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
       }
       if (payAmount > remaining + 1e-6) {
         await client.query("ROLLBACK");
-        throw new ApiError(409, "Сумма оплаты превышает остаток");
+        throw new ApiError(400, "Сумма оплаты больше остатка");
+      }
+
+      if (!atomicExtras) {
+        await client.query("ROLLBACK");
+        throw new ApiError(
+          500,
+          "Внутренняя ошибка: оплата счёта требует параметров кассовой операции"
+        );
       }
 
       const ins = await client.query<PaymentRow>(
@@ -363,6 +371,69 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
         ]
       );
 
+      const paymentRow = ins.rows[0];
+      const paymentId = Number(paymentRow.id);
+
+      const shiftCheck = await client.query<{ id: number }>(
+        `
+          SELECT id
+          FROM cash_register_shifts
+          WHERE id = $1 AND closed_at IS NULL
+          FOR UPDATE
+        `,
+        [atomicExtras.shiftId]
+      );
+      if (shiftCheck.rows.length === 0) {
+        await client.query("ROLLBACK");
+        throw new ApiError(409, "Сначала откройте кассовую смену");
+      }
+
+      await client.query(
+        `
+          INSERT INTO cash_register_entries (
+            shift_id,
+            payment_id,
+            type,
+            amount,
+            method,
+            note,
+            clinic_id
+          )
+          VALUES ($1, $2, 'payment', $3, $4, $5, $6)
+        `,
+        [
+          atomicExtras.shiftId,
+          paymentId,
+          atomicExtras.cashAmount,
+          atomicExtras.cashMethod,
+          atomicExtras.cashNote ?? null,
+          clinicId,
+        ]
+      );
+
+      if (
+        atomicExtras.appointmentId != null &&
+        atomicExtras.appointmentBillingStatus != null
+      ) {
+        const aptUpd = await client.query<{ id: number }>(
+          `
+            UPDATE appointments
+            SET billing_status = $1, updated_at = NOW()
+            WHERE id = $2 AND clinic_id = $3 AND deleted_at IS NULL
+            RETURNING id
+          `,
+          [
+            atomicExtras.appointmentBillingStatus,
+            atomicExtras.appointmentId,
+            clinicId,
+          ]
+        );
+        if (aptUpd.rows.length === 0) {
+          await client.query("ROLLBACK");
+          throw new ApiError(404, "Приём не найден");
+        }
+      }
+
       const upd = await client.query<{ id: number }>(
         `
           UPDATE invoices
@@ -375,70 +446,6 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
       if (upd.rows.length === 0) {
         await client.query("ROLLBACK");
         throw new ApiError(404, "Счёт не найден");
-      }
-
-      const paymentRow = ins.rows[0];
-
-      if (atomicExtras) {
-        const shiftCheck = await client.query<{ id: number }>(
-          `
-            SELECT id
-            FROM cash_register_shifts
-            WHERE id = $1 AND closed_at IS NULL
-            FOR UPDATE
-          `,
-          [atomicExtras.shiftId]
-        );
-        if (shiftCheck.rows.length === 0) {
-          await client.query("ROLLBACK");
-          throw new ApiError(409, "Сначала откройте кассовую смену");
-        }
-
-        await client.query(
-          `
-            INSERT INTO cash_register_entries (
-              clinic_id,
-              shift_id,
-              payment_id,
-              type,
-              amount,
-              method,
-              note
-            )
-            VALUES ($1, $2, $3, 'payment', $4, $5, $6)
-          `,
-          [
-            clinicId,
-            atomicExtras.shiftId,
-            Number(paymentRow.id),
-            atomicExtras.cashAmount,
-            atomicExtras.cashMethod,
-            atomicExtras.cashNote ?? null,
-          ]
-        );
-
-        if (
-          atomicExtras.appointmentId != null &&
-          atomicExtras.appointmentBillingStatus != null
-        ) {
-          const aptUpd = await client.query<{ id: number }>(
-            `
-              UPDATE appointments
-              SET billing_status = $1, updated_at = NOW()
-              WHERE id = $2 AND clinic_id = $3 AND deleted_at IS NULL
-              RETURNING id
-            `,
-            [
-              atomicExtras.appointmentBillingStatus,
-              atomicExtras.appointmentId,
-              clinicId,
-            ]
-          );
-          if (aptUpd.rows.length === 0) {
-            await client.query("ROLLBACK");
-            throw new ApiError(404, "Приём не найден");
-          }
-        }
       }
 
       await client.query("COMMIT");
@@ -651,23 +658,23 @@ export class PostgresPaymentsRepository implements IPaymentsRepository {
       await client.query(
         `
           INSERT INTO cash_register_entries (
-            clinic_id,
             shift_id,
             payment_id,
             type,
             amount,
             method,
-            note
+            note,
+            clinic_id
           )
-          VALUES ($1, $2, $3, 'refund', $4, $5, $6)
+          VALUES ($1, $2, 'refund', $3, $4, $5, $6)
         `,
         [
-          input.clinicId,
           input.shiftId,
           input.paymentId,
           input.refundAmount,
           input.method,
           input.cashNote,
+          input.clinicId,
         ]
       );
 

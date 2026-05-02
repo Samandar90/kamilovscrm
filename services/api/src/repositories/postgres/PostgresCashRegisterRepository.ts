@@ -358,13 +358,13 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
     const result = await dbPool.query<EntryRow>(
       `
         INSERT INTO cash_register_entries (
-          clinic_id,
           shift_id,
           payment_id,
           type,
           amount,
           method,
-          note
+          note,
+          clinic_id
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING
@@ -378,13 +378,13 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
           created_at
       `,
       [
-        clinicId,
         input.shiftId,
         input.paymentId ?? null,
         input.type,
         input.amount,
         input.method,
         input.note ?? null,
+        clinicId,
       ]
     );
     return mapEntry(result.rows[0]);

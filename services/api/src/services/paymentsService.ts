@@ -167,7 +167,7 @@ export class PaymentsService {
     }
 
     if (amount > remaining) {
-      throw new ApiError(409, "Сумма оплаты превышает остаток");
+      throw new ApiError(400, "Сумма оплаты больше остатка");
     }
 
     const paymentInput: PaymentCreateInput = {
