@@ -49,7 +49,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
   },
 
   doctor: {
-    patients: ["read"],
+    patients: ["read", "create"],
     doctors: ["read"],
     services: ["read"],
     appointments: ["read", "update"],
@@ -57,7 +57,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
   },
 
   nurse: {
-    patients: ["read"],
+    patients: ["read", "create"],
     appointments: ["read", "update"],
     ai: ["read", "create"],
   },
@@ -74,6 +74,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
 
   /** Оператор колл-центра: расписание без доступа к карточкам пациентов и без создания записей. */
   operator: {
+    patients: ["read", "create"],
     appointments: ["read", "update"],
     ai: ["read", "create"],
   },

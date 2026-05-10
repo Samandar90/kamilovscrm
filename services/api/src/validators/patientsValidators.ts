@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { ApiError } from "../middleware/errorHandler";
+import { getAuthPayload } from "../utils/requestAuth";
 
 const allowedGenders = new Set(["male", "female"]);
 const PATIENT_SOURCES = new Set([
@@ -8,6 +9,8 @@ const PATIENT_SOURCES = new Set([
   "advertising",
   "referral",
   "other",
+  "doctor",
+  "reception",
 ]);
 const MAX_FULL_NAME_LENGTH = 120;
 const MAX_PHONE_LENGTH = 32;
@@ -62,6 +65,31 @@ export const validateCreatePatient = (
   if (body.birthDate === "") {
     body.birthDate = null;
   }
+  try {
+    const auth = getAuthPayload(req);
+    if (auth.role === "doctor") {
+      delete body.clinicId;
+      delete body.clinic_id;
+      delete body.doctorId;
+      delete body.createdByDoctorId;
+      delete body.created_by_doctor_id;
+      delete body.createdByUserId;
+      delete body.created_by_user_id;
+      delete body.source;
+    }
+    if (auth.role === "nurse") {
+      delete body.clinicId;
+      delete body.clinic_id;
+      delete body.doctorId;
+      delete body.createdByDoctorId;
+      delete body.created_by_doctor_id;
+      delete body.createdByUserId;
+      delete body.created_by_user_id;
+      delete body.source;
+    }
+  } catch {
+    /* requireAuth runs before validator — если нет auth, следующий слой вернёт 401 */
+  }
   req.body = body;
   const { fullName, phone, birthDate, gender, source, notes } = body;
 
@@ -109,7 +137,7 @@ export const validateCreatePatient = (
   ) {
     throw new ApiError(
       400,
-      "Field 'source' must be one of: instagram, telegram, advertising, referral, other, null, or undefined"
+      "Field 'source' must be one of: instagram, telegram, advertising, referral, other, doctor, reception, null, or undefined"
     );
   }
 
@@ -179,7 +207,7 @@ export const validateUpdatePatient = (
   ) {
     throw new ApiError(
       400,
-      "Field 'source' must be one of: instagram, telegram, advertising, referral, other, null, or undefined"
+      "Field 'source' must be one of: instagram, telegram, advertising, referral, other, doctor, reception, null, or undefined"
     );
   }
 

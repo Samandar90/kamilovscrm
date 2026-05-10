@@ -18,6 +18,8 @@ const toPatient = (row: PatientRecord): Patient => ({
   source: row.source ?? null,
   notes: row.notes ?? null,
   createdAt: row.createdAt,
+  createdByDoctorId: row.createdByDoctorId ?? null,
+  createdByUserId: row.createdByUserId ?? null,
 });
 
 const isActive = (row: PatientRecord): boolean => row.deletedAt === null;
@@ -30,6 +32,25 @@ const matchesPatientSearch = (row: PatientRecord, term: string): boolean => {
   const name = row.fullName.toLowerCase();
   const phone = (row.phone ?? "").toLowerCase();
   return name.includes(q) || phone.includes(q);
+};
+
+const matchesDoctorRelationshipScope = (
+  row: PatientRecord,
+  filters: PatientFilters
+): boolean => {
+  const d = filters.doctorRelationshipScope;
+  if (d === undefined) {
+    return true;
+  }
+  if (row.createdByDoctorId === d) {
+    return true;
+  }
+  if (filters.alsoCreatedByUserId != null && row.createdByUserId === filters.alsoCreatedByUserId) {
+    return true;
+  }
+  return getMockDb().appointments.some(
+    (a) => a.patientId === row.id && a.doctorId === d
+  );
 };
 
 export class MockPatientsRepository implements IPatientsRepository {
@@ -46,6 +67,7 @@ export class MockPatientsRepository implements IPatientsRepository {
       const allowed = new Set(filters.ids);
       rows = rows.filter((row) => allowed.has(row.id));
     }
+    rows = rows.filter((row) => matchesDoctorRelationshipScope(row, filters));
     if (hasSearch) {
       rows = rows.filter((row) => matchesPatientSearch(row, searchTerm));
     }
@@ -72,6 +94,8 @@ export class MockPatientsRepository implements IPatientsRepository {
       notes: payload.notes ?? null,
       createdAt: new Date().toISOString(),
       deletedAt: null,
+      createdByDoctorId: payload.createdByDoctorId ?? null,
+      createdByUserId: payload.createdByUserId ?? null,
     };
     getMockDb().patients.push(created);
     return toPatient(created);

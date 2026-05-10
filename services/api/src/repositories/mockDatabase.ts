@@ -24,6 +24,8 @@ export type PatientRecord = {
   notes: string | null;
   createdAt: string;
   deletedAt: string | null;
+  createdByDoctorId?: number | null;
+  createdByUserId?: number | null;
 };
 
 export type DoctorRecord = {

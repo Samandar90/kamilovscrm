@@ -18,7 +18,16 @@ export type AppointmentBillingStatus = (typeof APPOINTMENT_BILLING_STATUSES)[num
 export type PatientGender = "male" | "female" | "other" | "unknown";
 
 /** Источник обращения пациента (хранится в БД латиницей). */
-export type PatientSource = "instagram" | "telegram" | "advertising" | "referral" | "other";
+export type PatientSource =
+  | "instagram"
+  | "telegram"
+  | "advertising"
+  | "referral"
+  | "other"
+  /** Карточку создал врач (ресепшен использует маркетинговые значения выше). */
+  | "doctor"
+  /** Карточку создала регистратура/оператор (явная пометка). */
+  | "reception";
 
 export type Patient = {
   id: number;
@@ -29,6 +38,8 @@ export type Patient = {
   source: PatientSource | null;
   notes: string | null;
   createdAt: string;
+  createdByDoctorId?: number | null;
+  createdByUserId?: number | null;
 };
 
 export type PatientCreateInput = {
@@ -38,6 +49,8 @@ export type PatientCreateInput = {
   gender: PatientGender | null;
   source?: PatientSource | null;
   notes?: string | null;
+  createdByDoctorId?: number | null;
+  createdByUserId?: number | null;
 };
 
 export type PatientUpdateInput = Partial<PatientCreateInput>;
@@ -132,6 +145,13 @@ export type PatientFilters = {
    * When set (non-empty after trim), results are capped at 20 and soft-deleted rows are excluded.
    */
   search?: string;
+  /**
+   * Clinical roles: restrict to patients who have an appointment with this doctor
+   * OR were registered by this doctor (`created_by_doctor_id`).
+   */
+  doctorRelationshipScope?: number;
+  /** Nurse: also include rows created by this user (`created_by_user_id`). */
+  alsoCreatedByUserId?: number | null;
 };
 
 /** Строка услуги при создании записи (несколько услуг → несколько строк в appointment_services). */

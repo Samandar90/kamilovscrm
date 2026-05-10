@@ -7,6 +7,7 @@ import {
 import type {
   Patient,
   PatientCreateInput,
+  PatientFilters,
   PatientUpdateInput,
 } from "../repositories/interfaces/coreTypes";
 import type { AuthTokenPayload } from "../repositories/interfaces/userTypes";
@@ -50,62 +51,40 @@ export class PatientsService {
     options?: { search?: string }
   ): Promise<Patient[]> {
     const search = normalizeTrimmedString(options?.search);
-    const filters = search ? { search } : {};
+    const filters: PatientFilters = search ? { search } : {};
 
-    if (search) {
-      if (isDoctorScopedRole(auth.role)) {
-        const appointments = await this.appointmentsRepository.findAll({
-          doctorId: getEffectiveDoctorId(auth),
-        });
-        // patientId попадает в patients.findAll → ANY($1::bigint[]); лишние значения режутся в PostgresPatientsRepository.
-        const ids = [...new Set(appointments.map((a) => a.patientId))];
-        if (ids.length === 0) {
-          return [];
-        }
-        const rows = await this.patientsRepository.findAll({
-          ids,
-          search,
-          includeDeleted: true,
-        });
-        return rows;
-      }
-
-      const rows = await this.patientsRepository.findAll({ search });
-      if (auth.role === "cashier") {
-        return rows.map(maskPatientForCashier);
-      }
+    if (auth.role === "doctor") {
+      const doctorId = getEffectiveDoctorId(auth);
+      const rows = await this.patientsRepository.findAll({
+        ...filters,
+        doctorRelationshipScope: doctorId,
+        alsoCreatedByUserId: null,
+      });
       return rows;
     }
 
-    if (!isDoctorScopedRole(auth.role)) {
-      const rows = await this.patientsRepository.findAll(filters);
-      if (auth.role === "cashier") {
-        return rows.map(maskPatientForCashier);
-      }
+    if (auth.role === "nurse") {
+      const doctorId = getEffectiveDoctorId(auth);
+      const rows = await this.patientsRepository.findAll({
+        ...filters,
+        doctorRelationshipScope: doctorId,
+        alsoCreatedByUserId: auth.userId,
+      });
       return rows;
     }
-    const appointments = await this.appointmentsRepository.findAll({
-      doctorId: getEffectiveDoctorId(auth),
-    });
-    // patientId → ANY(bigint[]); см. санитизацию в PostgresPatientsRepository.findAll.
-    const ids = [...new Set(appointments.map((a) => a.patientId))];
-    if (ids.length === 0) {
-      return [];
+
+    const rows = await this.patientsRepository.findAll(filters);
+    if (auth.role === "cashier") {
+      return rows.map(maskPatientForCashier);
     }
-    return this.patientsRepository.findAll({
-      ids,
-      includeDeleted: true,
-      ...filters,
-    });
+    return rows;
   }
 
   async create(auth: AuthTokenPayload, payload: PatientCreateInput): Promise<Patient> {
     if (!roleHasPermissionKey(auth.role, "PATIENT_CREATE")) {
-      if (isDoctorScopedRole(auth.role)) {
-        throw new ApiError(403, "Врачи и медсёстры не могут создавать карточки пациентов");
-      }
       throw new ApiError(403, "Недостаточно прав для этого действия");
     }
+
     const fullName = normalizeTrimmedString(payload.fullName) ?? payload.fullName;
     const phone = normalizePhone(payload.phone);
 
@@ -114,15 +93,38 @@ export class PatientsService {
         ? null
         : (normalizeTrimmedString(payload.notes) || null);
 
-    const normalizedPayload: PatientCreateInput = {
+    let normalizedPayload: PatientCreateInput = {
       ...payload,
       fullName,
       phone: phone ?? null,
       birthDate: payload.birthDate ?? null,
       gender: payload.gender ?? null,
-      source: payload.source ?? null,
       notes: notesNorm,
+      source: payload.source ?? null,
     };
+
+    if (auth.role === "doctor") {
+      if (auth.doctorId == null) {
+        throw new ApiError(403, "Аккаунт не привязан к профилю врача");
+      }
+      normalizedPayload = {
+        ...normalizedPayload,
+        source: "doctor",
+        createdByDoctorId: auth.doctorId,
+        createdByUserId: auth.userId,
+      };
+    } else if (auth.role === "nurse") {
+      normalizedPayload = {
+        ...normalizedPayload,
+        createdByUserId: auth.userId,
+        createdByDoctorId: null,
+      };
+    } else {
+      normalizedPayload = {
+        ...normalizedPayload,
+        createdByUserId: auth.userId,
+      };
+    }
 
     return this.patientsRepository.create(normalizedPayload);
   }
@@ -132,18 +134,38 @@ export class PatientsService {
     if (!patient) {
       return null;
     }
-    if (!isDoctorScopedRole(auth.role)) {
-      if (auth.role === "cashier") {
-        return maskPatientForCashier(patient);
+
+    if (auth.role === "doctor") {
+      const myDoctorId = getEffectiveDoctorId(auth);
+      if (patient.createdByDoctorId === myDoctorId) {
+        return patient;
+      }
+      const linked = await this.appointmentsRepository.findAll({
+        doctorId: myDoctorId,
+        patientId: id,
+      });
+      if (linked.length === 0) {
+        return null;
       }
       return patient;
     }
-    const linked = await this.appointmentsRepository.findAll({
-      doctorId: getEffectiveDoctorId(auth),
-      patientId: id,
-    });
-    if (linked.length === 0) {
-      return null;
+
+    if (auth.role === "nurse") {
+      if (patient.createdByUserId === auth.userId) {
+        return patient;
+      }
+      const linked = await this.appointmentsRepository.findAll({
+        doctorId: getEffectiveDoctorId(auth),
+        patientId: id,
+      });
+      if (linked.length === 0) {
+        return null;
+      }
+      return patient;
+    }
+
+    if (auth.role === "cashier") {
+      return maskPatientForCashier(patient);
     }
     return patient;
   }
@@ -194,4 +216,3 @@ export class PatientsService {
     return this.patientsRepository.delete(id);
   }
 }
-

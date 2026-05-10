@@ -27,7 +27,14 @@ import { phoneToApiValue, storedPhoneToNormalized } from "../../../utils/phoneIn
 import { PatientCard } from "../components/PatientCard";
 import { cn } from "../../../ui/utils/cn";
 
-type PatientSource = "instagram" | "telegram" | "advertising" | "referral" | "other";
+type PatientSource =
+  | "instagram"
+  | "telegram"
+  | "advertising"
+  | "referral"
+  | "other"
+  | "doctor"
+  | "reception";
 
 type Patient = {
   id: number;
@@ -81,7 +88,29 @@ const initialFormState: PatientFormState = {
 };
 
 const isPatientSource = (v: string | null | undefined): v is PatientSource =>
-  v === "instagram" || v === "telegram" || v === "advertising" || v === "referral" || v === "other";
+  v === "instagram" ||
+  v === "telegram" ||
+  v === "advertising" ||
+  v === "referral" ||
+  v === "other" ||
+  v === "doctor" ||
+  v === "reception";
+
+function normalizePatientRow(
+  raw: Partial<Patient> & { source?: string | null; notes?: string | null }
+): Patient {
+  const src = raw.source;
+  return {
+    id: Number(raw.id ?? 0),
+    fullName: (raw.fullName || "").trim(),
+    phone: (raw.phone ?? "").trim(),
+    birthDate: raw.birthDate ?? "",
+    gender: (raw.gender as Patient["gender"]) || "unknown",
+    source: isPatientSource(src) ? src : null,
+    notes: raw.notes != null && raw.notes !== "" ? String(raw.notes) : null,
+    createdAt: raw.createdAt || "",
+  };
+}
 
 const phoneAllowedCharsRe = /^[+()\-\s\d]+$/;
 
@@ -181,8 +210,11 @@ export const PatientsPage: React.FC = () => {
     return () => window.clearTimeout(t);
   }, [searchInput]);
 
-  const loadPatients = useCallback(async () => {
-    setLoading(true);
+  const loadPatients = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent ?? false;
+    if (!silent) {
+      setLoading(true);
+    }
     setError("");
     setRelatedDataWarning(null);
     try {
@@ -217,7 +249,9 @@ export const PatientsPage: React.FC = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка загрузки");
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [token, showPatientDebt]);
 
@@ -233,20 +267,9 @@ export const PatientsPage: React.FC = () => {
 
   const normalizedPatients = useMemo<Patient[]>(() => {
     if (!Array.isArray(patients)) return [];
-    return patients.map((p) => {
-      const raw = p as Partial<Patient> & { source?: string | null; notes?: string | null };
-      const src = raw.source;
-      return {
-        id: Number(raw.id ?? 0),
-        fullName: (raw.fullName || "").trim(),
-        phone: (raw.phone ?? "").trim(),
-        birthDate: raw.birthDate ?? "",
-        gender: (raw.gender as Patient["gender"]) || "unknown",
-        source: isPatientSource(src) ? src : null,
-        notes: raw.notes != null && raw.notes !== "" ? String(raw.notes) : null,
-        createdAt: raw.createdAt || "",
-      };
-    });
+    return patients.map((p) =>
+      normalizePatientRow(p as Partial<Patient> & { source?: string | null; notes?: string | null })
+    );
   }, [patients]);
 
   const filteredPatients = useMemo(() => {
@@ -350,11 +373,21 @@ export const PatientsPage: React.FC = () => {
 
       const path = isEdit ? `/api/patients/${editingPatientId}` : "/api/patients";
       const method = isEdit ? "PUT" : "POST";
-      await requestJson<Patient>(path, { method, body: payload });
+      const saved = await requestJson<Patient>(path, { method, body: payload });
 
-      await loadPatients();
-      closeModal();
-      setToast(isEdit ? "Пациент успешно обновлён." : "Пациент успешно добавлен");
+      if (!isEdit) {
+        const normalized = normalizePatientRow(
+          saved as Partial<Patient> & { source?: string | null; notes?: string | null }
+        );
+        setPatients((prev) => [normalized, ...prev.filter((p) => p.id !== normalized.id)]);
+        closeModal();
+        setToast("Пациент успешно добавлен");
+        void loadPatients({ silent: true });
+      } else {
+        await loadPatients();
+        closeModal();
+        setToast("Пациент успешно обновлён.");
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Ошибка сохранения";
       setFormError(message);
@@ -463,10 +496,18 @@ export const PatientsPage: React.FC = () => {
       <header className="flex flex-wrap items-end justify-between gap-3 md:gap-4">
         <div>
           <h2 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">Пациенты</h2>
-          <p className="mt-0.5 hidden text-sm text-slate-500 sm:block">
-            {role === "operator"
-              ? "Поиск и создание новых пациентов."
-              : "Карточки пациентов для ежедневной работы администратора."}
+          <p
+            className={
+              role === "doctor" || role === "nurse"
+                ? "mt-0.5 text-sm text-slate-500"
+                : "mt-0.5 hidden text-sm text-slate-500 sm:block"
+            }
+          >
+            {role === "doctor" || role === "nurse"
+              ? "Здесь отображаются ваши пациенты и пациенты, которых вы добавили сами."
+              : role === "operator"
+                ? "Поиск и создание новых пациентов."
+                : "Карточки пациентов для ежедневной работы администратора."}
           </p>
         </div>
         {canCreatePatient && (
@@ -753,25 +794,27 @@ export const PatientsPage: React.FC = () => {
                 Дополнительно
               </h4>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Источник обращения">
-                  <select
-                    value={formState.source}
-                    onChange={(e) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        source: e.target.value as PatientFormState["source"],
-                      }))
-                    }
-                    className={selectFieldClass}
-                  >
-                    <option value="">Не выбрано</option>
-                    {PATIENT_SOURCE_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
+                {role !== "doctor" && role !== "nurse" ? (
+                  <Field label="Источник обращения">
+                    <select
+                      value={formState.source}
+                      onChange={(e) =>
+                        setFormState((prev) => ({
+                          ...prev,
+                          source: e.target.value as PatientFormState["source"],
+                        }))
+                      }
+                      className={selectFieldClass}
+                    >
+                      <option value="">Не выбрано</option>
+                      {PATIENT_SOURCE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                ) : null}
                 <div className="sm:col-span-2">
                   <Field label="Комментарий">
                     <textarea

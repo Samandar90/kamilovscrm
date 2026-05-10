@@ -19,6 +19,8 @@ type PatientRow = {
   source: string | null;
   notes: string | null;
   created_at: string | Date;
+  created_by_doctor_id?: string | number | null;
+  created_by_user_id?: string | number | null;
 };
 
 const toDateOnly = (value: string | Date | null): string | null => {
@@ -45,6 +47,14 @@ const mapPatientRow = (row: PatientRow): Patient => ({
   source: mapSourceColumn(row.source),
   notes: row.notes ?? null,
   createdAt: toIso(row.created_at),
+  createdByDoctorId:
+    row.created_by_doctor_id != null && row.created_by_doctor_id !== ""
+      ? Number(row.created_by_doctor_id)
+      : null,
+  createdByUserId:
+    row.created_by_user_id != null && row.created_by_user_id !== ""
+      ? Number(row.created_by_user_id)
+      : null,
 });
 
 const PATIENT_SEARCH_LIMIT = 20;
@@ -55,6 +65,8 @@ const SOURCE_VALUES = new Set<string>([
   "advertising",
   "referral",
   "other",
+  "doctor",
+  "reception",
 ]);
 
 const mapSourceColumn = (value: string | null): PatientSource | null => {
@@ -76,8 +88,34 @@ const SELECT_LIST = `
   birth_date,
   source,
   notes,
-  created_at
+  created_at,
+  created_by_doctor_id,
+  created_by_user_id
 `;
+
+function appendDoctorRelationshipScope(
+  filters: PatientFilters,
+  values: unknown[],
+  tableAlias = "patients"
+): string {
+  if (filters.doctorRelationshipScope === undefined) {
+    return "";
+  }
+  values.push(filters.doctorRelationshipScope);
+  const pDoc = values.length;
+  values.push(filters.alsoCreatedByUserId ?? null);
+  const pUser = values.length;
+  return ` AND (
+    EXISTS (
+      SELECT 1 FROM appointments a
+      WHERE a.patient_id = ${tableAlias}.id
+        AND a.doctor_id = $${pDoc}
+        AND a.deleted_at IS NULL
+    )
+    OR ${tableAlias}.created_by_doctor_id = $${pDoc}
+    OR ($${pUser}::bigint IS NOT NULL AND ${tableAlias}.created_by_user_id = $${pUser})
+  )`;
+}
 
 /**
  * `pg` передаёт JS-массив в PostgreSQL как литерал массива; элементы вроде `NaN`, `undefined`, `""`
@@ -134,6 +172,8 @@ export class PostgresPatientsRepository implements IPatientsRepository {
 
       if (hasSearch) {
         const pattern = wrapIlikeContainsPattern(searchTerm);
+        const values: unknown[] = [safeIds, pattern, searchTerm, clinicId];
+        const scope = appendDoctorRelationshipScope(filters, values);
         const scopedResult = await dbPool.query<PatientRow>(
           `
             SELECT ${SELECT_LIST}
@@ -154,13 +194,16 @@ export class PostgresPatientsRepository implements IPatientsRepository {
                   )
               )
             )
+            ${scope}
             ORDER BY created_at DESC
             LIMIT ${PATIENT_SEARCH_LIMIT}
           `,
-          [safeIds, pattern, searchTerm, clinicId]
+          values
         );
         return scopedResult.rows.map(mapPatientRow);
       }
+      const valuesIds: unknown[] = [safeIds, clinicId];
+      const scopeIds = appendDoctorRelationshipScope(filters, valuesIds);
       const scopedResult = await dbPool.query<PatientRow>(
         `
           SELECT ${SELECT_LIST}
@@ -168,15 +211,18 @@ export class PostgresPatientsRepository implements IPatientsRepository {
           WHERE id = ANY($1::bigint[])
           AND clinic_id = $2
           ${incDel ? "" : "AND deleted_at IS NULL"}
+          ${scopeIds}
           ORDER BY created_at DESC
         `,
-        [safeIds, clinicId]
+        valuesIds
       );
       return scopedResult.rows.map(mapPatientRow);
     }
 
     if (hasSearch) {
       const pattern = wrapIlikeContainsPattern(searchTerm);
+      const valuesSearch: unknown[] = [pattern, searchTerm, clinicId];
+      const scopeSearch = appendDoctorRelationshipScope(filters, valuesSearch);
       const result = await dbPool.query<PatientRow>(
         `
           SELECT ${SELECT_LIST}
@@ -196,23 +242,27 @@ export class PostgresPatientsRepository implements IPatientsRepository {
                 )
             )
           )
+          ${scopeSearch}
           ORDER BY created_at DESC
           LIMIT ${PATIENT_SEARCH_LIMIT}
         `,
-        [pattern, searchTerm, clinicId]
+        valuesSearch
       );
       return result.rows.map(mapPatientRow);
     }
 
+    const valuesAll: unknown[] = [clinicId];
+    const scopeAll = appendDoctorRelationshipScope(filters, valuesAll);
     const result = await dbPool.query<PatientRow>(
       `
         SELECT ${SELECT_LIST}
         FROM patients
         WHERE deleted_at IS NULL
           AND clinic_id = $1
+          ${scopeAll}
         ORDER BY created_at DESC
       `,
-      [clinicId]
+      valuesAll
     );
     return result.rows.map(mapPatientRow);
   }
@@ -248,12 +298,24 @@ export class PostgresPatientsRepository implements IPatientsRepository {
           gender,
           birth_date,
           source,
-          notes
+          notes,
+          created_by_doctor_id,
+          created_by_user_id
         )
-        VALUES ($1, $2, $3, $4, $5::date, $6, $7)
+        VALUES ($1, $2, $3, $4, $5::date, $6, $7, $8, $9)
         RETURNING ${SELECT_LIST}
       `,
-      [clinicId, data.fullName, data.phone, data.gender, data.birthDate, data.source ?? null, data.notes ?? null]
+      [
+        clinicId,
+        data.fullName,
+        data.phone,
+        data.gender,
+        data.birthDate,
+        data.source ?? null,
+        data.notes ?? null,
+        data.createdByDoctorId ?? null,
+        data.createdByUserId ?? null,
+      ]
     );
 
     return mapPatientRow(result.rows[0]);
