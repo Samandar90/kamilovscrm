@@ -67,6 +67,9 @@ export type AppointmentRecord = {
   cancelReason: string | null;
   cancelledAt: string | null;
   cancelledBy: number | null;
+  cancelledByRole?: string | null;
+  createdByDoctorId?: number | null;
+  createdByUserId?: number | null;
   diagnosis: string | null;
   treatment: string | null;
   notes: string | null;

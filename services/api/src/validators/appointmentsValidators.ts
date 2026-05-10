@@ -4,6 +4,7 @@ import { APPOINTMENT_STATUSES } from "../repositories/appointmentsRepository";
 import { parseLocalDateTime } from "../utils/localDateTime";
 import { tryParseAppointmentTimestampForDb } from "../utils/appointmentTimestamps";
 import { parseNumericInput } from "../utils/numbers";
+import { getAuthPayload } from "../utils/requestAuth";
 
 const APPOINTMENT_STATUS_SET = new Set<string>(APPOINTMENT_STATUSES);
 const MAX_NOTES_LENGTH = 2000;
@@ -138,6 +139,7 @@ export const validateCreateAppointment = (
   _res: Response,
   next: NextFunction
 ) => {
+  const auth = getAuthPayload(req);
   const {
     patientId,
     doctorId,
@@ -155,7 +157,17 @@ export const validateCreateAppointment = (
     throw new ApiError(400, "Field 'patientId' must be a positive integer");
   }
 
-  if (!parsePositiveInteger(doctorId)) {
+  if (auth.role === "doctor") {
+    if (doctorId !== undefined && doctorId !== null && String(doctorId).trim() !== "") {
+      const parsed = parsePositiveInteger(doctorId);
+      if (!parsed || parsed !== auth.doctorId) {
+        throw new ApiError(403, "Cannot set doctorId for this account");
+      }
+    }
+    delete (req.body as Record<string, unknown>).doctorId;
+    delete (req.body as Record<string, unknown>).clinicId;
+    delete (req.body as Record<string, unknown>).clinic_id;
+  } else if (!parsePositiveInteger(doctorId)) {
     throw new ApiError(400, "Field 'doctorId' must be a positive integer");
   }
 

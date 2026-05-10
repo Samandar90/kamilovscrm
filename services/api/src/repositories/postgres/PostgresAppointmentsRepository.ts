@@ -33,6 +33,9 @@ type AppointmentRow = {
   cancel_reason: string | null;
   cancelled_at: string | Date | null;
   cancelled_by: number | null;
+  cancelled_by_role: string | null;
+  created_by_doctor_id: number | null;
+  created_by_user_id: number | null;
   diagnosis: string | null;
   treatment: string | null;
   notes: string | null;
@@ -91,6 +94,11 @@ const mapAppointmentRow = (row: AppointmentRow): Appointment => ({
   cancelReason: row.cancel_reason,
   cancelledAt: row.cancelled_at ? normalizeToLocalDateTime(row.cancelled_at) : null,
   cancelledBy: row.cancelled_by != null ? Number(row.cancelled_by) : null,
+  cancelledByRole: row.cancelled_by_role ?? null,
+  createdByDoctorId:
+    row.created_by_doctor_id != null ? Number(row.created_by_doctor_id) : null,
+  createdByUserId:
+    row.created_by_user_id != null ? Number(row.created_by_user_id) : null,
   diagnosis: row.diagnosis,
   treatment: row.treatment,
   notes: row.notes,
@@ -164,6 +172,9 @@ const SELECT_LIST = `
   cancel_reason,
   cancelled_at,
   cancelled_by,
+  cancelled_by_role,
+  created_by_doctor_id,
+  created_by_user_id,
   diagnosis,
   treatment,
   notes,
@@ -417,9 +428,11 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
           cancelled_by,
           diagnosis,
           treatment,
-          notes
+          notes,
+          created_by_doctor_id,
+          created_by_user_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6::timestamptz, $7::timestamptz, $8, $9, $10, $11, $12, $13, $14, $15)
+        VALUES ($1, $2, $3, $4, $5, $6::timestamptz, $7::timestamptz, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         RETURNING ${SELECT_LIST}
       `,
         [
@@ -438,6 +451,8 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
           data.diagnosis ?? null,
           data.treatment ?? null,
           data.notes ?? null,
+          data.createdByDoctorId ?? null,
+          data.createdByUserId ?? null,
         ]
       );
 
@@ -589,7 +604,8 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
   async cancel(
     id: number,
     cancelReason: string | null,
-    cancelledBy: number
+    cancelledByUserId: number,
+    cancelledByRole?: string | null
   ): Promise<Appointment | null> {
     const clinicId = requireClinicId();
     const result = await dbPool.query<AppointmentRow>(
@@ -600,11 +616,12 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
           cancel_reason = $2,
           cancelled_at = NOW(),
           cancelled_by = $3,
+          cancelled_by_role = $5,
           updated_at = NOW()
         WHERE id = $1 AND clinic_id = $4 AND deleted_at IS NULL
         RETURNING ${SELECT_LIST}
       `,
-      [id, cancelReason, cancelledBy, clinicId]
+      [id, cancelReason, cancelledByUserId, clinicId, cancelledByRole ?? null]
     );
     if (result.rows.length === 0) {
       return null;
@@ -849,6 +866,37 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       [serviceId, doctorId, clinicId]
     );
     return result.rows[0]?.exists === true;
+  }
+
+  async isPatientEligibleForDoctorBooking(
+    patientId: number,
+    doctorId: number
+  ): Promise<boolean> {
+    const clinicId = requireClinicId();
+    const result = await dbPool.query<{ ok: boolean }>(
+      `
+        SELECT EXISTS (
+          SELECT 1
+          FROM patients p
+          WHERE p.id = $1
+            AND p.clinic_id = $2
+            AND p.deleted_at IS NULL
+            AND (
+              p.created_by_doctor_id = $3
+              OR EXISTS (
+                SELECT 1
+                FROM appointments a
+                WHERE a.patient_id = p.id
+                  AND a.doctor_id = $3
+                  AND a.clinic_id = $2
+                  AND a.deleted_at IS NULL
+              )
+            )
+        ) AS ok
+      `,
+      [patientId, clinicId, doctorId]
+    );
+    return result.rows[0]?.ok === true;
   }
 
   async createServiceAssignment(

@@ -53,6 +53,7 @@ type Props = {
   onEditPrice: () => void;
   canHardDeleteAppointment: boolean;
   onDeleteAppointment: () => void;
+  showCancelButton: boolean;
   /** Коммерческая цена: регистратура / менеджмент (согласовано с PATCH /appointments/:id/price). */
   canEditAppointmentPrice: boolean;
   onOpenDoctorWorkspace: () => void;
@@ -78,6 +79,7 @@ export const AppointmentCard: React.FC<Props> = ({
   onEditPrice,
   canHardDeleteAppointment,
   onDeleteAppointment,
+  showCancelButton,
   canEditAppointmentPrice,
   onOpenDoctorWorkspace,
   onCardClick,
@@ -230,7 +232,7 @@ export const AppointmentCard: React.FC<Props> = ({
                   {action.label}
                 </button>
               ))}
-              {canManageAppointmentFlow && !isCompleted && !isCancelled ? (
+              {showCancelButton ? (
                 <button
                   type="button"
                   className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700 shadow-sm transition hover:bg-rose-100"

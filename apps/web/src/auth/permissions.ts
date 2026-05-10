@@ -51,7 +51,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     patients: ["read", "create"],
     doctors: ["read"],
     services: ["read"],
-    appointments: ["read", "update"],
+    appointments: ["read", "create", "update"],
     ai: ["read", "create"],
   },
 

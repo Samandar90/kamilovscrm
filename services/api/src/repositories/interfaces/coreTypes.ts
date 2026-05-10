@@ -113,6 +113,10 @@ export type Appointment = {
   cancelReason: string | null;
   cancelledAt: string | null;
   cancelledBy: number | null;
+  /** Role label when cancelling (e.g. doctor). Mirrors DB `cancelled_by_role`. */
+  cancelledByRole?: string | null;
+  createdByDoctorId?: number | null;
+  createdByUserId?: number | null;
   diagnosis: string | null;
   treatment: string | null;
   notes: string | null;
@@ -178,6 +182,8 @@ export type AppointmentCreateInput = {
   diagnosis: string | null;
   treatment: string | null;
   notes: string | null;
+  createdByDoctorId?: number | null;
+  createdByUserId?: number | null;
 };
 
 export type AppointmentUpdateInput = Partial<AppointmentCreateInput>;

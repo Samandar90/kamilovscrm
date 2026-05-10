@@ -42,6 +42,13 @@ const ACTIVE_APPOINTMENT_STATUSES = new Set<AppointmentStatus>([
   "in_consultation",
 ]);
 
+/** Statuses a doctor may cancel (soft cancel); other roles follow legacy rules in cancel(). */
+const DOCTOR_CANCELLABLE_STATUSES = new Set<AppointmentStatus>([
+  "scheduled",
+  "confirmed",
+  "arrived",
+]);
+
 const ALLOWED_STATUS_TRANSITIONS: Record<AppointmentStatus, AppointmentStatus[]> = {
   scheduled: ["confirmed", "arrived", "cancelled", "no_show"],
   confirmed: ["arrived", "in_consultation", "completed", "cancelled", "no_show"],
@@ -334,7 +341,15 @@ export class AppointmentsService {
     if (!roleHasPermissionKey(auth.role, "APPOINTMENT_CREATE")) {
       throw new ApiError(403, "Недостаточно прав для этого действия");
     }
-    const normalizedPayload = normalizeCreateInput(payload);
+    const rawIn = payload as AppointmentCreateInput;
+    const mergedForNormalize: AppointmentCreateInput =
+      auth.role === "doctor"
+        ? {
+            ...rawIn,
+            doctorId: getEffectiveDoctorId(auth),
+          }
+        : rawIn;
+    const normalizedPayload = normalizeCreateInput(mergedForNormalize);
     normalizedPayload.startAt = assertAppointmentTimestampForDb(
       normalizedPayload.startAt,
       "startAt"
@@ -345,6 +360,18 @@ export class AppointmentsService {
       notes: normalizedPayload.notes ?? undefined,
     });
     enforceDoctorSelfScopeOnWrite(auth, normalizedPayload.doctorId);
+
+    if (auth.role === "doctor") {
+      const okPatient = await this.appointmentsRepository.isPatientEligibleForDoctorBooking(
+        normalizedPayload.patientId,
+        normalizedPayload.doctorId
+      );
+      if (!okPatient) {
+        throw new ApiError(403, "Patient cannot be booked by this doctor");
+      }
+      normalizedPayload.createdByDoctorId = auth.doctorId ?? null;
+      normalizedPayload.createdByUserId = auth.userId;
+    }
     ensureStartAtNotInPast(normalizedPayload.startAt);
 
     await ensureRelatedEntitiesExist(
@@ -542,6 +569,29 @@ export class AppointmentsService {
     if (!canReadAppointment(auth, current)) {
       return null;
     }
+    if (auth.role === "doctor") {
+      if (!DOCTOR_CANCELLABLE_STATUSES.has(current.status)) {
+        throw new ApiError(403, "Cannot cancel appointment in this status");
+      }
+      const trimmed = typeof cancelReason === "string" ? cancelReason.trim() : "";
+      const reasonForDb = trimmed === "" ? "Отменено врачом" : trimmed;
+      const cancelled = await this.appointmentsRepository.cancel(
+        id,
+        reasonForDb,
+        auth.userId,
+        "doctor"
+      );
+      if (cancelled) {
+        invalidateClinicFactsCache();
+      }
+      if (!cancelled) {
+        return null;
+      }
+      if (shouldRedactAppointmentClinicalFields(auth.role)) {
+        return redactAppointmentClinicalFields(cancelled);
+      }
+      return cancelled;
+    }
     if (current.status === "completed") {
       throw new ApiError(400, "Completed appointment cannot be cancelled");
     }
@@ -551,7 +601,8 @@ export class AppointmentsService {
     const cancelled = await this.appointmentsRepository.cancel(
       id,
       cancelReason ?? null,
-      auth.userId
+      auth.userId,
+      null
     );
     if (cancelled) {
       invalidateClinicFactsCache();

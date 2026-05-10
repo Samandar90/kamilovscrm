@@ -37,6 +37,8 @@ type Props = {
   onOpenWorkspace: () => void;
   onCreateInvoice: () => void;
   onOpenDetails: () => void;
+  showCancelButton?: boolean;
+  onCancelAppointment?: () => void;
 };
 
 export const AppointmentMobileCard: React.FC<Props> = ({
@@ -54,6 +56,8 @@ export const AppointmentMobileCard: React.FC<Props> = ({
   onOpenWorkspace,
   onCreateInvoice,
   onOpenDetails,
+  showCancelButton = false,
+  onCancelAppointment,
 }) => {
   const actions = buildUnifiedAppointmentActions({
     appointment,
@@ -113,6 +117,16 @@ export const AppointmentMobileCard: React.FC<Props> = ({
               {action.label}
             </button>
           ))}
+          {showCancelButton && onCancelAppointment ? (
+            <button
+              type="button"
+              onClick={onCancelAppointment}
+              disabled={isSubmitting}
+              className="inline-flex min-h-[40px] w-full items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-3 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-50"
+            >
+              Отменить запись
+            </button>
+          ) : null}
         </div>
       </article>
     </li>

@@ -176,7 +176,9 @@ export const AppointmentsPage: React.FC = () => {
   const navigate = useNavigate();
   const { token, user } = useAuth();
   const ur = user?.role;
+  const isDoctorUser = ur === "doctor";
   const canReadPatientsList = canReadPatients(ur);
+  const showQuickScheduleUi = canCreateAppointmentWithPatientPicker(ur) && !isDoctorUser;
   const canOpenAppointmentCreateModals = canCreateAppointmentWithPatientPicker(ur);
   const canEditAppointmentPrice = canSetAppointmentCommercialPrice(ur);
   const canUpdateApptStatus = canUpdateAppointments(ur);
@@ -269,9 +271,12 @@ export const AppointmentsPage: React.FC = () => {
     consultationModal.diagnosis.trim().length > 0 &&
     consultationModal.treatment.trim().length > 0;
 
-  const loadData = React.useCallback(async () => {
+  const loadData = React.useCallback(async (opts?: { silent?: boolean }) => {
     if (!token) return;
-    setIsLoading(true);
+    const silent = opts?.silent ?? false;
+    if (!silent) {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const [appointmentRows, patients, doctors, services] = await Promise.all([
@@ -300,7 +305,9 @@ export const AppointmentsPage: React.FC = () => {
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Ошибка загрузки");
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
   }, [token, readBilling, canReadPatientsList]);
 
@@ -413,10 +420,16 @@ export const AppointmentsPage: React.FC = () => {
 
   const openFullModal = () => {
     setQuickModalOpen(false);
-    setFullForm(emptyFullForm());
+    const nextForm = emptyFullForm();
+    if (isDoctorUser && user?.doctorId != null) {
+      nextForm.doctorId = String(user.doctorId);
+      void loadServicesByDoctor(user.doctorId);
+    } else {
+      void loadServicesByDoctor(undefined);
+    }
+    setFullForm(nextForm);
     setFullConflictHint({ message: null, suggestedTimes: [] });
     setFullModalOpen(true);
-    void loadServicesByDoctor(undefined);
   };
 
   React.useEffect(() => {
@@ -490,7 +503,7 @@ export const AppointmentsPage: React.FC = () => {
 
   const submitFullAppointment = async (form: FullFormFields) => {
     if (!token || !canOpenAppointmentCreateModals) return;
-    const doctorId = Number(form.doctorId);
+    const doctorId = isDoctorUser ? Number(user?.doctorId ?? 0) : Number(form.doctorId);
     const serviceId = Number(form.serviceId);
     const patientId = Number(form.selectedPatient?.id);
     if (
@@ -539,21 +552,26 @@ export const AppointmentsPage: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await appointmentsFlowApi.createAppointment(token, {
+      const basePayload = {
         patientId,
-        doctorId,
         serviceId,
         price: Math.round(parsedPrice),
         startAt,
-        status: "scheduled",
+        status: "scheduled" as const,
         diagnosis: null,
         treatment: null,
         notes: form.notes.trim() || null,
-      });
+      };
+      const created = await appointmentsFlowApi.createAppointment(
+        token,
+        isDoctorUser ? basePayload : { ...basePayload, doctorId }
+      );
+      setAppointments((prev) => [created, ...prev.filter((a) => a.id !== created.id)]);
+      setInvoicesByAppointmentId((prev) => ({ ...prev, [created.id]: null }));
       setFullModalOpen(false);
       setFullForm(emptyFullForm());
-      await loadData();
       setToast("Запись создана");
+      void loadData({ silent: true });
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Ошибка создания записи");
     } finally {
@@ -916,6 +934,20 @@ export const AppointmentsPage: React.FC = () => {
     () => summarizeAppointments(filteredAppointments),
     [filteredAppointments]
   );
+
+  const shouldOfferCancel = React.useCallback(
+    (a: Appointment) => {
+      if (!canUpdateApptStatus) return false;
+      if (a.status === "completed" || a.status === "cancelled") return false;
+      if (isDoctorUser) {
+        return (
+          a.status === "scheduled" || a.status === "confirmed" || a.status === "arrived"
+        );
+      }
+      return true;
+    },
+    [canUpdateApptStatus, isDoctorUser]
+  );
   const mobileAppointments = React.useMemo(
     () => filteredAppointments.slice(0, mobileWindow),
     [filteredAppointments, mobileWindow]
@@ -975,15 +1007,17 @@ export const AppointmentsPage: React.FC = () => {
           actions={
             canOpenAppointmentCreateModals ? (
               <div className="hidden items-center gap-2 md:flex">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={openQuickModal}
-                  className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all duration-150"
-                >
-                  <Zap className="h-4 w-4" />
-                  Быстрая запись
-                </Button>
+                {showQuickScheduleUi ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={openQuickModal}
+                    className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all duration-150"
+                  >
+                    <Zap className="h-4 w-4" />
+                    Быстрая запись
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   onClick={openFullModal}
@@ -991,7 +1025,7 @@ export const AppointmentsPage: React.FC = () => {
                   className={primaryActionButtonClass}
                 >
                   <Plus className="h-4 w-4" strokeWidth={2.5} />
-                  Новая запись
+                  {isDoctorUser ? "Создать запись" : "Новая запись"}
                 </Button>
               </div>
             ) : null
@@ -1111,7 +1145,7 @@ export const AppointmentsPage: React.FC = () => {
                 <div className="mt-3 flex justify-center">
                   <button
                     type="button"
-                    onClick={openQuickModal}
+                    onClick={isDoctorUser ? openFullModal : openQuickModal}
                     className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
                   >
                     + Создать запись
@@ -1131,7 +1165,7 @@ export const AppointmentsPage: React.FC = () => {
                 <div className="mt-3 flex justify-center">
                   <button
                     type="button"
-                    onClick={openQuickModal}
+                    onClick={isDoctorUser ? openFullModal : openQuickModal}
                     className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
                   >
                     + Создать запись
@@ -1165,6 +1199,10 @@ export const AppointmentsPage: React.FC = () => {
                     onOpenWorkspace={() => openConsultation(appointment)}
                     onCreateInvoice={() => void openOrCreateInvoice(appointment)}
                     onOpenDetails={() => setDetailsModal({ open: true, appointment })}
+                    showCancelButton={shouldOfferCancel(appointment)}
+                    onCancelAppointment={() =>
+                      setCancelModal({ open: true, appointment, reason: "" })
+                    }
                   />
                 );
               })}
@@ -1202,7 +1240,7 @@ export const AppointmentsPage: React.FC = () => {
                     onCompleteConsultation={() => void updateStatus(appointment)}
                     onCreateInvoice={() => void openOrCreateInvoice(appointment)}
                     onCancelAppointment={() =>
-                      setCancelModal({ open: true, appointment, reason: appointment.cancelReason ?? "" })
+                      setCancelModal({ open: true, appointment, reason: "" })
                     }
                     onEditPrice={() =>
                       setPriceModal({
@@ -1218,6 +1256,7 @@ export const AppointmentsPage: React.FC = () => {
                     canEditAppointmentPrice={canEditAppointmentPrice}
                     canHardDeleteAppointment={canHardDeleteAppointment}
                     onDeleteAppointment={() => void deleteAppointment(appointment)}
+                    showCancelButton={shouldOfferCancel(appointment)}
                     onOpenDoctorWorkspace={() => openConsultation(appointment)}
                     onCardClick={() => setDetailsModal({ open: true, appointment })}
                   />
@@ -1240,17 +1279,17 @@ export const AppointmentsPage: React.FC = () => {
       {canOpenAppointmentCreateModals ? (
         <button
           type="button"
-          onClick={openQuickModal}
+          onClick={isDoctorUser ? openFullModal : openQuickModal}
           className="fixed bottom-16 left-0 right-0 z-[90] flex justify-center px-4 transition-transform duration-150 ease-out active:scale-[0.98] md:hidden"
-          aria-label="Создать запись"
+          aria-label={isDoctorUser ? "Создать запись" : "Быстрая запись"}
         >
           <span className="flex min-h-[48px] w-full items-center justify-center rounded-[14px] bg-emerald-600 px-4 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(5,150,105,0.45)]">
-            + Запись
+            {isDoctorUser ? "+ Создать запись" : "+ Запись"}
           </span>
         </button>
       ) : null}
 
-      {canOpenAppointmentCreateModals && quickModalOpen && !createPatientModalOpen ? (
+      {showQuickScheduleUi && quickModalOpen && !createPatientModalOpen ? (
         <AppointmentQuickCreateModal
           open
           onClose={() => {
@@ -1293,6 +1332,11 @@ export const AppointmentsPage: React.FC = () => {
           inlineError={fullModalOpen ? error : null}
           onCreatePatientRequest={(query) => openCreatePatientFromAutocomplete(query)}
           canCreateNewPatient={ur ? canCreatePatients(ur) : false}
+          lockedDoctorDisplayName={
+            isDoctorUser && user?.doctorId != null
+              ? doctorsMap[user.doctorId] ?? user.fullName ?? "Вы"
+              : null
+          }
         />
       ) : null}
 
@@ -1396,7 +1440,7 @@ export const AppointmentsPage: React.FC = () => {
                 setCancelModal((prev) => ({ ...prev, reason: event.target.value }))
               }
               className="min-h-24 w-full rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-sm text-[#111827] outline-none transition focus:border-[#22c55e] focus:bg-white focus:ring-1 focus:ring-[#22c55e]/25"
-              placeholder="Например: пациент не пришел"
+              placeholder={isDoctorUser ? "Причина отмены" : "Например: пациент не пришел"}
               maxLength={500}
               disabled={isSubmitting}
             />

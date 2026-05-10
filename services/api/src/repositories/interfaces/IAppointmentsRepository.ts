@@ -17,7 +17,8 @@ export interface IAppointmentsRepository {
   cancel(
     id: number,
     cancelReason: string | null,
-    cancelledBy: number
+    cancelledByUserId: number,
+    cancelledByRole?: string | null
   ): Promise<Appointment | null>;
   delete(id: number): Promise<boolean>;
   findConflicting(
@@ -34,6 +35,10 @@ export interface IAppointmentsRepository {
   getServiceDuration(serviceId: number): Promise<number | null>;
   getServicePrice(serviceId: number): Promise<number | null>;
   isServiceAssignedToDoctor(serviceId: number, doctorId: number): Promise<boolean>;
+  /**
+   * Patient is in the current clinic and either registered by this doctor or already had an appointment with them.
+   */
+  isPatientEligibleForDoctorBooking(patientId: number, doctorId: number): Promise<boolean>;
   createServiceAssignment(
     appointmentId: number,
     serviceId: number,

@@ -121,7 +121,8 @@ export type Payment = {
 
 type AppointmentCreateInput = {
   patientId: number;
-  doctorId: number;
+  /** Опционально для роли врача — сервер подставляет из JWT. */
+  doctorId?: number;
   serviceId: number;
   price?: number;
   /** По умолчанию 1 на бэкенде. */

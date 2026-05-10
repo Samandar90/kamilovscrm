@@ -50,6 +50,8 @@ type Props = {
   onCreatePatientRequest: (query: string) => void;
   /** Если false — скрываем создание новой карточки пациента из автодополнения (согласовано с RBAC). */
   canCreateNewPatient?: boolean;
+  /** Запись только на себя (врач): имя для отображения вместо выпадающего списка врачей. */
+  lockedDoctorDisplayName?: string | null;
 };
 
 export const AppointmentCreateModal: React.FC<Props> = ({
@@ -72,6 +74,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
   inlineError,
   onCreatePatientRequest,
   canCreateNewPatient = true,
+  lockedDoctorDisplayName = null,
 }) => {
   const updateForm = React.useCallback(
     (patch: Partial<FullFormFields>) => {
@@ -165,23 +168,33 @@ export const AppointmentCreateModal: React.FC<Props> = ({
               <label htmlFor="create-doctor" className={modalLabelClass}>
                 Врач
               </label>
-              <select
-                id="create-doctor"
-                className={sel}
-                value={form.doctorId}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  updateForm({ doctorId: v, serviceId: "" });
-                  onDoctorChange(v);
-                }}
-              >
-                <option value="">Выберите врача</option>
-                {Object.entries(doctorsMap).map(([id, name]) => (
-                  <option key={id} value={id}>
-                    {name}
-                  </option>
-                ))}
-              </select>
+              {lockedDoctorDisplayName ? (
+                <div
+                  id="create-doctor"
+                  className={`${sel} cursor-not-allowed bg-[#f9fafb] text-[#374151]`}
+                  aria-readonly
+                >
+                  {lockedDoctorDisplayName}
+                </div>
+              ) : (
+                <select
+                  id="create-doctor"
+                  className={sel}
+                  value={form.doctorId}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    updateForm({ doctorId: v, serviceId: "" });
+                    onDoctorChange(v);
+                  }}
+                >
+                  <option value="">Выберите врача</option>
+                  {Object.entries(doctorsMap).map(([id, name]) => (
+                    <option key={id} value={id}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div>

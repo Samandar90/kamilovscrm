@@ -89,6 +89,9 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
       cancelReason: input.cancelReason ?? null,
       cancelledAt: null,
       cancelledBy: null,
+      cancelledByRole: null,
+      createdByDoctorId: input.createdByDoctorId ?? null,
+      createdByUserId: input.createdByUserId ?? null,
       diagnosis: input.diagnosis ?? null,
       treatment: input.treatment ?? null,
       notes: input.notes ?? null,
@@ -185,7 +188,8 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
   async cancel(
     id: number,
     cancelReason: string | null,
-    cancelledBy: number
+    cancelledByUserId: number,
+    cancelledByRole?: string | null
   ): Promise<Appointment | null> {
     const db = getMockDb();
     const idx = db.appointments.findIndex((item) => item.id === id);
@@ -195,7 +199,8 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
       status: "cancelled",
       cancelReason,
       cancelledAt: new Date().toISOString(),
-      cancelledBy,
+      cancelledBy: cancelledByUserId,
+      cancelledByRole: cancelledByRole ?? null,
       updatedAt: new Date().toISOString(),
     };
     return toAppointment(db.appointments[idx]);
@@ -272,6 +277,19 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
   async isServiceAssignedToDoctor(serviceId: number, doctorId: number): Promise<boolean> {
     return getMockDb().doctorServices.some(
       (item) => item.serviceId === serviceId && item.doctorId === doctorId
+    );
+  }
+
+  async isPatientEligibleForDoctorBooking(
+    patientId: number,
+    doctorId: number
+  ): Promise<boolean> {
+    const db = getMockDb();
+    const patient = db.patients.find((p) => p.id === patientId && p.deletedAt === null);
+    if (!patient) return false;
+    if (patient.createdByDoctorId === doctorId) return true;
+    return db.appointments.some(
+      (a) => a.patientId === patientId && a.doctorId === doctorId
     );
   }
 
