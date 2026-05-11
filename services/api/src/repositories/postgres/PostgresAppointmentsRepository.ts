@@ -404,7 +404,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       endAt
     );
     if (hasConflict) {
-      throw new ApiError(409, "Doctor already has an appointment in this time slot");
+      throw new ApiError(409, "У врача уже есть запись на это время");
     }
 
     const client = await dbPool.connect();
@@ -500,7 +500,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       id
     );
     if (hasConflict) {
-      throw new ApiError(409, "Doctor already has an appointment in this time slot");
+      throw new ApiError(409, "У врача уже есть запись на это время");
     }
 
     const setClauses: string[] = [];

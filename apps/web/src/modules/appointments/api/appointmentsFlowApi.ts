@@ -45,7 +45,14 @@ export type Appointment = {
   updatedAt: string;
 };
 
-export type PatientSource = "instagram" | "telegram" | "advertising" | "referral" | "other";
+export type PatientSource =
+  | "instagram"
+  | "telegram"
+  | "advertising"
+  | "referral"
+  | "other"
+  | "doctor"
+  | "reception";
 
 export type Patient = {
   id: number;
@@ -234,7 +241,9 @@ export const appointmentsFlowApi = {
   updateAppointment: (
     token: string,
     appointmentId: number,
-    payload: Partial<Pick<Appointment, "status" | "diagnosis" | "treatment" | "notes">>
+    payload: Partial<
+      Pick<Appointment, "status" | "diagnosis" | "treatment" | "notes" | "startAt">
+    >
   ) =>
     requestJson<Appointment>(`/api/appointments/${appointmentId}`, {
       method: "PUT",

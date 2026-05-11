@@ -32,7 +32,15 @@ import {
   uiDateToYmd,
 } from "../utils/appointmentFormUtils";
 import { summarizeAppointments } from "../utils/appointmentSummary";
-import { AppContainer, EmptyState, MoneyInput, PageHeader, PageLoader, SectionCard } from "../../../shared/ui";
+import {
+  AppContainer,
+  EmptyState,
+  MoneyInput,
+  PageHeader,
+  PageLoader,
+  SectionCard,
+  StatusBadge,
+} from "../../../shared/ui";
 import { primaryActionButtonClass } from "../../../shared/ui/buttonStyles";
 import { Button } from "../../../ui/Button";
 import { coercePriceToNumber } from "../../../shared/lib/money";
@@ -158,6 +166,97 @@ function emptyRangeMessage(tab: RangeTab): string {
   }
 }
 
+const RESCHEDULABLE_APPOINTMENT_STATUSES = new Set<Appointment["status"]>([
+  "scheduled",
+  "confirmed",
+  "arrived",
+  "in_consultation",
+]);
+
+function parseStartAtToDateAndTimeInputs(startAt: string): { date: string; time: string } {
+  const s = startAt.trim();
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/);
+  if (m?.[1] && m[2] != null && m[3] != null) {
+    return { date: m[1], time: `${m[2]}:${m[3]}` };
+  }
+  return { date: todayYmd(), time: "" };
+}
+
+function formatAppointmentDateOnlyRu(startAt: string): string {
+  const s = startAt.trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m?.[1] || !m[2] || !m[3]) return "—";
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function formatAppointmentCreatedAtRu(value: string | undefined): string {
+  if (!value) return "—";
+  const normalized = value.includes(" ") ? value.replace(" ", "T") : value;
+  const d = new Date(normalized);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function appointmentStatusDetailedRu(status: Appointment["status"]): string {
+  const map: Record<Appointment["status"], string> = {
+    scheduled: "Запланирован",
+    confirmed: "Подтверждён",
+    arrived: "Пришёл",
+    in_consultation: "На приёме",
+    completed: "Завершён",
+    cancelled: "Отменён",
+    no_show: "Неявка",
+  };
+  return map[status] ?? status;
+}
+
+function patientSourceLabelRu(source: Patient["source"]): string {
+  switch (source) {
+    case "doctor":
+      return "Врач";
+    case "reception":
+      return "Регистратура";
+    case "instagram":
+      return "Instagram";
+    case "telegram":
+      return "Telegram";
+    case "advertising":
+      return "Реклама";
+    case "referral":
+      return "Рекомендация";
+    case "other":
+      return "Другое";
+    default:
+      return "—";
+  }
+}
+
+function formatBirthDateRu(ymd: string | null | undefined): string | null {
+  if (!ymd?.trim()) return null;
+  const m = ymd.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m?.[1] || !m[2] || !m[3]) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function appointmentStatusToneForBadge(
+  status: Appointment["status"]
+): "success" | "danger" | "info" | "warning" | "neutral" {
+  if (status === "completed") return "success";
+  if (status === "cancelled") return "danger";
+  if (status === "arrived") return "info";
+  if (status === "in_consultation") return "warning";
+  return "neutral";
+}
 
 const emptyFullForm = (): FullFormFields => ({
   patientQuery: "",
@@ -198,6 +297,10 @@ export const AppointmentsPage: React.FC = () => {
   );
   const patientPhoneMap = React.useMemo(
     () => Object.fromEntries(patientsList.map((p) => [p.id, p.phone ?? null])),
+    [patientsList]
+  );
+  const patientsById = React.useMemo(
+    () => Object.fromEntries(patientsList.map((p) => [p.id, p])) as Record<number, Patient>,
     [patientsList]
   );
   const [doctorsMap, setDoctorsMap] = React.useState<Record<number, string>>({});
@@ -247,6 +350,13 @@ export const AppointmentsPage: React.FC = () => {
     appointment: null,
     price: 0,
   });
+  const [rescheduleModal, setRescheduleModal] = React.useState<{
+    open: boolean;
+    appointment: Appointment | null;
+    date: string;
+    time: string;
+    error: string;
+  }>({ open: false, appointment: null, date: "", time: "", error: "" });
   const [fullConflictHint, setFullConflictHint] = React.useState<ConflictHintState>({
     message: null,
     suggestedTimes: [],
@@ -592,9 +702,17 @@ export const AppointmentsPage: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await appointmentsFlowApi.updateAppointmentStatus(token, appointment.id, nextStatus);
-      await loadData();
+      const updated = await appointmentsFlowApi.updateAppointmentStatus(
+        token,
+        appointment.id,
+        nextStatus
+      );
+      setAppointments((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+      setDetailsModal((d) =>
+        d.appointment?.id === updated.id ? { open: d.open, appointment: updated } : d
+      );
       setToast("Статус записи обновлен");
+      void loadData({ silent: true });
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Ошибка обновления");
     } finally {
@@ -848,16 +966,52 @@ export const AppointmentsPage: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await appointmentsFlowApi.cancelAppointment(
+      const updated = await appointmentsFlowApi.cancelAppointment(
         token,
         cancelModal.appointment.id,
         cancelModal.reason
       );
       setCancelModal({ open: false, appointment: null, reason: "" });
-      await loadData();
+      setAppointments((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+      setDetailsModal((d) =>
+        d.appointment?.id === updated.id ? { open: d.open, appointment: updated } : d
+      );
       setToast("Запись отменена");
+      void loadData({ silent: true });
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Ошибка отмены записи");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const submitRescheduleTime = async () => {
+    if (!token || !rescheduleModal.appointment) return;
+    const startAt = normalizeDateTimeForApi(rescheduleModal.date, rescheduleModal.time);
+    if (!startAt) {
+      setRescheduleModal((s) => ({ ...s, error: "Укажите корректную дату и время" }));
+      return;
+    }
+    setIsSubmitting(true);
+    setRescheduleModal((s) => ({ ...s, error: "" }));
+    setError(null);
+    try {
+      const updated = await appointmentsFlowApi.updateAppointment(
+        token,
+        rescheduleModal.appointment.id,
+        { startAt }
+      );
+      setAppointments((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+      setDetailsModal((d) =>
+        d.appointment?.id === updated.id ? { open: true, appointment: updated } : d
+      );
+      setRescheduleModal({ open: false, appointment: null, date: "", time: "", error: "" });
+      setToast("Время записи обновлено");
+      void loadData({ silent: true });
+    } catch (requestError) {
+      const msg =
+        requestError instanceof Error ? requestError.message : "Не удалось изменить время";
+      setRescheduleModal((s) => ({ ...s, error: msg }));
     } finally {
       setIsSubmitting(false);
     }
@@ -948,6 +1102,29 @@ export const AppointmentsPage: React.FC = () => {
     },
     [canUpdateApptStatus, isDoctorUser]
   );
+
+  const copyPatientPhone = React.useCallback(async (phone: string) => {
+    const t = phone.trim();
+    if (!t) return;
+    try {
+      await navigator.clipboard.writeText(t);
+      setToast("Номер скопирован");
+    } catch {
+      setToast(t);
+    }
+  }, []);
+
+  const canManageAppointmentDetailsActions = React.useCallback(
+    (a: Appointment) => {
+      if (!canUpdateApptStatus) return false;
+      if (ur === "doctor") {
+        return user?.doctorId != null && a.doctorId === user.doctorId;
+      }
+      return true;
+    },
+    [canUpdateApptStatus, ur, user?.doctorId]
+  );
+
   const mobileAppointments = React.useMemo(
     () => filteredAppointments.slice(0, mobileWindow),
     [filteredAppointments, mobileWindow]
@@ -1203,6 +1380,7 @@ export const AppointmentsPage: React.FC = () => {
                     onCancelAppointment={() =>
                       setCancelModal({ open: true, appointment, reason: "" })
                     }
+                    onCopyPatientPhone={(phone) => void copyPatientPhone(phone)}
                   />
                 );
               })}
@@ -1228,6 +1406,8 @@ export const AppointmentsPage: React.FC = () => {
                     appointment={appointment}
                     invoice={invoice}
                     patientName={patientsMap[appointment.patientId] ?? `Пациент #${appointment.patientId}`}
+                    patientPhone={patientPhoneMap[appointment.patientId]}
+                    onCopyPatientPhone={(phone) => void copyPatientPhone(phone)}
                     doctorName={doctorsMap[appointment.doctorId] ?? `#${appointment.doctorId}`}
                     service={service}
                     timeLabel={formatTimeOnly(appointment.startAt)}
@@ -1359,66 +1539,273 @@ export const AppointmentsPage: React.FC = () => {
         <Modal
           isOpen={detailsModal.open}
           onClose={() => setDetailsModal({ open: false, appointment: null })}
-          className="w-full max-w-md rounded-[20px] border border-[#e5e7eb] bg-white p-6 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.2)]"
+          backdropClassName="modal-backdrop-enter fixed inset-0 bg-black/[0.12]"
+          className="flex max-h-[min(88dvh,720px)] w-[min(520px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-0 shadow-[0_24px_64px_-20px_rgba(15,23,42,0.22)] transition-transform duration-200 ease-out"
         >
-            {(() => {
-              const fallbackService = servicesMap[detailsModal.appointment.serviceId];
-              const services = getAllServices(detailsModal.appointment, {
-                fallbackBase: fallbackService
-                  ? {
-                      id: fallbackService.id,
-                      name: fallbackService.name,
-                      price: detailsModal.appointment.price ?? fallbackService.price,
-                    }
-                  : undefined,
-              });
-              return (
-                <>
-            <h3 className="text-lg font-semibold text-[#111827]">Детали записи</h3>
-            <div className="mt-3 space-y-2 text-sm text-[#374151]">
-              <p>
-                <span className="text-[#6b7280]">Время:</span> {formatDateTime(detailsModal.appointment.startAt)}
-              </p>
-              <p>
-                <span className="text-[#6b7280]">Пациент:</span>{" "}
-                {patientsMap[detailsModal.appointment.patientId] ?? `#${detailsModal.appointment.patientId}`}
-              </p>
-              <p>
-                <span className="text-[#6b7280]">Врач:</span>{" "}
-                {doctorsMap[detailsModal.appointment.doctorId] ?? `#${detailsModal.appointment.doctorId}`}
-              </p>
-              <p>
-                <span className="text-[#6b7280]">Услуга:</span>{" "}
-                {services.length > 0 ? (
-                  <span className="block mt-1 space-y-1">
-                    {services.map((service) => (
-                      <span
-                        key={`${service.serviceId}-${service.isBase ? "b" : "a"}`}
-                        className="block"
-                      >
-                        {service.name} — {formatSum(coercePriceToNumber(service.price))}
-                      </span>
-                    ))}
-                  </span>
-                ) : (
-                  fallbackService?.name ?? `#${detailsModal.appointment.serviceId}`
-                )}
-              </p>
-            </div>
-            <div className="mt-5 flex justify-end">
-              <button
-                type="button"
-                className="rounded-xl border border-[#e5e7eb] bg-white px-4 py-2 text-sm font-medium text-[#111827] transition hover:bg-[#f3f4f6]"
-                onClick={() => setDetailsModal({ open: false, appointment: null })}
-              >
-                Закрыть
-              </button>
-            </div>
-                </>
-              );
-            })()}
+          {(() => {
+            const ap = detailsModal.appointment;
+            if (!ap) return null;
+            const fallbackService = servicesMap[ap.serviceId];
+            const services = getAllServices(ap, {
+              fallbackBase: fallbackService
+                ? {
+                    id: fallbackService.id,
+                    name: fallbackService.name,
+                    price: ap.price ?? fallbackService.price,
+                  }
+                : undefined,
+            });
+            const patient = patientsById[ap.patientId];
+            const phoneRaw = patient?.phone?.trim() ?? "";
+            const birthLabel = formatBirthDateRu(patient?.birthDate);
+            const showActions = canManageAppointmentDetailsActions(ap);
+            const showReschedule = showActions && RESCHEDULABLE_APPOINTMENT_STATUSES.has(ap.status);
+            const showStart =
+              showActions &&
+              (ap.status === "scheduled" || ap.status === "confirmed" || ap.status === "arrived");
+            const showCancelBtn = showActions && shouldOfferCancel(ap);
+            const rowClass = "flex flex-col gap-0.5 border-b border-slate-100 py-3 last:border-b-0";
+            const labelClass = "text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500";
+            const valueClass = "text-sm font-medium text-slate-900";
+            return (
+              <>
+                <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-semibold tracking-tight text-slate-900">Детали записи</h3>
+                      <p className="mt-0.5 text-xs text-slate-500">Карточка визита</p>
+                    </div>
+                    <StatusBadge tone={appointmentStatusToneForBadge(ap.status)} className="shrink-0">
+                      {appointmentStatusDetailedRu(ap.status)}
+                    </StatusBadge>
+                  </div>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-2">
+                  <div className={rowClass}>
+                    <span className={labelClass}>Пациент</span>
+                    <span className={valueClass}>
+                      {patientsMap[ap.patientId] ?? `Пациент #${ap.patientId}`}
+                    </span>
+                  </div>
+                  <div className={rowClass}>
+                    <span className={labelClass}>Телефон</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={valueClass}>{phoneRaw || "—"}</span>
+                      {phoneRaw ? (
+                        <button
+                          type="button"
+                          onClick={() => void copyPatientPhone(phoneRaw)}
+                          className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
+                        >
+                          Скопировать
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                  {birthLabel ? (
+                    <div className={rowClass}>
+                      <span className={labelClass}>Дата рождения</span>
+                      <span className={valueClass}>{birthLabel}</span>
+                    </div>
+                  ) : null}
+                  <div className={rowClass}>
+                    <span className={labelClass}>Источник пациента</span>
+                    <span className={valueClass}>{patientSourceLabelRu(patient?.source)}</span>
+                  </div>
+                  <div className={rowClass}>
+                    <span className={labelClass}>Врач</span>
+                    <span className={valueClass}>
+                      {doctorsMap[ap.doctorId] ?? `Врач #${ap.doctorId}`}
+                    </span>
+                  </div>
+                  <div className={rowClass}>
+                    <span className={labelClass}>Услуга</span>
+                    <div className={valueClass}>
+                      {services.length > 0 ? (
+                        <ul className="mt-1 list-none space-y-1">
+                          {services.map((service) => (
+                            <li key={`${service.serviceId}-${service.isBase ? "b" : "a"}`}>
+                              {service.name}
+                              {readBilling ? ` — ${formatSum(coercePriceToNumber(service.price))}` : ""}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        fallbackService?.name ?? `Услуга #${ap.serviceId}`
+                      )}
+                    </div>
+                  </div>
+                  <div className={rowClass}>
+                    <span className={labelClass}>Дата</span>
+                    <span className={valueClass}>{formatAppointmentDateOnlyRu(ap.startAt)}</span>
+                  </div>
+                  <div className={rowClass}>
+                    <span className={labelClass}>Время</span>
+                    <span className={valueClass}>{formatTimeOnly(ap.startAt)}</span>
+                  </div>
+                  <div className={rowClass}>
+                    <span className={labelClass}>Запись создана</span>
+                    <span className={valueClass}>{formatAppointmentCreatedAtRu(ap.createdAt)}</span>
+                  </div>
+                </div>
+                <div className="sticky bottom-0 z-[1] flex shrink-0 flex-col gap-2 border-t border-slate-100 bg-white px-6 py-4">
+                  {showActions ? (
+                    <div className="flex flex-wrap gap-2">
+                      {showReschedule ? (
+                        <button
+                          type="button"
+                          disabled={isSubmitting}
+                          onClick={() => {
+                            const { date, time } = parseStartAtToDateAndTimeInputs(ap.startAt);
+                            setDetailsModal({ open: false, appointment: null });
+                            setRescheduleModal({
+                              open: true,
+                              appointment: ap,
+                              date,
+                              time,
+                              error: "",
+                            });
+                          }}
+                          className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          Изменить время
+                        </button>
+                      ) : null}
+                      {showStart ? (
+                        <button
+                          type="button"
+                          disabled={isSubmitting}
+                          onClick={() => void updateStatus(ap)}
+                          className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
+                        >
+                          Начать приём
+                        </button>
+                      ) : null}
+                      {showCancelBtn ? (
+                        <button
+                          type="button"
+                          disabled={isSubmitting}
+                          onClick={() => {
+                            setDetailsModal({ open: false, appointment: null });
+                            setCancelModal({ open: true, appointment: ap, reason: "" });
+                          }}
+                          className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-800 shadow-sm transition hover:bg-rose-100 disabled:opacity-50"
+                        >
+                          Отменить запись
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      className="rounded-xl px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                      onClick={() => setDetailsModal({ open: false, appointment: null })}
+                    >
+                      Закрыть
+                    </button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </Modal>
       )}
+
+      {rescheduleModal.open && rescheduleModal.appointment ? (
+        <Modal
+          isOpen={rescheduleModal.open}
+          backdropClassName="modal-backdrop-enter fixed inset-0 bg-black/[0.12]"
+          onClose={() => {
+            const id = rescheduleModal.appointment?.id;
+            setRescheduleModal({
+              open: false,
+              appointment: null,
+              date: "",
+              time: "",
+              error: "",
+            });
+            if (id != null) {
+              const latest = appointments.find((x) => x.id === id);
+              if (latest) setDetailsModal({ open: true, appointment: latest });
+            }
+          }}
+          className="w-full max-w-sm rounded-2xl border border-slate-200/90 bg-white p-6 shadow-[0_20px_50px_-24px_rgba(15,23,42,0.2)]"
+        >
+          <h3 className="text-base font-semibold text-slate-900">Изменить время</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            {patientsMap[rescheduleModal.appointment.patientId] ?? "Пациент"} ·{" "}
+            {formatTimeOnly(rescheduleModal.appointment.startAt)}
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Дата
+              </label>
+              <input
+                type="date"
+                value={rescheduleModal.date}
+                onChange={(e) =>
+                  setRescheduleModal((s) => ({ ...s, date: e.target.value, error: "" }))
+                }
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
+                disabled={isSubmitting}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Время
+              </label>
+              <input
+                type="time"
+                step={300}
+                value={rescheduleModal.time}
+                onChange={(e) =>
+                  setRescheduleModal((s) => ({ ...s, time: e.target.value, error: "" }))
+                }
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+          {rescheduleModal.error ? (
+            <p className="mt-3 text-sm text-rose-600" role="alert">
+              {rescheduleModal.error}
+            </p>
+          ) : null}
+          <div className="mt-6 flex justify-end gap-2">
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => {
+                const id = rescheduleModal.appointment?.id;
+                setRescheduleModal({
+                  open: false,
+                  appointment: null,
+                  date: "",
+                  time: "",
+                  error: "",
+                });
+                if (id != null) {
+                  const latest = appointments.find((x) => x.id === id);
+                  if (latest) setDetailsModal({ open: true, appointment: latest });
+                }
+              }}
+              className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => void submitRescheduleTime()}
+              className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
+            >
+              Сохранить
+            </button>
+          </div>
+        </Modal>
+      ) : null}
 
       {canUpdateApptStatus && cancelModal.open && cancelModal.appointment ? (
         <Modal
@@ -1724,11 +2111,4 @@ export const AppointmentsPage: React.FC = () => {
       )}
     </div>
   );
-};
-
-const formatDateTime = (value: string): string => {
-  const normalized = value.includes(" ") ? value.replace(" ", "T") : value;
-  const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("ru-RU");
 };

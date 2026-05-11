@@ -182,7 +182,7 @@ const ensureNoDoctorConflict = async (
   );
 
   if (hasConflict) {
-    throw new ApiError(409, "Doctor already has an appointment in this time slot");
+    throw new ApiError(409, "У врача уже есть запись на это время");
   }
 };
 
@@ -466,14 +466,13 @@ export class AppointmentsService {
 
     const isClinicalStaff = isDoctorScopedRole(auth.role);
     if (isClinicalStaff) {
-      const schedulingKeys: (keyof AppointmentUpdateInput)[] = [
+      const strictSchedulingKeys: (keyof AppointmentUpdateInput)[] = [
         "patientId",
         "doctorId",
         "serviceId",
-        "startAt",
         "price",
       ];
-      for (const key of schedulingKeys) {
+      for (const key of strictSchedulingKeys) {
         if (normalizedPayload[key] === undefined) continue;
         const nextVal = normalizedPayload[key];
         const curVal = current[key as keyof Appointment] as unknown;
@@ -482,6 +481,19 @@ export class AppointmentsService {
             403,
             "Нельзя менять пациента, врача, услугу, время или цену записи для этой роли"
           );
+        }
+      }
+      if (normalizedPayload.startAt !== undefined) {
+        if (auth.role === "nurse") {
+          throw new ApiError(
+            403,
+            "Нельзя менять пациента, врача, услугу, время или цену записи для этой роли"
+          );
+        }
+        if (auth.role === "doctor") {
+          if (current.doctorId !== getEffectiveDoctorId(auth)) {
+            throw new ApiError(403, "Недостаточно прав для изменения времени записи");
+          }
         }
       }
     } else if (
@@ -506,6 +518,10 @@ export class AppointmentsService {
     const mergedServiceId = normalizedPayload.serviceId ?? current.serviceId;
     const mergedStartAt = normalizedPayload.startAt ?? current.startAt;
     let mergedEndAt = current.endAt;
+
+    if (normalizedPayload.startAt !== undefined) {
+      ensureStartAtNotInPast(mergedStartAt);
+    }
 
     const shouldRecalculateEndAt =
       normalizedPayload.startAt !== undefined || normalizedPayload.serviceId !== undefined;

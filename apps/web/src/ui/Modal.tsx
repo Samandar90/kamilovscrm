@@ -7,6 +7,8 @@ export type ModalProps = {
   onClose: () => void;
   children: React.ReactNode;
   className?: string;
+  /** Backdrop layer (e.g. solid dim without blur). Defaults to slate overlay + blur. */
+  backdropClassName?: string;
   closeOnOverlay?: boolean;
   closeOnEsc?: boolean;
 };
@@ -14,11 +16,15 @@ export type ModalProps = {
 const defaultPanelClass =
   "relative z-10 w-full max-w-lg rounded-t-2xl border border-slate-200/90 bg-white p-6 shadow-[0_24px_48px_-12px_rgba(15,23,42,0.18)] max-md:max-h-[88dvh] max-md:overflow-y-auto md:rounded-2xl";
 
+const defaultBackdropClass =
+  "modal-backdrop-enter fixed inset-0 bg-slate-900/35 backdrop-blur-sm";
+
 export const Modal: React.FC<ModalProps> = ({
   isOpen,
   onClose,
   children,
   className,
+  backdropClassName,
   closeOnOverlay = true,
   closeOnEsc = true,
 }) => {
@@ -43,7 +49,7 @@ export const Modal: React.FC<ModalProps> = ({
   return createPortal(
     <div className="fixed inset-0 z-[10000] flex items-end justify-center p-0 md:items-center md:p-4">
       <div
-        className="modal-backdrop-enter fixed inset-0 bg-slate-900/35 backdrop-blur-sm"
+        className={backdropClassName ?? defaultBackdropClass}
         aria-hidden
         onMouseDown={() => {
           if (closeOnOverlay) onClose();

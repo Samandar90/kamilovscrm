@@ -1,4 +1,5 @@
 import React from "react";
+import { Phone } from "lucide-react";
 import type { Appointment, AppointmentStatus, Service } from "../api/appointmentsFlowApi";
 import { buildUnifiedAppointmentActions } from "./appointmentActions";
 
@@ -39,6 +40,7 @@ type Props = {
   onOpenDetails: () => void;
   showCancelButton?: boolean;
   onCancelAppointment?: () => void;
+  onCopyPatientPhone?: (phone: string) => void;
 };
 
 export const AppointmentMobileCard: React.FC<Props> = ({
@@ -58,6 +60,7 @@ export const AppointmentMobileCard: React.FC<Props> = ({
   onOpenDetails,
   showCancelButton = false,
   onCancelAppointment,
+  onCopyPatientPhone,
 }) => {
   const actions = buildUnifiedAppointmentActions({
     appointment,
@@ -89,7 +92,24 @@ export const AppointmentMobileCard: React.FC<Props> = ({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[17px] font-semibold leading-none tabular-nums text-slate-900">{timeLabel}</p>
-            <p className="mt-1 truncate text-sm font-medium text-slate-800">{patientName}</p>
+            <div className="mt-1 flex min-w-0 items-center gap-1">
+              <p className="min-w-0 truncate text-sm font-medium text-slate-800">{patientName}</p>
+              {patientPhone?.trim() && onCopyPatientPhone ? (
+                <button
+                  type="button"
+                  title="Скопировать телефон"
+                  aria-label="Скопировать телефон"
+                  disabled={isSubmitting}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCopyPatientPhone(patientPhone.trim());
+                  }}
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 active:scale-95"
+                >
+                  <Phone className="h-3.5 w-3.5" strokeWidth={2} />
+                </button>
+              ) : null}
+            </div>
           </div>
           <span
             className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusTone[appointment.status]}`}

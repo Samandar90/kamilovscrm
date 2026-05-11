@@ -1,4 +1,5 @@
 import React from "react";
+import { Phone } from "lucide-react";
 import type { Appointment, InvoiceSummary, Service } from "../api/appointmentsFlowApi";
 import { coercePriceToNumber } from "../../../shared/lib/money";
 import { getAllServices } from "../../../shared/lib/appointments/getAllServices";
@@ -37,6 +38,8 @@ type Props = {
   appointment: Appointment;
   invoice: InvoiceSummary | null;
   patientName: string;
+  patientPhone?: string | null;
+  onCopyPatientPhone?: (phone: string) => void;
   doctorName: string;
   service: Service | undefined;
   timeLabel: string;
@@ -64,6 +67,8 @@ export const AppointmentCard: React.FC<Props> = ({
   appointment,
   invoice,
   patientName,
+  patientPhone,
+  onCopyPatientPhone,
   doctorName,
   service,
   timeLabel,
@@ -173,7 +178,24 @@ export const AppointmentCard: React.FC<Props> = ({
             </StatusBadge>
           </div>
           <div className="space-y-1.5 text-sm">
-            <p className="truncate text-base font-semibold text-[#111827]">{patientName}</p>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <p className="min-w-0 truncate text-base font-semibold text-[#111827]">{patientName}</p>
+              {patientPhone?.trim() && onCopyPatientPhone ? (
+                <button
+                  type="button"
+                  title="Скопировать телефон"
+                  aria-label="Скопировать телефон"
+                  disabled={isSubmitting}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCopyPatientPhone(patientPhone.trim());
+                  }}
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-200/90 bg-white text-slate-500 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50/80 hover:text-emerald-700 active:scale-95 disabled:opacity-40"
+                >
+                  <Phone className="h-3.5 w-3.5" strokeWidth={2} />
+                </button>
+              ) : null}
+            </div>
             <p className="text-[#334155]">
               <span className="text-[#64748b]">Врач:</span> {doctorName}
             </p>

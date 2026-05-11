@@ -25,7 +25,7 @@ const mapPostgresError = (err: PostgresLikeError): ApiError | null => {
   const target = err.column ?? err.constraint ?? "field";
 
   if (err.constraint === "appointments_doctor_active_no_overlap") {
-    return new ApiError(409, "Doctor already has an appointment in this time slot");
+    return new ApiError(409, "У врача уже есть запись на это время");
   }
   if (err.constraint === "uq_cash_register_single_active_shift") {
     return new ApiError(409, "Смена уже открыта");
