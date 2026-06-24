@@ -40,10 +40,6 @@ export const LoginPage: React.FC = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const lastSubmitAtRef = React.useRef(0);
 
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   React.useEffect(() => {
     document.title = `${brandName} — Вход`;
   }, [brandName]);
@@ -55,6 +51,12 @@ export const LoginPage: React.FC = () => {
       setIsAllowed(false);
     }
   }, [accessCode]);
+
+  // Все хуки должны вызываться до любого раннего return (Rules of Hooks):
+  // иначе при isAuthenticated=true после входа число хуков меняется и React падает.
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const canSubmit = Boolean(username.trim() && password.trim());
 

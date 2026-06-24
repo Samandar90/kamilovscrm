@@ -14,6 +14,7 @@ import type {
 import { dbPool } from "../../config/database";
 import { env } from "../../config/env";
 import { parseMoneyColumn } from "../../utils/numbers";
+import { requireClinicId } from "../../tenancy/clinicContext";
 
 type BoundRow = {
   from_inclusive: Date | null;
@@ -94,6 +95,7 @@ export class PostgresReportsRepository implements IReportsRepository {
     granularity: ReportsGranularity,
     range: ReportsDateRange
   ): Promise<RevenuePoint[]> {
+    const clinicId = requireClinicId();
     const b = await this.resolveBounds(range);
     const tz = env.reportsTimezone;
     const truncUnit =
@@ -112,11 +114,12 @@ export class PostgresReportsRepository implements IReportsRepository {
         INNER JOIN invoices i ON i.id = p.invoice_id AND i.deleted_at IS NULL
         WHERE i.status NOT IN ('cancelled', 'refunded')
           AND p.deleted_at IS NULL
+          AND p.clinic_id = $6
           AND ${PAYMENT_TIME}
         GROUP BY 1
         ORDER BY 1
       `,
-      [...t, truncUnit, tz]
+      [...t, truncUnit, tz, clinicId]
     );
 
     return result.rows.map((row) => ({
@@ -126,6 +129,7 @@ export class PostgresReportsRepository implements IReportsRepository {
   }
 
   async getPaymentsByMethodReport(range: ReportsDateRange): Promise<PaymentsByMethodRow[]> {
+    const clinicId = requireClinicId();
     const b = await this.resolveBounds(range);
     const t = this.boundTriplet(b);
 
@@ -138,11 +142,12 @@ export class PostgresReportsRepository implements IReportsRepository {
         INNER JOIN invoices i ON i.id = p.invoice_id AND i.deleted_at IS NULL
         WHERE i.status NOT IN ('cancelled', 'refunded')
           AND p.deleted_at IS NULL
+          AND p.clinic_id = $4
           AND ${PAYMENT_TIME}
         GROUP BY 1
         ORDER BY 1
       `,
-      t
+      [...t, clinicId]
     );
 
     return result.rows.map((row) => ({
@@ -154,6 +159,7 @@ export class PostgresReportsRepository implements IReportsRepository {
   async getInvoicesStatusSummaryReport(
     range: ReportsDateRange
   ): Promise<InvoiceStatusSummaryRow[]> {
+    const clinicId = requireClinicId();
     const b = await this.resolveBounds(range);
     const t = this.boundTriplet(b);
 
@@ -169,11 +175,12 @@ export class PostgresReportsRepository implements IReportsRepository {
           COALESCE(SUM(inv.total), 0)::float8 AS total_amount
         FROM invoices inv
         WHERE inv.deleted_at IS NULL
+          AND inv.clinic_id = $4
           AND ${INVOICE_TIME}
         GROUP BY inv.status
         ORDER BY inv.status
       `,
-      t
+      [...t, clinicId]
     );
 
     return result.rows.map((row) => ({
@@ -184,6 +191,7 @@ export class PostgresReportsRepository implements IReportsRepository {
   }
 
   async getRevenueByDoctor(range: ReportsDateRange): Promise<RevenueByDoctorRow[]> {
+    const clinicId = requireClinicId();
     const b = await this.resolveBounds(range);
     const t = this.boundTriplet(b);
 
@@ -203,11 +211,12 @@ export class PostgresReportsRepository implements IReportsRepository {
         LEFT JOIN doctors d ON d.id = a.doctor_id
         WHERE i.status NOT IN ('cancelled', 'refunded')
           AND p.deleted_at IS NULL
+          AND p.clinic_id = $4
           AND ${PAYMENT_TIME}
         GROUP BY a.doctor_id
         ORDER BY total_revenue DESC
       `,
-      t
+      [...t, clinicId]
     );
 
     return result.rows.map((row) => ({
@@ -218,6 +227,7 @@ export class PostgresReportsRepository implements IReportsRepository {
   }
 
   async getRevenueByService(range: ReportsDateRange): Promise<RevenueByServiceRow[]> {
+    const clinicId = requireClinicId();
     const b = await this.resolveBounds(range);
     const t = this.boundTriplet(b);
 
@@ -237,11 +247,12 @@ export class PostgresReportsRepository implements IReportsRepository {
         LEFT JOIN services s ON s.id = a.service_id
         WHERE i.status NOT IN ('cancelled', 'refunded')
           AND p.deleted_at IS NULL
+          AND p.clinic_id = $4
           AND ${PAYMENT_TIME}
         GROUP BY a.service_id
         ORDER BY total_revenue DESC
       `,
-      t
+      [...t, clinicId]
     );
 
     return result.rows.map((row) => ({
@@ -252,6 +263,7 @@ export class PostgresReportsRepository implements IReportsRepository {
   }
 
   async getReportMetrics(range: ReportsDateRange): Promise<ReportMetrics> {
+    const clinicId = requireClinicId();
     const b = await this.resolveBounds(range);
     const t = this.boundTriplet(b);
 
@@ -274,18 +286,20 @@ export class PostgresReportsRepository implements IReportsRepository {
           INNER JOIN invoices i ON i.id = p.invoice_id AND i.deleted_at IS NULL
           WHERE i.status NOT IN ('cancelled', 'refunded')
             AND p.deleted_at IS NULL
+            AND p.clinic_id = $4
             AND ${PAYMENT_TIME}
         `,
-        t
+        [...t, clinicId]
       ),
       dbPool.query<{ c: string | number }>(
         `
           SELECT COUNT(*)::int AS c
           FROM appointments a
           WHERE a.deleted_at IS NULL
+            AND a.clinic_id = $4
             AND ${APPOINTMENT_TIME}
         `,
-        t
+        [...t, clinicId]
       ),
     ]);
 
@@ -297,6 +311,7 @@ export class PostgresReportsRepository implements IReportsRepository {
   }
 
   async getReportsSummary(): Promise<ReportsSummaryData> {
+    const clinicId = requireClinicId();
     const tz = env.reportsTimezone;
 
     const [totalsRes, byDayRes, byDoctorRes, byServiceRes] = await Promise.all([
@@ -340,6 +355,7 @@ export class PostgresReportsRepository implements IReportsRepository {
           INNER JOIN invoices i ON i.id = p.invoice_id AND i.deleted_at IS NULL
           WHERE p.deleted_at IS NULL
             AND i.status NOT IN ('cancelled', 'refunded')
+            AND p.clinic_id = $2
             AND p.created_at >= (SELECT lower_ts FROM b3 LIMIT 1)
         )
         SELECT
@@ -367,7 +383,7 @@ export class PostgresReportsRepository implements IReportsRepository {
         LEFT JOIN pay ON TRUE
         GROUP BY b3.today_d, b3.yest_d, b3.week_start_d, b3.month_start_d
         `,
-        [tz]
+        [tz, clinicId]
       ),
       dbPool.query<{ date: string; amount: string | number }>(
         `
@@ -387,6 +403,7 @@ export class PostgresReportsRepository implements IReportsRepository {
           INNER JOIN invoices i ON i.id = p.invoice_id AND i.deleted_at IS NULL
           WHERE p.deleted_at IS NULL
             AND i.status NOT IN ('cancelled', 'refunded')
+            AND p.clinic_id = $2
             AND (p.created_at AT TIME ZONE $1::text)::date >= (SELECT today_d - 29 FROM b)
             AND (p.created_at AT TIME ZONE $1::text)::date <= (SELECT today_d FROM b)
           GROUP BY 1
@@ -398,7 +415,7 @@ export class PostgresReportsRepository implements IReportsRepository {
         LEFT JOIN agg a ON a.d = s.day
         ORDER BY s.day
         `,
-        [tz]
+        [tz, clinicId]
       ),
       dbPool.query<{ doctor_name: string | null; amount: string | number }>(
         `
@@ -417,6 +434,7 @@ export class PostgresReportsRepository implements IReportsRepository {
         LEFT JOIN doctors d ON d.id = a.doctor_id
         WHERE p.deleted_at IS NULL
           AND i.status NOT IN ('cancelled', 'refunded')
+          AND p.clinic_id = $2
           AND (p.created_at AT TIME ZONE $1::text)::date >= (SELECT today_d - 29 FROM b)
           AND (p.created_at AT TIME ZONE $1::text)::date <= (SELECT today_d FROM b)
         GROUP BY a.doctor_id
@@ -424,7 +442,7 @@ export class PostgresReportsRepository implements IReportsRepository {
         ORDER BY amount DESC
         LIMIT 5
         `,
-        [tz]
+        [tz, clinicId]
       ),
       dbPool.query<{ service_name: string | null; amount: string | number; cnt: string | number }>(
         `
@@ -457,6 +475,7 @@ export class PostgresReportsRepository implements IReportsRepository {
         LEFT JOIN services s ON s.id = ii.service_id
         WHERE p.deleted_at IS NULL
           AND i.status NOT IN ('cancelled', 'refunded')
+          AND p.clinic_id = $2
           AND (p.created_at AT TIME ZONE $1::text)::date >= (SELECT today_d - 29 FROM b)
           AND (p.created_at AT TIME ZONE $1::text)::date <= (SELECT today_d FROM b)
         GROUP BY ii.service_id
@@ -470,7 +489,7 @@ export class PostgresReportsRepository implements IReportsRepository {
         ORDER BY amount DESC
         LIMIT 5
         `,
-        [tz]
+        [tz, clinicId]
       ),
     ]);
 
@@ -495,6 +514,7 @@ export class PostgresReportsRepository implements IReportsRepository {
   }
 
   async getRecommendationsAnalytics(): Promise<RecommendationsAnalyticsData> {
+    const clinicId = requireClinicId();
     const tz = env.reportsTimezone;
     const dateTo = formatYmdInTimeZone(new Date(), tz);
     const dateFrom = addDaysYmd(dateTo, -6);
@@ -520,7 +540,9 @@ export class PostgresReportsRepository implements IReportsRepository {
           INNER JOIN invoices i ON i.id = p.invoice_id AND i.deleted_at IS NULL
           WHERE i.status NOT IN ('cancelled', 'refunded')
             AND p.deleted_at IS NULL
-        `
+            AND p.clinic_id = $1
+        `,
+        [clinicId]
       ),
       dbPool.query<{ total: string | number }>(
         `
@@ -529,10 +551,11 @@ export class PostgresReportsRepository implements IReportsRepository {
           INNER JOIN invoices i ON i.id = p.invoice_id AND i.deleted_at IS NULL
           WHERE i.status NOT IN ('cancelled', 'refunded')
             AND p.deleted_at IS NULL
+            AND p.clinic_id = $2
             AND date_trunc('day', p.created_at AT TIME ZONE $1::text)
               = date_trunc('day', now() AT TIME ZONE $1::text)
         `,
-        [tz]
+        [tz, clinicId]
       ),
       dbPool.query<{ c: string | number }>(
         `
@@ -540,7 +563,9 @@ export class PostgresReportsRepository implements IReportsRepository {
           FROM invoices inv
           WHERE inv.deleted_at IS NULL
             AND inv.status IN ('issued', 'partially_paid')
-        `
+            AND inv.clinic_id = $1
+        `,
+        [clinicId]
       ),
       dbPool.query<{ doctor_name: string; load_pct: string | number }>(
         `
@@ -553,6 +578,7 @@ export class PostgresReportsRepository implements IReportsRepository {
             INNER JOIN doctors d ON d.id = a.doctor_id
             WHERE a.deleted_at IS NULL
               AND d.deleted_at IS NULL
+              AND a.clinic_id = $1
               AND a.start_at >= (now() - interval '30 days')
             GROUP BY d.id
           ),
@@ -568,7 +594,8 @@ export class PostgresReportsRepository implements IReportsRepository {
           CROSS JOIN tot
           ORDER BY doc.cnt DESC
           LIMIT 8
-        `
+        `,
+        [clinicId]
       ),
     ]);
 

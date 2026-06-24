@@ -93,19 +93,6 @@ export class AuthService {
     }
   ): Promise<User> {
     const user = await this.usersRepository.findByUsernameIncludingInactive(username);
-    // eslint-disable-next-line no-console
-    console.log(
-      "USER:",
-      user
-        ? {
-            id: user.id,
-            username: user.username,
-            isActive: user.isActive,
-            hasPasswordField: Boolean(user.password),
-            passwordStorage: user.password?.startsWith("$2") ? "bcrypt" : "legacy_plaintext",
-          }
-        : null
-    );
     if (!user) {
       await this.logAudit({
         userId: null,
@@ -201,8 +188,6 @@ export class AuthService {
   private async issueAccessResponse(user: User): Promise<AuthResponse> {
     const payload = await this.buildTokenPayload(user);
     const accessToken = signAccessToken(payload);
-    // eslint-disable-next-line no-console
-    console.log("JWT CREATED:", Boolean(accessToken && accessToken.length > 0));
     const publicBase = toPublicUser(user);
     if (user.role === "nurse") {
       return {

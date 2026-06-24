@@ -1,5 +1,6 @@
 import { dbPool } from "../../config/database";
 import { parseMoneyColumn } from "../../utils/numbers";
+import { requireClinicId } from "../../tenancy/clinicContext";
 import type { IExpensesRepository } from "../interfaces/IExpensesRepository";
 import type {
   Expense,
@@ -35,8 +36,9 @@ const mapExpense = (row: ExpenseRow): Expense => ({
 
 export class PostgresExpensesRepository implements IExpensesRepository {
   async findAll(filters: ExpenseFilters = {}): Promise<Expense[]> {
-    const clauses: string[] = ["deleted_at IS NULL"];
-    const values: Array<string> = [];
+    const clinicId = requireClinicId();
+    const values: Array<string | number> = [clinicId];
+    const clauses: string[] = ["deleted_at IS NULL", `clinic_id = $${values.length}`];
 
     if (filters.category) {
       values.push(filters.category);
@@ -71,18 +73,20 @@ export class PostgresExpensesRepository implements IExpensesRepository {
   }
 
   async create(input: ExpenseCreateInput): Promise<Expense> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<ExpenseRow>(
       `
-        INSERT INTO expenses (amount, category, description, paid_at)
-        VALUES ($1, $2, $3, $4::timestamptz)
+        INSERT INTO expenses (clinic_id, amount, category, description, paid_at)
+        VALUES ($1, $2, $3, $4, $5::timestamptz)
         RETURNING id, amount, category, description, paid_at, created_at, deleted_at
       `,
-      [input.amount, input.category, input.description ?? null, input.paidAt]
+      [clinicId, input.amount, input.category, input.description ?? null, input.paidAt]
     );
     return mapExpense(result.rows[0]);
   }
 
   async update(id: number, input: ExpenseUpdateInput): Promise<Expense | null> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<ExpenseRow>(
       `
         UPDATE expenses
@@ -92,24 +96,27 @@ export class PostgresExpensesRepository implements IExpensesRepository {
           description = COALESCE($4::text, description),
           paid_at = COALESCE($5::timestamptz, paid_at)
         WHERE id = $1
+          AND clinic_id = $6
           AND deleted_at IS NULL
         RETURNING id, amount, category, description, paid_at, created_at, deleted_at
       `,
-      [id, input.amount ?? null, input.category ?? null, input.description ?? null, input.paidAt ?? null]
+      [id, input.amount ?? null, input.category ?? null, input.description ?? null, input.paidAt ?? null, clinicId]
     );
     return result.rows[0] ? mapExpense(result.rows[0]) : null;
   }
 
   async delete(id: number): Promise<boolean> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<{ id: string | number }>(
       `
         UPDATE expenses
         SET deleted_at = NOW()
         WHERE id = $1
+          AND clinic_id = $2
           AND deleted_at IS NULL
         RETURNING id
       `,
-      [id]
+      [id, clinicId]
     );
     return result.rows.length > 0;
   }
