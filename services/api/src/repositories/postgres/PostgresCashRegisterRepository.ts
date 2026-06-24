@@ -108,6 +108,7 @@ const mapEntryWithContext = (row: EntryRowWithContext): CashRegisterEntryListIte
 
 export class PostgresCashRegisterRepository implements ICashRegisterRepository {
   async findActiveShift(): Promise<CashRegisterShift | null> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<ShiftRow>(
       `
         SELECT
@@ -123,9 +124,11 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
           updated_at
         FROM cash_register_shifts
         WHERE closed_at IS NULL
+          AND clinic_id = $1
         ORDER BY opened_at DESC
         LIMIT 1
-      `
+      `,
+      [clinicId]
     );
     if (result.rows.length === 0) {
       return null;
@@ -134,15 +137,17 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
   }
 
   async openShift(input: OpenShiftInput): Promise<CashRegisterShift> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<ShiftRow>(
       `
         INSERT INTO cash_register_shifts (
           opened_by,
           opening_balance,
           notes,
+          clinic_id,
           updated_at
         )
-        VALUES ($1, $2, $3, NOW())
+        VALUES ($1, $2, $3, $4, NOW())
         RETURNING
           id,
           opened_by,
@@ -155,12 +160,13 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
           created_at,
           updated_at
       `,
-      [input.openedBy ?? null, input.openingBalance, input.notes ?? null]
+      [input.openedBy ?? null, input.openingBalance, input.notes ?? null, clinicId]
     );
     return mapShift(result.rows[0]);
   }
 
   async findShiftById(id: number): Promise<CashRegisterShift | null> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<ShiftRow>(
       `
         SELECT
@@ -176,9 +182,10 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
           updated_at
         FROM cash_register_shifts
         WHERE id = $1
+          AND clinic_id = $2
         LIMIT 1
       `,
-      [id]
+      [id, clinicId]
     );
     if (result.rows.length === 0) {
       return null;
@@ -187,6 +194,7 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
   }
 
   async closeShift(id: number, input: CloseShiftInput): Promise<CashRegisterShift | null> {
+    const clinicId = requireClinicId();
     const setParts: string[] = [
       "closed_at = NOW()",
       "closing_balance = $2",
@@ -198,12 +206,15 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
       values.push(input.notes);
       setParts.push(`notes = $${values.length}`);
     }
+    values.push(clinicId);
+    const clinicParam = values.length;
 
     const result = await dbPool.query<ShiftRow>(
       `
         UPDATE cash_register_shifts
         SET ${setParts.join(", ")}
         WHERE id = $1
+          AND clinic_id = $${clinicParam}
           AND closed_at IS NULL
         RETURNING
           id,
@@ -226,6 +237,7 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
   }
 
   async findShiftHistory(): Promise<CashRegisterShift[]> {
+    const clinicId = requireClinicId();
     const result = await dbPool.query<ShiftRow>(
       `
         SELECT
@@ -240,15 +252,18 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
           created_at,
           updated_at
         FROM cash_register_shifts
+        WHERE clinic_id = $1
         ORDER BY opened_at DESC
-      `
+      `,
+      [clinicId]
     );
     return result.rows.map(mapShift);
   }
 
   async findEntries(filters: FindEntriesFilters = {}): Promise<CashRegisterEntry[]> {
-    const clauses: string[] = [];
-    const values: Array<number | string> = [];
+    const clinicId = requireClinicId();
+    const values: Array<number | string> = [clinicId];
+    const clauses: string[] = [`clinic_id = $1`];
 
     if (filters.shiftId !== undefined) {
       values.push(filters.shiftId);
@@ -290,8 +305,9 @@ export class PostgresCashRegisterRepository implements ICashRegisterRepository {
   async findEntriesWithContext(
     filters: FindEntriesFilters = {}
   ): Promise<CashRegisterEntryListItem[]> {
-    const clauses: string[] = [];
-    const values: Array<number | string> = [];
+    const clinicId = requireClinicId();
+    const values: Array<number | string> = [clinicId];
+    const clauses: string[] = [`e.clinic_id = $1`];
     const tz = env.reportsTimezone.replace(/'/g, "''");
 
     if (filters.shiftId !== undefined) {
