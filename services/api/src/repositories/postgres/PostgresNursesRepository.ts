@@ -1,5 +1,6 @@
 import type { INursesRepository } from "../interfaces/INursesRepository";
 import { dbPool } from "../../config/database";
+import { requireClinicId } from "../../tenancy/clinicContext";
 
 export class PostgresNursesRepository implements INursesRepository {
   async findDoctorIdByUserId(userId: number): Promise<number | null> {
@@ -12,13 +13,14 @@ export class PostgresNursesRepository implements INursesRepository {
   }
 
   async upsert(userId: number, doctorId: number): Promise<void> {
+    const clinicId = requireClinicId();
     await dbPool.query(
       `
-        INSERT INTO nurses (user_id, doctor_id)
-        VALUES ($1, $2)
+        INSERT INTO nurses (user_id, doctor_id, clinic_id)
+        VALUES ($1, $2, $3)
         ON CONFLICT (user_id) DO UPDATE SET doctor_id = EXCLUDED.doctor_id
       `,
-      [userId, doctorId]
+      [userId, doctorId, clinicId]
     );
   }
 
