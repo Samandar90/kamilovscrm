@@ -9,6 +9,8 @@ type ClinicRow = {
   slug: string | null;
   logo_url: string | null;
   primary_color: string | null;
+  subscription_status?: string | null;
+  subscription_ends_at?: Date | string | null;
 };
 
 const CLINIC_FALLBACK = {
@@ -17,6 +19,17 @@ const CLINIC_FALLBACK = {
   slug: "kamilovs-clinic",
   logoUrl: "/logo.png",
   primaryColor: "#6D28D9",
+  subscriptionStatus: "active" as string,
+  subscriptionEndsAt: null as string | null,
+  subscriptionDaysLeft: null as number | null,
+};
+
+/** Дней до окончания подписки (вверх), либо null если без срока. */
+const daysLeftUntil = (endsAt: Date | string | null | undefined): number | null => {
+  if (!endsAt) return null;
+  const ms = new Date(endsAt).getTime();
+  if (!Number.isFinite(ms)) return null;
+  return Math.max(0, Math.ceil((ms - Date.now()) / 86_400_000));
 };
 
 type CreateClinicBody = {
@@ -31,7 +44,7 @@ export const clinicMeController = async (req: Request, res: Response) => {
   try {
     const result: QueryResult<ClinicRow> = await dbPool.query(
       `
-        SELECT id, name, slug, logo_url, primary_color
+        SELECT id, name, slug, logo_url, primary_color, subscription_status, subscription_ends_at
         FROM clinics
         WHERE id = $1
         LIMIT 1;
@@ -50,6 +63,11 @@ export const clinicMeController = async (req: Request, res: Response) => {
       slug: row.slug,
       logoUrl: row.logo_url ?? CLINIC_FALLBACK.logoUrl,
       primaryColor: row.primary_color ?? CLINIC_FALLBACK.primaryColor,
+      subscriptionStatus: row.subscription_status ?? "active",
+      subscriptionEndsAt: row.subscription_ends_at
+        ? new Date(row.subscription_ends_at).toISOString()
+        : null,
+      subscriptionDaysLeft: daysLeftUntil(row.subscription_ends_at),
     });
   } catch (error: unknown) {
     const pgError = error as { code?: string };
@@ -87,8 +105,8 @@ export const createClinicController = async (req: Request<unknown, unknown, Crea
 
   const result: QueryResult<ClinicRow> = await dbPool.query(
     `
-      INSERT INTO clinics (name, slug, logo_url, primary_color)
-      VALUES ($1, $2, '/logo.png', '#6D28D9')
+      INSERT INTO clinics (name, slug, logo_url, primary_color, subscription_status, subscription_ends_at)
+      VALUES ($1, $2, '/logo.png', '#6D28D9', 'trialing', now() + interval '14 days')
       RETURNING id, name, slug, logo_url, primary_color;
     `,
     [name, slug]

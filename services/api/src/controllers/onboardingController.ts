@@ -88,8 +88,8 @@ export const onboardingController = async (
 
     const clinicResult = await client.query<ClinicRow>(
       `
-        INSERT INTO clinics (name, slug, logo_url, primary_color)
-        VALUES ($1, $2, '/logo.png', '#6D28D9')
+        INSERT INTO clinics (name, slug, logo_url, primary_color, subscription_status, subscription_ends_at)
+        VALUES ($1, $2, '/logo.png', '#6D28D9', 'trialing', now() + interval '14 days')
         RETURNING id, name, slug, logo_url, primary_color
       `,
       [clinicName, clinicSlug]

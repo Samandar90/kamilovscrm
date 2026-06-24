@@ -7,6 +7,7 @@ import { livenessCheck, readinessCheck } from "../controllers/healthController";
 import { aiDebugController } from "../controllers/aiAssistantController";
 import { env } from "../config/env";
 import { requireAuth } from "../middleware/authMiddleware";
+import { requireActiveSubscription } from "../middleware/subscriptionMiddleware";
 import { checkPermission } from "../middleware/permissionMiddleware";
 import { authRouter } from "./authRoutes";
 import { devRouter } from "./devRoutes";
@@ -41,17 +42,22 @@ router.use("/auth", authRouter);
 if (env.allowDevBootstrap) {
   router.use("/dev", devRouter);
 }
-router.use("/users", usersRouter);
-router.use("/patients", patientsRouter);
-router.use("/doctors", doctorsRouter);
-router.use("/appointments", appointmentsRouter);
-router.use("/services", servicesRouter);
-router.use("/invoices", invoicesRouter);
-router.use("/payments", paymentsRouter);
-router.use("/expenses", expensesRouter);
-router.use("/cash-register", cashRegisterRouter);
-router.use("/reports", reportsRouter);
-router.use("/ai", aiAssistantRouter);
+
+// Гейт подписки на дата-роутах: requireAuth ставит clinic-контекст, затем проверка подписки.
+// /auth, /onboarding, /clinic/me, /meta/clinic, /health сюда НЕ входят —
+// чтобы при истёкшей подписке можно было войти, увидеть статус и выйти.
+const subscriptionGuard = asyncHandler(requireActiveSubscription);
+router.use("/users", requireAuth, subscriptionGuard, usersRouter);
+router.use("/patients", requireAuth, subscriptionGuard, patientsRouter);
+router.use("/doctors", requireAuth, subscriptionGuard, doctorsRouter);
+router.use("/appointments", requireAuth, subscriptionGuard, appointmentsRouter);
+router.use("/services", requireAuth, subscriptionGuard, servicesRouter);
+router.use("/invoices", requireAuth, subscriptionGuard, invoicesRouter);
+router.use("/payments", requireAuth, subscriptionGuard, paymentsRouter);
+router.use("/expenses", requireAuth, subscriptionGuard, expensesRouter);
+router.use("/cash-register", requireAuth, subscriptionGuard, cashRegisterRouter);
+router.use("/reports", requireAuth, subscriptionGuard, reportsRouter);
+router.use("/ai", requireAuth, subscriptionGuard, aiAssistantRouter);
 
 export { router as rootRouter };
 
