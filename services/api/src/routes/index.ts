@@ -10,6 +10,7 @@ import { requireAuth } from "../middleware/authMiddleware";
 import { requireActiveSubscription } from "../middleware/subscriptionMiddleware";
 import { checkPermission } from "../middleware/permissionMiddleware";
 import { authRouter } from "./authRoutes";
+import { platformRouter } from "./platformRoutes";
 import { devRouter } from "./devRoutes";
 import { usersRouter } from "./usersRoutes";
 import { patientsRouter } from "./patientsRoutes";
@@ -39,6 +40,7 @@ router.get(
 );
 
 router.use("/auth", authRouter);
+router.use("/platform", platformRouter);
 if (env.allowDevBootstrap) {
   router.use("/dev", devRouter);
 }
