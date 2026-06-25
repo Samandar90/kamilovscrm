@@ -1,10 +1,11 @@
 import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Building2 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import type { UserRole } from "../auth/types";
 import { useNavigation } from "../navigation/useNavigation";
 import type { NavigationItem } from "../navigation/navigationConfig";
+import { usePlatformAccess } from "../hooks/usePlatformAccess";
 import { Logo } from "../shared/ui/Logo";
 
 const ICON_STROKE = 1.65;
@@ -168,7 +169,15 @@ export const Sidebar: React.FC = () => {
   const sections = useNavigation();
   const location = useLocation();
   const { user } = useAuth();
+  const { isPlatformAdmin } = usePlatformAccess();
   const [billingOpen, setBillingOpen] = React.useState(true);
+
+  const platformItem: NavigationItem = {
+    label: "Платформа",
+    path: "/platform",
+    roles: [],
+    icon: Building2,
+  };
 
   let stagger = 0;
   const nextDelay = () => stagger++ * 52;
@@ -207,6 +216,26 @@ export const Sidebar: React.FC = () => {
             </div>
           </div>
         ))}
+
+        {isPlatformAdmin ? (
+          <div>
+            <div
+              className="crm-sidebar-enter mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94a3b8]"
+              style={{ animationDelay: `${nextDelay()}ms` }}
+            >
+              Платформа
+            </div>
+            <div className="space-y-0.5">
+              <SidebarItem
+                item={platformItem}
+                pathname={location.pathname}
+                animationDelayMs={nextDelay()}
+                billingOpen={billingOpen}
+                setBillingOpen={setBillingOpen}
+              />
+            </div>
+          </div>
+        ) : null}
       </nav>
 
       {user ? (

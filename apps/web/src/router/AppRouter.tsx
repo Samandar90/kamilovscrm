@@ -12,6 +12,7 @@ import { PaymentsReadOnlyPage } from "../modules/billing/pages/PaymentsReadOnlyP
 import { ExpensesPage } from "../modules/expenses/pages/ExpensesPage";
 import { ReportsPage } from "../modules/reports/pages/ReportsPage";
 import { ArchitecturePage } from "../modules/system/pages/ArchitecturePage";
+import { PlatformPage } from "../modules/platform/pages/PlatformPage";
 import { UsersPage } from "../modules/users/pages/UsersPage";
 import { ServicesPage } from "../modules/services/pages/ServicesPage";
 import { DoctorsPage } from "../modules/doctors/pages/DoctorsPage";
@@ -217,6 +218,7 @@ export const AppRouter: React.FC = () => {
             </RoleGuard>
           }
         />
+        <Route path="/platform" element={<PlatformPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
