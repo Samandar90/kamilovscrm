@@ -9,6 +9,7 @@ export type PlatformClinic = {
   endsAt: string | null;
   createdAt: string | null;
   userCount: number;
+  smsEnabled: boolean;
 };
 
 export type SubscriptionAction =
@@ -48,6 +49,13 @@ export const createClinicWithAdmin = (body: CreateClinicInput) =>
     "/api/onboarding",
     { method: "POST", body }
   );
+
+/** Вкл/выкл SMS-напоминаний пациентам для клиники. */
+export const updateClinicSms = (clinicId: number, enabled: boolean) =>
+  requestJson<PlatformClinic>(`/api/platform/clinics/${clinicId}/sms`, {
+    method: "POST",
+    body: { enabled },
+  });
 
 /** Смена логотипа/названия клиники (лого попадает в шапку интерфейса и на чеки). */
 export const updateClinicBranding = (clinicId: number, body: { logoUrl?: string; name?: string }) =>

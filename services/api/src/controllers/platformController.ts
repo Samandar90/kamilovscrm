@@ -15,6 +15,7 @@ type ClinicSubRow = {
   subscription_ends_at: Date | string | null;
   created_at: Date | string | null;
   user_count: number | string;
+  sms_enabled: boolean;
 };
 
 const mapClinic = (row: ClinicSubRow) => ({
@@ -26,12 +27,14 @@ const mapClinic = (row: ClinicSubRow) => ({
   endsAt: toIso(row.subscription_ends_at),
   createdAt: toIso(row.created_at),
   userCount: Number(row.user_count),
+  smsEnabled: Boolean(row.sms_enabled),
 });
 
 const SELECT_CLINIC = `
   SELECT
     c.id, c.name, c.slug,
     c.subscription_plan, c.subscription_status, c.subscription_ends_at, c.created_at,
+    c.sms_enabled,
     (SELECT COUNT(*) FROM users u WHERE u.clinic_id = c.id AND u.deleted_at IS NULL) AS user_count
   FROM clinics c
 `;
@@ -100,6 +103,33 @@ export const updateClinicSubscriptionController = async (req: Request, res: Resp
       WHERE c.id = (SELECT id FROM upd)
     `,
     params
+  );
+  const row = result.rows[0];
+  if (!row) {
+    throw new ApiError(404, "clinic not found");
+  }
+  return res.json(mapClinic(row));
+};
+
+/** Вкл/выкл SMS-напоминаний для клиники (стоимость SMS несёт владелец платформы). */
+export const updateClinicSmsController = async (req: Request, res: Response) => {
+  const clinicId = Number(req.params.id);
+  if (!Number.isInteger(clinicId) || clinicId <= 0) {
+    throw new ApiError(400, "invalid clinic id");
+  }
+  const enabled = (req.body as { enabled?: unknown } | undefined)?.enabled;
+  if (typeof enabled !== "boolean") {
+    throw new ApiError(400, "field 'enabled' must be a boolean");
+  }
+  const result = await dbPool.query<ClinicSubRow>(
+    `
+      WITH upd AS (
+        UPDATE clinics SET sms_enabled = $2 WHERE id = $1 RETURNING id
+      )
+      ${SELECT_CLINIC}
+      WHERE c.id = (SELECT id FROM upd)
+    `,
+    [clinicId, enabled]
   );
   const row = result.rows[0];
   if (!row) {

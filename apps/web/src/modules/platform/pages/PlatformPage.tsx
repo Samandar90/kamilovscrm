@@ -5,6 +5,7 @@ import {
   createClinicWithAdmin,
   fetchPlatformClinics,
   updateClinicBranding,
+  updateClinicSms,
   updateClinicSubscription,
   type CreateClinicInput,
   type PlatformClinic,
@@ -246,6 +247,19 @@ export const PlatformPage: React.FC = () => {
     }
   };
 
+  const toggleSms = async (clinicId: number, enabled: boolean) => {
+    setBusyId(clinicId);
+    setError(null);
+    try {
+      const updated = await updateClinicSms(clinicId, enabled);
+      setClinics((prev) => prev.map((c) => (c.id === clinicId ? updated : c)));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Не удалось переключить SMS");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const changeLogo = async (clinicId: number, file: File) => {
     setBusyId(clinicId);
     setError(null);
@@ -373,6 +387,19 @@ export const PlatformPage: React.FC = () => {
                             Приостановить
                           </button>
                         )}
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => toggleSms(c.id, !c.smsEnabled)}
+                          title="SMS-напоминания пациентам за 24 часа до приёма"
+                          className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition disabled:opacity-50 ${
+                            c.smsEnabled
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                              : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
+                          }`}
+                        >
+                          SMS {c.smsEnabled ? "вкл" : "выкл"}
+                        </button>
                         <label
                           className={`cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-100 ${busy ? "pointer-events-none opacity-50" : ""}`}
                         >

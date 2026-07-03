@@ -5,6 +5,7 @@ import { config } from "./config";
 import { env } from "./config/env";
 import { dbPool } from "./config/database";
 import { ensureMockSeedData } from "./repositories/mockDatabase";
+import { startSmsReminderScheduler } from "./services/sms/smsReminderService";
 
 const app = createApp();
 const server = http.createServer(app);
@@ -44,6 +45,7 @@ const start = async (): Promise<void> => {
   server.listen(port, () => {
     // eslint-disable-next-line no-console
     console.log("Server running on port", port);
+    startSmsReminderScheduler();
   });
 };
 

@@ -74,6 +74,21 @@ const clinicReceiptFooter =
   (process.env.CLINIC_RECEIPT_FOOTER || "Внутренний документ · не является фискальным чеком").trim() ||
   "Внутренний документ · не является фискальным чеком";
 
+/**
+ * SMS-напоминания пациентам через Eskiz.uz. Включаются только когда заданы
+ * SMS_ENABLED=true и учётные данные Eskiz (ESKIZ_EMAIL / ESKIZ_PASSWORD).
+ * Плюс per-clinic флаг clinics.sms_enabled (управляется платформенным админом).
+ */
+const eskizEmail = process.env.ESKIZ_EMAIL?.trim() || "";
+const eskizPassword = process.env.ESKIZ_PASSWORD?.trim() || "";
+const smsEnabled =
+  process.env.SMS_ENABLED?.trim() === "true" && Boolean(eskizEmail && eskizPassword);
+/** Имя отправителя, согласованное в Eskiz (4546 — общий шлюз по умолчанию). */
+const smsFrom = process.env.SMS_FROM?.trim() || "4546";
+const smsReminderTemplate =
+  process.env.SMS_REMINDER_TEMPLATE?.trim() ||
+  "Здравствуйте, {patient}! Напоминаем: вы записаны в {clinic} {date} в {time}. Ждём вас!";
+
 /** Dev-only маршруты (например POST /api/dev/create-admin) — никогда в production. */
 const allowDevBootstrap = !isProduction;
 
@@ -103,5 +118,10 @@ export const env = {
   clinicReceiptFooter,
   debugSqlParams,
   debugInvoiceCreate,
+  smsEnabled,
+  eskizEmail,
+  eskizPassword,
+  smsFrom,
+  smsReminderTemplate,
 };
 
