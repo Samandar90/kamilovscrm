@@ -38,6 +38,8 @@ export type CreateClinicInput = {
   username: string;
   password: string;
   fullName: string;
+  /** data-URL картинки (png/jpeg/webp), опционально. */
+  logoUrl?: string;
 };
 
 /** Создаёт клинику + её админский аккаунт (trial 14 дней). Возвращаемый token игнорируем. */
@@ -46,3 +48,10 @@ export const createClinicWithAdmin = (body: CreateClinicInput) =>
     "/api/onboarding",
     { method: "POST", body }
   );
+
+/** Смена логотипа/названия клиники (лого попадает в шапку интерфейса и на чеки). */
+export const updateClinicBranding = (clinicId: number, body: { logoUrl?: string; name?: string }) =>
+  requestJson<{ ok: boolean; id: number }>(`/api/platform/clinics/${clinicId}/branding`, {
+    method: "POST",
+    body,
+  });

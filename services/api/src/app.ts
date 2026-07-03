@@ -28,7 +28,8 @@ export const createApp = () => {
       credentials: true,
     })
   );
-  app.use(express.json());
+  // 600kb: логотипы клиник приходят data-URL-ом (~300KB) в /onboarding и /platform/clinics/:id/branding.
+  app.use(express.json({ limit: "600kb" }));
   app.use(requestId);
   app.use(requestLogger);
 

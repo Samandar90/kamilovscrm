@@ -4,11 +4,13 @@ import { usePlatformAccess } from "../../../hooks/usePlatformAccess";
 import {
   createClinicWithAdmin,
   fetchPlatformClinics,
+  updateClinicBranding,
   updateClinicSubscription,
   type CreateClinicInput,
   type PlatformClinic,
   type SubscriptionAction,
 } from "../../../api/platformApi";
+import { imageFileToDataUrl } from "../../../shared/imageToDataUrl";
 
 const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   trialing: { text: "Пробный", cls: "bg-sky-50 text-sky-700 border-sky-200" },
@@ -53,6 +55,7 @@ const CreateClinicForm: React.FC<CreateClinicFormProps> = ({ onCreated }) => {
   const [open, setOpen] = React.useState(false);
   const [form, setForm] = React.useState<CreateClinicInput>(EMPTY_FORM);
   const [slugTouched, setSlugTouched] = React.useState(false);
+  const [logo, setLogo] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [created, setCreated] = React.useState<{ clinic: string; username: string; password: string } | null>(null);
@@ -85,11 +88,13 @@ const CreateClinicForm: React.FC<CreateClinicFormProps> = ({ onCreated }) => {
         username: form.username.trim().toLowerCase(),
         password: form.password,
         fullName: form.fullName.trim(),
+        ...(logo ? { logoUrl: logo } : {}),
       };
       await createClinicWithAdmin(payload);
       setCreated({ clinic: payload.clinicName, username: payload.username, password: payload.password });
       setForm(EMPTY_FORM);
       setSlugTouched(false);
+      setLogo(null);
       onCreated();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Не удалось создать клинику");
@@ -160,6 +165,34 @@ const CreateClinicForm: React.FC<CreateClinicFormProps> = ({ onCreated }) => {
             <label className="mb-1 block text-xs font-medium text-slate-500">Пароль (мин. 6 символов)</label>
             <input value={form.password} onChange={set("password")} autoComplete="new-password" className={inputCls} placeholder="••••••" />
           </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">
+              Логотип клиники (для интерфейса и чеков)
+            </label>
+            <div className="flex items-center gap-3">
+              {logo ? (
+                <img src={logo} alt="Логотип" className="h-10 w-10 rounded-lg border border-slate-200 object-contain" />
+              ) : null}
+              <label className="flex h-10 flex-1 cursor-pointer items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 text-sm text-slate-500 transition hover:border-slate-400 hover:text-slate-700">
+                {logo ? "Заменить лого" : "Выбрать файл (PNG/JPEG)"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!file) return;
+                    imageFileToDataUrl(file)
+                      .then(setLogo)
+                      .catch((err: unknown) =>
+                        setError(err instanceof Error ? err.message : "Не удалось загрузить лого")
+                      );
+                  }}
+                />
+              </label>
+            </div>
+          </div>
           <div className="flex items-end">
             <button
               type="submit"
@@ -208,6 +241,19 @@ export const PlatformPage: React.FC = () => {
       setClinics((prev) => prev.map((c) => (c.id === clinicId ? updated : c)));
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Не удалось обновить подписку");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const changeLogo = async (clinicId: number, file: File) => {
+    setBusyId(clinicId);
+    setError(null);
+    try {
+      const dataUrl = await imageFileToDataUrl(file);
+      await updateClinicBranding(clinicId, { logoUrl: dataUrl });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Не удалось обновить логотип");
     } finally {
       setBusyId(null);
     }
@@ -327,6 +373,21 @@ export const PlatformPage: React.FC = () => {
                             Приостановить
                           </button>
                         )}
+                        <label
+                          className={`cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-100 ${busy ? "pointer-events-none opacity-50" : ""}`}
+                        >
+                          Лого
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              e.target.value = "";
+                              if (file) void changeLogo(c.id, file);
+                            }}
+                          />
+                        </label>
                       </div>
                     </td>
                   </tr>

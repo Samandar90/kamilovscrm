@@ -20,7 +20,7 @@ import { lineItemDisplayLabel } from "../components/invoice/lineItemLabel";
 import { buildReceiptHTML } from "../../../shared/receipt/receiptTemplate";
 import { resolveReceiptClinicName } from "../../../shared/receipt/resolveReceiptClinicName";
 import { printReceipt as browserPrintReceipt } from "../../../shared/receipt/printReceipt";
-import kamilovsClinicLogo from "../../../assets/kamilovs-clinic-logo.png";
+import { useClinic } from "../../../hooks/useClinic";
 
 type PatientRow = { id: number; fullName: string; phone?: string | null };
 type AppointmentRow = {
@@ -62,6 +62,7 @@ export const InvoiceDetailsPage: React.FC = () => {
   const { id: idParam } = useParams();
   const navigate = useNavigate();
   const { token, user } = useAuth();
+  const { clinic } = useClinic();
   const canPay = canWriteBilling(user?.role);
   const canLoadDoctorProfile = !!user?.role && hasPermission(user.role, "doctors", "read");
 
@@ -186,7 +187,7 @@ export const InvoiceDetailsPage: React.FC = () => {
     (targetInvoice: InvoiceDetail, payment: Payment) => {
       const html = buildReceiptHTML({
         clinicName: resolveReceiptClinicName(targetInvoice),
-        logoUrl: kamilovsClinicLogo,
+        logoUrl: clinic.logoUrl,
         patient: patientName || `Пациент #${targetInvoice.patientId}`,
         doctor: doctorName || null,
         invoiceId: targetInvoice.number,

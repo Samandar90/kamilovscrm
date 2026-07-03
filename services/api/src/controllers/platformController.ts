@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { dbPool } from "../config/database";
 import { ApiError } from "../middleware/errorHandler";
+import { validateClinicLogoUrl } from "./onboardingController";
 
 const toIso = (value: Date | string | null): string | null =>
   value == null ? null : value instanceof Date ? value.toISOString() : new Date(value).toISOString();
@@ -105,4 +106,33 @@ export const updateClinicSubscriptionController = async (req: Request, res: Resp
     throw new ApiError(404, "clinic not found");
   }
   return res.json(mapClinic(row));
+};
+
+/** Смена логотипа (и опц. названия) клиники — для чеков и брендинга интерфейса. */
+export const updateClinicBrandingController = async (req: Request, res: Response) => {
+  const clinicId = Number(req.params.id);
+  if (!Number.isInteger(clinicId) || clinicId <= 0) {
+    throw new ApiError(400, "invalid clinic id");
+  }
+  const body = (req.body ?? {}) as { logoUrl?: unknown; name?: unknown };
+  const logoUrl = validateClinicLogoUrl(body.logoUrl);
+  const name = typeof body.name === "string" && body.name.trim() ? body.name.trim() : null;
+  if (!logoUrl && !name) {
+    throw new ApiError(400, "nothing to update (logoUrl or name required)");
+  }
+
+  const result = await dbPool.query<{ id: number }>(
+    `
+      UPDATE clinics
+      SET logo_url = COALESCE($2, logo_url),
+          name = COALESCE($3, name)
+      WHERE id = $1
+      RETURNING id
+    `,
+    [clinicId, logoUrl, name]
+  );
+  if (!result.rows[0]) {
+    throw new ApiError(404, "clinic not found");
+  }
+  return res.json({ ok: true, id: clinicId });
 };

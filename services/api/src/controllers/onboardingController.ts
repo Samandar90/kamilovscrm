@@ -11,6 +11,21 @@ type OnboardingBody = {
   username?: string;
   password?: string;
   fullName?: string;
+  logoUrl?: string;
+};
+
+/** Лого клиники: data-URL картинки (хранится в clinics.logo_url) или путь. Размер ограничен ~300KB. */
+export const validateClinicLogoUrl = (raw: unknown): string | null => {
+  if (typeof raw !== "string" || raw.trim() === "") return null;
+  const value = raw.trim();
+  if (value.startsWith("/")) return value;
+  if (/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value)) {
+    if (value.length > 400_000) {
+      throw new ApiError(400, "Логотип слишком большой (макс ~300KB)");
+    }
+    return value;
+  }
+  throw new ApiError(400, "logoUrl должен быть data-URL картинки (png/jpeg/webp)");
 };
 
 type ClinicRow = {
@@ -47,6 +62,7 @@ export const onboardingController = async (
   const username = normalize(req.body?.username).toLowerCase();
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   const fullName = normalize(req.body?.fullName);
+  const logoUrl = validateClinicLogoUrl(req.body?.logoUrl);
 
   if (!clinicName) throw new ApiError(400, "clinicName is required");
   if (!clinicSlug) throw new ApiError(400, "clinicSlug is required");
@@ -89,10 +105,10 @@ export const onboardingController = async (
     const clinicResult = await client.query<ClinicRow>(
       `
         INSERT INTO clinics (name, slug, logo_url, primary_color, subscription_status, subscription_ends_at)
-        VALUES ($1, $2, '/logo.png', '#6D28D9', 'trialing', now() + interval '14 days')
+        VALUES ($1, $2, $3, '#6D28D9', 'trialing', now() + interval '14 days')
         RETURNING id, name, slug, logo_url, primary_color
       `,
-      [clinicName, clinicSlug]
+      [clinicName, clinicSlug, logoUrl ?? "/logo.png"]
     );
 
     const clinic = clinicResult.rows[0];

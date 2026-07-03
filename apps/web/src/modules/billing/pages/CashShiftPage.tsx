@@ -14,7 +14,7 @@ import {
   type InvoiceSummary,
   type PaymentMethod,
 } from "../api/cashDeskApi";
-import kamilovsClinicLogo from "../../../assets/kamilovs-clinic-logo.png";
+import { useClinic } from "../../../hooks/useClinic";
 
 const cardBase =
   "rounded-2xl border border-[#eef2f7] bg-white shadow-[0_6px_24px_rgba(15,23,42,0.04)]";
@@ -38,6 +38,7 @@ export const CashShiftPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { token } = useAuth();
+  const { clinic } = useClinic();
 
   const [shift, setShift] = React.useState<CashRegisterShift | null>(null);
   const [entries, setEntries] = React.useState<CashRegisterEntry[]>([]);
@@ -113,7 +114,7 @@ export const CashShiftPage: React.FC = () => {
     if (!shift) return;
     const html = buildReceiptHTML({
       clinicName: resolveReceiptClinicName(undefined, clinicMetaName),
-      logoUrl: kamilovsClinicLogo,
+      logoUrl: clinic.logoUrl,
       patient: "Смена кассы",
       doctor: null,
       invoiceId: `SHIFT-${shift.id}`,

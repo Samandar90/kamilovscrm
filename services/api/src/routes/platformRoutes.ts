@@ -6,6 +6,7 @@ import {
   platformAccessController,
   listClinicsController,
   updateClinicSubscriptionController,
+  updateClinicBrandingController,
 } from "../controllers/platformController";
 
 const router = Router();
@@ -25,6 +26,12 @@ router.post(
   requireAuth,
   asyncHandler(requirePlatformAdmin),
   asyncHandler(updateClinicSubscriptionController)
+);
+router.post(
+  "/clinics/:id/branding",
+  requireAuth,
+  asyncHandler(requirePlatformAdmin),
+  asyncHandler(updateClinicBrandingController)
 );
 
 export { router as platformRouter };

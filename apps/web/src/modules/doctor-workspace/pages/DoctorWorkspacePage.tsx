@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
 import { appointmentsFlowApi, type Appointment, type Service } from "../../appointments/api/appointmentsFlowApi";
 import { cashDeskApi } from "../../billing/api/cashDeskApi";
-import kamilovsClinicLogo from "../../../assets/kamilovs-clinic-logo.png";
+import { useClinic } from "../../../hooks/useClinic";
 
 type WorkspaceForm = {
   diagnosis: string;
@@ -19,6 +19,7 @@ export const DoctorWorkspacePage: React.FC = () => {
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate = useNavigate();
   const { token } = useAuth();
+  const { clinic } = useClinic();
   const [appointment, setAppointment] = React.useState<Appointment | null>(null);
   const [patientName, setPatientName] = React.useState("Пациент");
   const [serviceName, setServiceName] = React.useState("Услуга");
@@ -252,7 +253,7 @@ export const DoctorWorkspacePage: React.FC = () => {
   <body>
     <main class="sheet">
       <header class="header">
-        <img src="${kamilovsClinicLogo}" alt="Логотип клиники" class="logo" />
+        <img src="${clinic.logoUrl}" alt="Логотип клиники" class="logo" />
         <div class="clinic-name">${safeClinicName}</div>
       </header>
 

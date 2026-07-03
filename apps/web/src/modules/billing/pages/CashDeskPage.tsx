@@ -16,7 +16,7 @@ import { printReceipt } from "../../../shared/receipt/printReceipt";
 import { buildReceiptHTML } from "../../../shared/receipt/receiptTemplate";
 import { resolveReceiptClinicName } from "../../../shared/receipt/resolveReceiptClinicName";
 import { getAllServices } from "../../../shared/lib/appointments/getAllServices";
-import kamilovsClinicLogo from "../../../assets/kamilovs-clinic-logo.png";
+import { useClinic } from "../../../hooks/useClinic";
 import {
   cashDeskApi,
   type AppointmentReadyForPayment,
@@ -85,6 +85,7 @@ type EntryPreset = "all" | "today" | "yesterday" | "last7" | "custom";
 export const CashDeskPage: React.FC = () => {
   const navigate = useNavigate();
   const { token, user } = useAuth();
+  const { clinic } = useClinic();
   const canOperate = canWriteBilling(user?.role);
   const canRefund = canRefundPayments(user?.role);
   const isSuperadmin = user?.role === "superadmin";
@@ -348,7 +349,7 @@ export const CashDeskPage: React.FC = () => {
     const invNum = detail?.number ?? entryInvoiceLabel(e);
     const html = buildReceiptHTML({
       clinicName: resolveReceiptClinicName(detail, clinicName),
-      logoUrl: kamilovsClinicLogo,
+      logoUrl: clinic.logoUrl,
       patient: patientLabel(e.patientId ?? detail?.patientId),
       doctor: null,
       invoiceId: invNum,
