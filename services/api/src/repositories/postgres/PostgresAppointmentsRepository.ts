@@ -81,6 +81,19 @@ const parseAppointmentServiceQuantity = (value: unknown): number => {
   return q > 0 ? q : 1;
 };
 
+/**
+ * Аудит-времена (created/updated/cancelled) — реальные моменты (now() в БД, UTC):
+ * отдаём честный ISO с зоной, фронт конвертирует в зону браузера.
+ * start_at/end_at — «настенное» время записи, для них остаётся normalizeToLocalDateTime.
+ */
+const toIsoUtc = (value: string | Date): string => {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(`Unparseable timestamp value: ${String(value)}`);
+  }
+  return d.toISOString();
+};
+
 const mapAppointmentRow = (row: AppointmentRow): Appointment => ({
   id: Number(row.id),
   patientId: Number(row.patient_id),
@@ -92,7 +105,7 @@ const mapAppointmentRow = (row: AppointmentRow): Appointment => ({
   status: row.status,
   billingStatus: row.billing_status,
   cancelReason: row.cancel_reason,
-  cancelledAt: row.cancelled_at ? normalizeToLocalDateTime(row.cancelled_at) : null,
+  cancelledAt: row.cancelled_at ? toIsoUtc(row.cancelled_at) : null,
   cancelledBy: row.cancelled_by != null ? Number(row.cancelled_by) : null,
   cancelledByRole: row.cancelled_by_role ?? null,
   createdByDoctorId:
@@ -102,8 +115,8 @@ const mapAppointmentRow = (row: AppointmentRow): Appointment => ({
   diagnosis: row.diagnosis,
   treatment: row.treatment,
   notes: row.notes,
-  createdAt: normalizeToLocalDateTime(row.created_at),
-  updatedAt: normalizeToLocalDateTime(row.updated_at),
+  createdAt: toIsoUtc(row.created_at),
+  updatedAt: toIsoUtc(row.updated_at),
 });
 
 const attachAssignedServices = async (
@@ -238,7 +251,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       price: roundMoney2(unit),
       quantity: qty,
       createdBy: row.created_by == null ? null : Number(row.created_by),
-      createdAt: normalizeToLocalDateTime(row.created_at),
+      createdAt: toIsoUtc(row.created_at),
     };
   }
 

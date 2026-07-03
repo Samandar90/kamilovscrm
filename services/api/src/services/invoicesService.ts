@@ -349,14 +349,21 @@ export class InvoicesService {
         price: line.unitPrice ?? 0,
       }));
 
+      // Счёт на 0 сум (бесплатные услуги) оплачивать нечем — платёж требует сумму > 0.
+      // Закрываем сразу: status paid (paidAmount 0 === total 0), запись — оплачена.
+      const totalIsZero = items.every((i) => (i.price ?? 0) * (i.quantity || 1) === 0);
+
       const created = await this.create(auth, {
         patientId: appointment.patientId,
         appointmentId: appointment.id,
-        status: "issued",
+        status: totalIsZero ? "paid" : "issued",
         discount: 0,
         items,
       });
-      await this.appointmentsRepository.updateBillingStatus(appointment.id, "ready_for_payment");
+      await this.appointmentsRepository.updateBillingStatus(
+        appointment.id,
+        totalIsZero ? "paid" : "ready_for_payment"
+      );
       return created;
     } catch (err) {
       // eslint-disable-next-line no-console
