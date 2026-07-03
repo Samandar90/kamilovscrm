@@ -2,8 +2,10 @@ import React from "react";
 import { Navigate } from "react-router-dom";
 import { usePlatformAccess } from "../../../hooks/usePlatformAccess";
 import {
+  createClinicWithAdmin,
   fetchPlatformClinics,
   updateClinicSubscription,
+  type CreateClinicInput,
   type PlatformClinic,
   type SubscriptionAction,
 } from "../../../api/platformApi";
@@ -26,6 +28,154 @@ const daysLeft = (iso: string | null): number | null => {
   const ms = new Date(iso).getTime() - Date.now();
   if (!Number.isFinite(ms)) return null;
   return Math.ceil(ms / 86_400_000);
+};
+
+const slugify = (value: string): string =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const EMPTY_FORM: CreateClinicInput = {
+  clinicName: "",
+  clinicSlug: "",
+  username: "",
+  password: "",
+  fullName: "",
+};
+
+type CreateClinicFormProps = {
+  onCreated: () => void;
+};
+
+const CreateClinicForm: React.FC<CreateClinicFormProps> = ({ onCreated }) => {
+  const [open, setOpen] = React.useState(false);
+  const [form, setForm] = React.useState<CreateClinicInput>(EMPTY_FORM);
+  const [slugTouched, setSlugTouched] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [created, setCreated] = React.useState<{ clinic: string; username: string; password: string } | null>(null);
+
+  const set = (key: keyof CreateClinicInput) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      if (key === "clinicName" && !slugTouched) next.clinicSlug = slugify(value);
+      return next;
+    });
+  };
+
+  const canSubmit =
+    form.clinicName.trim() &&
+    form.clinicSlug.trim() &&
+    form.username.trim() &&
+    form.fullName.trim() &&
+    form.password.length >= 6;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const payload: CreateClinicInput = {
+        clinicName: form.clinicName.trim(),
+        clinicSlug: slugify(form.clinicSlug),
+        username: form.username.trim().toLowerCase(),
+        password: form.password,
+        fullName: form.fullName.trim(),
+      };
+      await createClinicWithAdmin(payload);
+      setCreated({ clinic: payload.clinicName, username: payload.username, password: payload.password });
+      setForm(EMPTY_FORM);
+      setSlugTouched(false);
+      onCreated();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Не удалось создать клинику");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const inputCls =
+    "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10";
+
+  return (
+    <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Создать клинику</h2>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Новая клиника получает пробный период 14 дней. Логин и пароль передайте владельцу клиники.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#1D4ED8]"
+        >
+          {open ? "Скрыть" : "+ Новая клиника"}
+        </button>
+      </div>
+
+      {created ? (
+        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <div className="font-semibold">Клиника «{created.clinic}» создана ✅</div>
+          <div className="mt-1">
+            Доступ для владельца: логин <code className="rounded bg-white px-1.5 py-0.5 font-mono">{created.username}</code>{" "}
+            пароль <code className="rounded bg-white px-1.5 py-0.5 font-mono">{created.password}</code>
+          </div>
+          <div className="mt-1 text-xs text-emerald-600">Сохраните пароль сейчас — он больше нигде не показывается.</div>
+        </div>
+      ) : null}
+
+      {open ? (
+        <form onSubmit={submit} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Название клиники</label>
+            <input value={form.clinicName} onChange={set("clinicName")} className={inputCls} placeholder="Например: Shifo Med" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Slug (латиницей, для системы)</label>
+            <input
+              value={form.clinicSlug}
+              onChange={(e) => {
+                setSlugTouched(true);
+                setForm((prev) => ({ ...prev, clinicSlug: e.target.value }));
+              }}
+              className={inputCls}
+              placeholder="shifo-med"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Имя владельца (ФИО)</label>
+            <input value={form.fullName} onChange={set("fullName")} className={inputCls} placeholder="Иванов Иван" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Логин админа клиники</label>
+            <input value={form.username} onChange={set("username")} autoComplete="off" className={inputCls} placeholder="shifo_admin" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-slate-500">Пароль (мин. 6 символов)</label>
+            <input value={form.password} onChange={set("password")} autoComplete="new-password" className={inputCls} placeholder="••••••" />
+          </div>
+          <div className="flex items-end">
+            <button
+              type="submit"
+              disabled={!canSubmit || busy}
+              className="h-10 w-full rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {busy ? "Создание…" : "Создать клинику"}
+            </button>
+          </div>
+          {error ? (
+            <div className="sm:col-span-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>
+          ) : null}
+        </form>
+      ) : null}
+    </div>
+  );
 };
 
 export const PlatformPage: React.FC = () => {
@@ -78,6 +228,8 @@ export const PlatformPage: React.FC = () => {
           Управление подписками клиник. Оплата отмечается вручную: продлите доступ после поступления оплаты.
         </p>
       </div>
+
+      <CreateClinicForm onCreated={load} />
 
       {error ? (
         <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">

@@ -8,6 +8,7 @@ import { aiDebugController } from "../controllers/aiAssistantController";
 import { env } from "../config/env";
 import { requireAuth } from "../middleware/authMiddleware";
 import { requireActiveSubscription } from "../middleware/subscriptionMiddleware";
+import { requirePlatformAdmin } from "../middleware/platformMiddleware";
 import { checkPermission } from "../middleware/permissionMiddleware";
 import { authRouter } from "./authRoutes";
 import { platformRouter } from "./platformRoutes";
@@ -28,7 +29,14 @@ const router = Router();
 
 router.get("/health", livenessCheck);
 router.get("/health/ready", asyncHandler(readinessCheck));
-router.post("/onboarding", asyncHandler(onboardingController));
+// Создание клиники — только платформенный админ из админ-панели (/platform).
+// Публичной саморегистрации нет: клиники открывает владелец SaaS после продажи.
+router.post(
+  "/onboarding",
+  requireAuth,
+  asyncHandler(requirePlatformAdmin),
+  asyncHandler(onboardingController)
+);
 router.get("/meta/clinic", requireAuth, asyncHandler(clinicMetaController));
 router.get("/clinic/me", requireAuth, asyncHandler(clinicMeController));
 router.post("/clinics", requireAuth, asyncHandler(createClinicController));

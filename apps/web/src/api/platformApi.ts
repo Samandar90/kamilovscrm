@@ -31,3 +31,18 @@ export const updateClinicSubscription = (
     method: "POST",
     body,
   });
+
+export type CreateClinicInput = {
+  clinicName: string;
+  clinicSlug: string;
+  username: string;
+  password: string;
+  fullName: string;
+};
+
+/** Создаёт клинику + её админский аккаунт (trial 14 дней). Возвращаемый token игнорируем. */
+export const createClinicWithAdmin = (body: CreateClinicInput) =>
+  requestJson<{ clinic: { id: number; name: string }; user: { username: string } }>(
+    "/api/onboarding",
+    { method: "POST", body }
+  );
