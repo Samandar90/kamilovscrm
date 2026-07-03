@@ -75,6 +75,15 @@ export const requestJson = async <T>(
     throw new Error(readErrorMessage(payload, response.status));
   }
 
+  // 402 = подписка клиники истекла/приостановлена: SubscriptionNotice показывает блокирующий экран.
+  if (response.status === 402 && typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("sazion:payment-required", {
+        detail: readErrorMessage(payload, response.status),
+      })
+    );
+  }
+
   if (!response.ok) {
     throw new Error(readErrorMessage(payload, response.status));
   }

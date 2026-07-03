@@ -13,6 +13,7 @@ import { ExpensesPage } from "../modules/expenses/pages/ExpensesPage";
 import { ReportsPage } from "../modules/reports/pages/ReportsPage";
 import { ArchitecturePage } from "../modules/system/pages/ArchitecturePage";
 import { PlatformPage } from "../modules/platform/pages/PlatformPage";
+import { LandingPage } from "../modules/landing/LandingPage";
 import { UsersPage } from "../modules/users/pages/UsersPage";
 import { ServicesPage } from "../modules/services/pages/ServicesPage";
 import { DoctorsPage } from "../modules/doctors/pages/DoctorsPage";
@@ -38,6 +39,15 @@ import {
   USERS_PAGE_ROLES,
 } from "../auth/roleGroups";
 
+/** Корень сайта: гостям — лендинг, авторизованным — панель по роли. */
+const RootGate: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <LandingPage />;
+};
+
 const RoleAwareHomeRedirect: React.FC = () => {
   const { user } = useAuth();
   if (user?.role === "nurse") {
@@ -55,6 +65,7 @@ const RoleAwareHomeRedirect: React.FC = () => {
 export const AppRouter: React.FC = () => {
   return (
     <Routes>
+      <Route path="/" element={<RootGate />} />
       <Route
         path="/login"
         element={
@@ -80,7 +91,6 @@ export const AppRouter: React.FC = () => {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<RoleAwareHomeRedirect />} />
         <Route path="/dashboard" element={<RoleAwareHomeRedirect />} />
         <Route
           path="/ai-assistant"

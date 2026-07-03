@@ -5,12 +5,14 @@ import { useAuth } from "../auth/AuthContext";
 import { Button } from "../ui/Button";
 import { cn } from "../ui/utils/cn";
 import { MobileBottomNav } from "../shared/ui/MobileBottomNav";
+import { SubscriptionNotice } from "../components/SubscriptionNotice";
 import { Logo } from "@/shared/ui/Logo";
 import { BRANDING } from "../shared/config/branding";
 import { useClinic } from "../hooks/useClinic";
 
 const routeTitleMap: Record<string, string> = {
   "/": "Панель управления",
+  "/dashboard": "Панель управления",
   "/patients": "Пациенты",
   "/appointments": "Записи",
   "/doctor-workspace": "Рабочее место врача",
@@ -52,6 +54,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     <div className="flex h-screen min-w-0 overflow-x-hidden bg-[#f8fafc] text-[#0f172a]">
       <Sidebar />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <SubscriptionNotice />
         <header
           className={cn(
             "sticky top-0 z-30 flex h-12 max-md:h-11 shrink-0 items-center justify-between gap-2 border-b border-slate-200/80 bg-white/95 px-3 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-sm md:gap-4 md:px-5",
@@ -61,7 +64,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           <div className="flex min-w-0 flex-1 items-center gap-3">
             <Logo size={24} withText={false} className="shrink-0" />
             <Link
-              to="/"
+              to="/dashboard"
               className="truncate text-sm font-semibold tracking-tight text-slate-900 transition-colors hover:text-emerald-700"
             >
               {brandName}

@@ -47,7 +47,7 @@ export const navigationConfig: NavigationSection[] = [
   {
     section: "Основное",
     items: [
-      { label: "Панель управления", path: "/", roles: DASHBOARD_NAV_ROLES, icon: LayoutDashboard },
+      { label: "Панель управления", path: "/dashboard", roles: DASHBOARD_NAV_ROLES, icon: LayoutDashboard },
       { label: "Пациенты", path: "/patients", roles: PATIENTS_PAGE_ROUTE_ROLES, icon: Users },
       { label: "Записи", path: "/appointments", roles: APPOINTMENTS_PAGE_ROUTE_ROLES, icon: CalendarDays },
       { label: "Врачи", path: "/doctors", roles: DOCTORS_DIRECTORY_ROLES, icon: Stethoscope },

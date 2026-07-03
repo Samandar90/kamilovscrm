@@ -10,18 +10,26 @@ type ClinicApiResponse = {
   slug?: string | null;
   logoUrl?: string | null;
   primaryColor?: string | null;
+  subscriptionStatus?: string | null;
+  subscriptionEndsAt?: string | null;
+  subscriptionDaysLeft?: number | null;
 };
 
 export type ClinicBranding = {
   name: string;
   logoUrl: string;
   primaryColor: string;
+  /** trialing | active | expired | suspended (по умолчанию active — баннеры не показываем). */
+  subscriptionStatus: string;
+  subscriptionDaysLeft: number | null;
 };
 
 const DEFAULT_CLINIC: ClinicBranding = {
   name: BRANDING.productName,
   logoUrl: "/logo.png",
   primaryColor: "#6D28D9",
+  subscriptionStatus: "active",
+  subscriptionDaysLeft: null,
 };
 
 const getStoredToken = (): string | null => {
@@ -61,6 +69,9 @@ export const useClinic = (): {
           name: response.name?.trim() || DEFAULT_CLINIC.name,
           logoUrl: response.logoUrl?.trim() || DEFAULT_CLINIC.logoUrl,
           primaryColor: response.primaryColor?.trim() || DEFAULT_CLINIC.primaryColor,
+          subscriptionStatus: response.subscriptionStatus?.trim() || "active",
+          subscriptionDaysLeft:
+            typeof response.subscriptionDaysLeft === "number" ? response.subscriptionDaysLeft : null,
         });
       } catch (e) {
         if (!mounted) return;
