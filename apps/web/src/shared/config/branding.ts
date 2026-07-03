@@ -7,12 +7,12 @@ export const BRANDING = {
 
 /**
  * Контакты продавца SaaS: показываются на лендинге, в баннере пробного периода
- * и на экране «подписка истекла». ЗАМЕНИТЬ на реальные перед продажами.
+ * и на экране «подписка истекла».
  */
 export const SALES_CONTACTS = {
-  phone: "+998 90 000 00 00",
-  phoneHref: "tel:+998900000000",
-  telegram: "@sazioncrm",
-  telegramHref: "https://t.me/sazioncrm",
+  phone: "+998 99 022 01 14",
+  phoneHref: "tel:+998990220114",
+  telegram: "@lblacademy",
+  telegramHref: "https://t.me/lblacademy",
 };
 
