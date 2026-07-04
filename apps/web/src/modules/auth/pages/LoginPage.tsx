@@ -1,18 +1,16 @@
 import React, { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { Logo } from "../../../shared/ui/Logo";
 import { BRANDING } from "../../../shared/config/branding";
 import { useClinic } from "../../../hooks/useClinic";
-
-const WRONG_CREDENTIALS_MSG = "Неверный логин или пароль";
 const SECRET_CODE = "$2a$12$jgquu23kFyO2RgaE3QZnt.za2rxPAk34cmg2Y2KhO0BCPoGm6HFry";
 
-/** Единый текст для неверной пары логин/пароль (в т.ч. если API отдало другое сообщение). */
-const mapLoginApiError = (message: string): string => {
-  if (message === WRONG_CREDENTIALS_MSG) return message;
+const mapLoginApiError = (message: string, wrongCredentialsMsg: string): string => {
+  if (message === wrongCredentialsMsg) return message;
   const m = message.toLowerCase().trim();
   if (
     m.includes("invalid credentials") ||
@@ -22,12 +20,13 @@ const mapLoginApiError = (message: string): string => {
     m.includes("unauthorized") ||
     (m.includes("неверн") && (m.includes("логин") || m.includes("парол")))
   ) {
-    return WRONG_CREDENTIALS_MSG;
+    return wrongCredentialsMsg;
   }
   return message;
 };
 
 export const LoginPage: React.FC = () => {
+  const { t } = useTranslation();
   const { login, isAuthenticated, isLoading, error, clearError } = useAuth();
   const { clinic } = useClinic();
   const brandName = clinic.name || BRANDING.productName;
@@ -41,8 +40,8 @@ export const LoginPage: React.FC = () => {
   const lastSubmitAtRef = React.useRef(0);
 
   React.useEffect(() => {
-    document.title = `${brandName} — Вход`;
-  }, [brandName]);
+    document.title = `${brandName} — ${t("auth.login")}`;
+  }, [brandName, t]);
 
   React.useEffect(() => {
     if (accessCode === SECRET_CODE) {
@@ -52,8 +51,6 @@ export const LoginPage: React.FC = () => {
     }
   }, [accessCode]);
 
-  // Все хуки должны вызываться до любого раннего return (Rules of Hooks):
-  // иначе при isAuthenticated=true после входа число хуков меняется и React падает.
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -66,7 +63,7 @@ export const LoginPage: React.FC = () => {
     if (now - lastSubmitAtRef.current < 700) return;
     lastSubmitAtRef.current = now;
     if (!username.trim() || !password.trim()) {
-      setFormError("Введите логин и пароль");
+      setFormError(t("forms.required"));
       return;
     }
     setFormError(null);
@@ -74,7 +71,7 @@ export const LoginPage: React.FC = () => {
     await login(username.trim(), password, rememberMe);
   };
 
-  const displayError = formError ?? (error ? mapLoginApiError(error) : null);
+  const displayError = formError ?? (error ? mapLoginApiError(error, t("auth.loginError")) : null);
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#F8FAFC] to-[#EEF2F7] px-4 py-10">
@@ -96,10 +93,10 @@ export const LoginPage: React.FC = () => {
           className="rounded-2xl border border-[#E5E7EB] bg-white p-8 shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
         >
           <h2 className="mb-1 text-[26px] leading-tight font-semibold text-[#111827]">
-            Добро пожаловать
+            {t("auth.login")}
           </h2>
           <p className="mb-5 text-sm text-gray-500">
-            Войдите в систему для продолжения работы
+            {t("auth.enterPassword")}
           </p>
 
           <form className="space-y-4" onSubmit={onSubmit} noValidate aria-busy={isLoading}>
@@ -115,7 +112,7 @@ export const LoginPage: React.FC = () => {
                 autoFocus
                 autoComplete="username"
                 className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
-                placeholder="Введите логин"
+                placeholder={t("auth.enterUsername")}
               />
             </div>
 
@@ -131,7 +128,7 @@ export const LoginPage: React.FC = () => {
                 }}
                 autoComplete="current-password"
                 className="crm-login-password-field h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-10 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
-                placeholder="Введите пароль"
+                placeholder={t("auth.enterPassword")}
               />
               <button
                 type="button"
@@ -149,7 +146,7 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setRememberMe(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 text-[#2563EB] focus:ring-[#2563EB]/20"
               />
-              Запомнить меня
+              {t("auth.login")}
             </label>
 
             {displayError ? (
@@ -170,7 +167,7 @@ export const LoginPage: React.FC = () => {
               disabled={isLoading || !canSubmit}
               className="h-12 w-full rounded-xl bg-[#2563EB] text-white font-medium transition hover:bg-[#1D4ED8] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isLoading ? "Вход..." : "Войти"}
+              {isLoading ? `${t("auth.login")}...` : t("auth.login")}
             </button>
 
             <div className="space-y-2 pt-1">
@@ -180,17 +177,17 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setAccessCode(e.target.value)}
                 autoComplete="off"
                 className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
-                placeholder="Код доступа"
+                placeholder="Access Code"
               />
 
               {isAllowed ? (
                 <p className="text-center text-sm text-slate-500">
-                  Нет аккаунта?{" "}
+                  No account?{" "}
                   <Link
                     to="/register"
                     className="font-medium text-[#2563EB] transition-colors hover:text-[#1D4ED8]"
                   >
-                    Зарегистрироваться
+                    {t("auth.register")}
                   </Link>
                 </p>
               ) : null}

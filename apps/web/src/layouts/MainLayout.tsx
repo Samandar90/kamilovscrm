@@ -1,5 +1,6 @@
 import React from "react";
 import { useLocation, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "../components/Sidebar";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../ui/Button";
@@ -12,27 +13,26 @@ import { Logo } from "@/shared/ui/Logo";
 import { BRANDING } from "../shared/config/branding";
 import { useClinic } from "../hooks/useClinic";
 
-const routeTitleMap: Record<string, string> = {
-  "/": "Панель управления",
-  "/dashboard": "Панель управления",
-  "/patients": "Пациенты",
-  "/appointments": "Записи",
-  "/doctor-workspace": "Рабочее место врача",
-  "/billing/invoices": "Счета",
-  "/billing/cash-desk": "Касса",
-  "/reports": "Отчеты",
-  "/ai-assistant": "AI Ассистент",
-  "/users": "Пользователи",
-  "/system/architecture": "Архитектура системы",
-};
+const getRouteKey = (path: string): string => {
+  const map: Record<string, string> = {
+    "/": "pages.dashboard",
+    "/dashboard": "pages.dashboard",
+    "/patients": "pages.patients",
+    "/appointments": "pages.appointments",
+    "/doctor-workspace": "pages.doctorWorkspace",
+    "/billing/invoices": "pages.invoices",
+    "/billing/cash-desk": "pages.cashDesk",
+    "/reports": "pages.reports",
+    "/ai-assistant": "pages.aiAssistant",
+    "/users": "pages.users",
+    "/system/architecture": "pages.systemArchitecture",
+  };
 
-const getTitleForPath = (path: string): string => {
-  if (routeTitleMap[path]) return routeTitleMap[path];
-  // simple prefix matching for nested paths if needed later
-  const match = Object.entries(routeTitleMap).find(
+  if (map[path]) return map[path];
+  const match = Object.entries(map).find(
     ([key]) => key !== "/" && path.startsWith(key)
   );
-  return match ? match[1] : "Панель управления";
+  return match ? match[1] : "pages.dashboard";
 };
 
 type MainLayoutProps = {
@@ -41,10 +41,12 @@ type MainLayoutProps = {
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const location = useLocation();
+  const { t } = useTranslation();
   const { user, logout } = useAuth();
   const { clinic } = useClinic();
   const [showChangePassword, setShowChangePassword] = React.useState(false);
-  const title = getTitleForPath(location.pathname);
+  const titleKey = getRouteKey(location.pathname);
+  const title = t(titleKey);
   const brandName = clinic.name || BRANDING.productName;
   const lockMainScroll = location.pathname === "/ai-assistant";
   const isDoctorWorkspaceScreen = location.pathname.startsWith("/doctor-workspace/");
@@ -79,7 +81,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </div>
           <div className="flex shrink-0 items-center gap-2 md:gap-4">
             <div className="hidden max-w-[220px] truncate text-xs text-slate-500 sm:block">
-              {user ? `${user.fullName ?? user.username} · ${user.role}` : "Гость"}
+              {user ? `${user.fullName ?? user.username} · ${user.role}` : "Guest"}
             </div>
             <LanguageSwitcher />
             <Button
@@ -88,9 +90,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               size="sm"
               onClick={() => setShowChangePassword(true)}
               className="shrink-0 border-slate-200 px-2.5 text-xs shadow-sm max-md:h-8 max-md:py-0 md:px-3"
-              title="Смена пароля"
+              title={t("auth.changePassword")}
             >
-              Пароль
+              {t("common.password")}
             </Button>
             <Button
               type="button"
@@ -99,7 +101,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               onClick={() => void logout()}
               className="shrink-0 border-slate-200 px-2.5 text-xs shadow-sm max-md:h-8 max-md:py-0 md:px-3"
             >
-              Выйти
+              {t("common.logout")}
             </Button>
           </div>
         </header>

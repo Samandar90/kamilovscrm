@@ -1,5 +1,6 @@
 import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ChevronRight, Building2 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import type { UserRole } from "../auth/types";
@@ -11,16 +12,19 @@ import { Logo } from "../shared/ui/Logo";
 const ICON_STROKE = 1.65;
 const iconClass = "h-[18px] w-[18px] shrink-0 transition-transform duration-200 ease-out";
 
-const roleLabelRu: Record<UserRole, string> = {
-  superadmin: "Суперадмин",
-  reception: "Регистратура",
-  doctor: "Врач",
-  nurse: "Медсестра",
-  cashier: "Кассир",
-  operator: "Оператор",
-  accountant: "Бухгалтер",
-  manager: "Менеджер",
-  director: "Директор",
+const getRoleLabel = (role: UserRole, t: (key: string) => string): string => {
+  const roleMap: Record<UserRole, string> = {
+    superadmin: t("users.admin"),
+    reception: t("users.receptionist"),
+    doctor: t("users.doctor"),
+    nurse: "Медсестра",
+    cashier: t("users.cashier"),
+    operator: "Оператор",
+    accountant: "Бухгалтер",
+    manager: "Менеджер",
+    director: "Директор",
+  };
+  return roleMap[role] || role;
 };
 
 function initialsFromUsername(name: string): string {
@@ -64,6 +68,7 @@ type SidebarItemProps = {
   animationDelayMs?: number;
   billingOpen: boolean;
   setBillingOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  t: (key: string) => string;
 };
 
 const SidebarItem: React.FC<SidebarItemProps> = ({
@@ -73,12 +78,13 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
   animationDelayMs,
   billingOpen,
   setBillingOpen,
+  t,
 }) => {
   const hasChildren = Boolean(item.children && item.children.length > 0);
   const childActive =
     hasChildren &&
     item.children!.some((c) => c.path && isPathActive(pathname, c.path));
-  const isBillingParent = item.label === "Биллинг";
+  const isBillingParent = item.labelKey === "nav.billing";
 
   const wrapEnter = (node: React.ReactNode) =>
     animationDelayMs !== undefined ? (
@@ -137,6 +143,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
                 }
                 billingOpen={billingOpen}
                 setBillingOpen={setBillingOpen}
+                t={t}
               />
             ))}
           </div>
@@ -151,6 +158,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
 
   const Icon = item.icon;
   const isActive = isPathActive(pathname, item.path);
+  const label = item.labelKey ? t(item.labelKey) : item.label;
 
   return wrapEnter(
     <NavLink
@@ -160,12 +168,13 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
       style={{ paddingLeft: depth ? `${8 + depth * 10}px` : undefined }}
     >
       {Icon ? <NavIcon active={isActive} Icon={Icon} /> : null}
-      <span className="min-w-0 truncate">{item.label}</span>
+      <span className="min-w-0 truncate">{label}</span>
     </NavLink>
   );
 };
 
 export const Sidebar: React.FC = () => {
+  const { t } = useTranslation();
   const sections = useNavigation();
   const location = useLocation();
   const { user } = useAuth();
@@ -173,7 +182,8 @@ export const Sidebar: React.FC = () => {
   const [billingOpen, setBillingOpen] = React.useState(true);
 
   const platformItem: NavigationItem = {
-    label: "Платформа",
+    label: "Platform",
+    labelKey: "nav.platform",
     path: "/platform",
     roles: [],
     icon: Building2,
@@ -200,7 +210,7 @@ export const Sidebar: React.FC = () => {
               className="crm-sidebar-enter mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94a3b8]"
               style={{ animationDelay: `${nextDelay()}ms` }}
             >
-              {section.section}
+              {section.sectionKey ? t(section.sectionKey) : section.section}
             </div>
             <div className="space-y-0.5">
               {section.items.map((item) => (
@@ -211,6 +221,7 @@ export const Sidebar: React.FC = () => {
                   animationDelayMs={nextDelay()}
                   billingOpen={billingOpen}
                   setBillingOpen={setBillingOpen}
+                  t={t}
                 />
               ))}
             </div>
@@ -223,7 +234,7 @@ export const Sidebar: React.FC = () => {
               className="crm-sidebar-enter mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94a3b8]"
               style={{ animationDelay: `${nextDelay()}ms` }}
             >
-              Платформа
+              {t("nav.platform")}
             </div>
             <div className="space-y-0.5">
               <SidebarItem
@@ -232,6 +243,7 @@ export const Sidebar: React.FC = () => {
                 animationDelayMs={nextDelay()}
                 billingOpen={billingOpen}
                 setBillingOpen={setBillingOpen}
+                t={t}
               />
             </div>
           </div>
@@ -255,7 +267,7 @@ export const Sidebar: React.FC = () => {
                 <p className="truncate text-sm font-semibold text-[#0f172a]">
                   {user.fullName ?? user.username}
                 </p>
-                <p className="truncate text-xs font-normal text-[#64748b]">{roleLabelRu[user.role]}</p>
+                <p className="truncate text-xs font-normal text-[#64748b]">{getRoleLabel(user.role, t)}</p>
               </div>
             </div>
           </div>
