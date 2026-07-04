@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { RefreshCw, Search } from "lucide-react";
 import { requestJson } from "../../../api/http";
 import { useAuth } from "../../../auth/AuthContext";
@@ -51,17 +52,18 @@ const statusToneMap: Record<InvoiceStatus, "neutral" | "warning" | "success" | "
 };
 
 const statusLabelMap: Record<InvoiceStatus, string> = {
-  draft: "Черновик",
-  issued: "К оплате",
-  partially_paid: "Частично оплачен",
-  paid: "Оплачен",
-  cancelled: "Отменён",
-  refunded: "Возврат",
+  draft: "billing.status.draft",
+  issued: "billing.status.issued",
+  partially_paid: "billing.status.partial",
+  paid: "billing.status.paid",
+  cancelled: "billing.status.cancelled",
+  refunded: "billing.status.refunded",
 };
 
 export const InvoicesPage: React.FC = () => {
   const navigate = useNavigate();
   const { token } = useAuth();
+  const { t } = useTranslation();
   const [invoices, setInvoices] = React.useState<InvoiceSummary[]>([]);
   const [patientsMap, setPatientsMap] = React.useState<Record<number, string>>({});
   const [search, setSearch] = React.useState("");
@@ -90,10 +92,10 @@ export const InvoicesPage: React.FC = () => {
         setInvoices(invoiceRows);
         setPatientsMap(Object.fromEntries(patientRows.map((p) => [p.id, p.fullName])));
         if (showToast) {
-          setToast("Список обновлён");
+          setToast(t("billing.listRefreshed"));
         }
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : "Ошибка загрузки счетов");
+        setError(requestError instanceof Error ? requestError.message : t("billing.errorLoading"));
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -135,8 +137,8 @@ export const InvoicesPage: React.FC = () => {
     <div className="min-h-full overflow-x-hidden bg-[#f8fafc] pb-[110px] text-[#334155] max-md:[&_button]:min-h-[44px] md:pb-0">
       <AppContainer className="max-w-[1440px] space-y-6">
         <PageHeader
-          title="Счета"
-          subtitle="Выставленные счета и статусы оплаты."
+          title={t("billing.invoices")}
+          subtitle={t("billing.invoicesSubtitle")}
           actions={
             <Button
               type="button"
@@ -145,16 +147,16 @@ export const InvoicesPage: React.FC = () => {
               disabled={loading || refreshing || !token}
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-              {refreshing ? "Обновление…" : "Обновить"}
+              {refreshing ? t("billing.refreshing") : t("billing.refresh")}
             </Button>
           }
         />
 
         {!loading && hasAnyInvoices && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <StatCard label="Всего счетов" value={String(stats.total)} trend="В базе" />
-            <StatCard label="Оплачено" value={String(stats.paidFull)} tone="success" trend="Полностью" />
-            <StatCard label="К оплате" value={String(stats.awaiting)} tone="warning" trend="Есть остаток" />
+            <StatCard label={t("billing.totalInvoices")} value={String(stats.total)} trend={t("billing.inDatabase")} />
+            <StatCard label={t("billing.paid")} value={String(stats.paidFull)} tone="success" trend={t("billing.fully")} />
+            <StatCard label={t("billing.toPay")} value={String(stats.awaiting)} tone="warning" trend={t("billing.hasBalance")} />
           </div>
         )}
 
@@ -163,8 +165,8 @@ export const InvoicesPage: React.FC = () => {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
             <input
               className={`${controlClass} w-full pl-10`}
-              placeholder="Поиск по номеру, пациенту, записи…"
-              aria-label="Поиск по счетам"
+              placeholder={t("billing.searchPlaceholder")}
+              aria-label={t("billing.searchInvoices")}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               disabled={loading}
@@ -177,13 +179,13 @@ export const InvoicesPage: React.FC = () => {
               onChange={(event) => setStatus(event.target.value)}
               disabled={loading}
             >
-              <option value="">Все статусы</option>
-              <option value="draft">Черновик</option>
-              <option value="issued">К оплате</option>
-              <option value="partially_paid">Частично оплачен</option>
-              <option value="paid">Оплачен</option>
-              <option value="cancelled">Отменён</option>
-              <option value="refunded">Возврат</option>
+              <option value="">{t("billing.allStatuses")}</option>
+              <option value="draft">{t("billing.status.draft")}</option>
+              <option value="issued">{t("billing.status.issued")}</option>
+              <option value="partially_paid">{t("billing.status.partial")}</option>
+              <option value="paid">{t("billing.status.paid")}</option>
+              <option value="cancelled">{t("billing.status.cancelled")}</option>
+              <option value="refunded">{t("billing.status.refunded")}</option>
             </select>
           </div>
           <div className="flex items-center justify-end">
@@ -195,7 +197,7 @@ export const InvoicesPage: React.FC = () => {
                   setStatus("");
                 }}
               >
-                Сбросить фильтры
+                {t("billing.clearFilters")}
               </Button>
             )}
           </div>
@@ -216,15 +218,15 @@ export const InvoicesPage: React.FC = () => {
         )}
 
         <DataTable
-          title="Список счетов"
-          subtitle="Счета с фильтрацией по поиску и статусу"
+          title={t("billing.invoicesList")}
+          subtitle={t("billing.invoicesListSubtitle")}
           loading={loading}
           empty={!loading && (!hasAnyInvoices || emptyFiltered)}
-          emptyTitle={hasAnyInvoices ? "Нет счетов по текущим фильтрам" : "Счетов пока нет"}
+          emptyTitle={hasAnyInvoices ? t("billing.noInvoicesFiltered") : t("billing.noInvoices")}
           emptySubtitle={
             hasAnyInvoices
-              ? "Измените фильтры или очистите поиск"
-              : "Счёт создаётся после приёма из карточки записи на приём"
+              ? t("billing.changeFilters")
+              : t("billing.invoiceCreatedAfterVisit")
           }
         >
           {!loading && !(!hasAnyInvoices || emptyFiltered) ? (
@@ -245,15 +247,15 @@ export const InvoicesPage: React.FC = () => {
                       </div>
                       <div className="mt-3 space-y-1.5 text-sm">
                         <p className="flex items-center justify-between text-[#64748b]">
-                          <span>К оплате</span>
+                          <span>{t("billing.toPay")}</span>
                           <span className="font-semibold tabular-nums text-[#16a34a]">{formatSum(invoice.total)}</span>
                         </p>
                         <p className="flex items-center justify-between text-[#64748b]">
-                          <span>Оплачено</span>
+                          <span>{t("billing.paid")}</span>
                           <span className="font-medium tabular-nums text-[#334155]">{formatSum(invoice.paidAmount)}</span>
                         </p>
                         <p className="flex items-center justify-between text-[#64748b]">
-                          <span>Остаток</span>
+                          <span>{t("billing.balance")}</span>
                           <span className="font-semibold tabular-nums text-rose-600">{formatSum(remainder)}</span>
                         </p>
                       </div>
@@ -264,7 +266,7 @@ export const InvoicesPage: React.FC = () => {
                           size="sm"
                           onClick={() => navigate(`/billing/invoices/${invoice.id}`)}
                         >
-                          Открыть
+                          {t("billing.open")}
                         </Button>
                       </div>
                     </article>
@@ -276,31 +278,31 @@ export const InvoicesPage: React.FC = () => {
                 <thead>
                   <tr className="border-b border-[#e5e7eb] bg-[#f8fafc]">
                     <th className="whitespace-nowrap px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">
-                      Номер
+                      {t("billing.number")}
                     </th>
                     <th className="min-w-[160px] px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">
-                      Пациент
+                      {t("billing.patient")}
                     </th>
                     <th className="whitespace-nowrap px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">
-                      Запись
+                      {t("billing.appointment")}
                     </th>
                     <th className="whitespace-nowrap px-5 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">
-                      Сумма
+                      {t("billing.amount")}
                     </th>
                     <th className="whitespace-nowrap px-5 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">
-                      Скидка
+                      {t("billing.discount")}
                     </th>
                     <th className="whitespace-nowrap px-5 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-[#0f172a]">
-                      К оплате
+                      {t("billing.toPay")}
                     </th>
                     <th className="whitespace-nowrap px-5 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">
-                      Оплачено
+                      {t("billing.paid")}
                     </th>
                     <th className="whitespace-nowrap px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">
-                      Статус
+                      {t("billing.status")}
                     </th>
                     <th className="whitespace-nowrap px-5 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">
-                      Действия
+                      {t("billing.actions")}
                     </th>
                   </tr>
                 </thead>
@@ -343,7 +345,7 @@ export const InvoicesPage: React.FC = () => {
                               size="sm"
                               onClick={() => navigate(`/billing/invoices/${invoice.id}`)}
                             >
-                              Открыть
+                              {t("billing.open")}
                             </Button>
                           </ActionButtons>
                         </td>

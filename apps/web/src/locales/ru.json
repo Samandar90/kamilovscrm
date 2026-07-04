@@ -298,5 +298,90 @@
     "serverError": "Ошибка сервера",
     "networkError": "Ошибка сети",
     "tryAgain": "Повторить"
+  },
+  "dashboard": {
+    "superadmin": "Панель суперадмина",
+    "superadminDesc": "Полный доступ к системе",
+    "director": "Операционный обзор",
+    "directorDesc": "Ежедневная картина по клинике в одном экране",
+    "cashier": "Рабочий стол кассы",
+    "cashierDesc": "Оплаты, долги, смена и ближайшие пациенты",
+    "doctor": "Рабочий стол врача",
+    "doctorDesc": "Ключевые метрики, записи и действия на сегодня",
+    "nurse": "Рабочий стол медсестры",
+    "nurseDesc": "Записи и задачи по вашему врачу",
+    "reception": "Регистратура",
+    "receptionDesc": "Пациенты, записи и расписание",
+    "operator": "Оператор записи",
+    "operatorDesc": "Расписание и слоты",
+    "accountant": "Финансы",
+    "accountantDesc": "Счета, оплаты и отчёты",
+    "default": "Панель управления",
+    "defaultDesc": "Главный рабочий центр клиники",
+    "today": "Сегодня",
+    "revenue": "Выручка сегодня",
+    "appointments": "Записи сегодня",
+    "newPatients": "Новые пациенты",
+    "debts": "Долги пациентов",
+    "shift": "Активная смена",
+    "unpaidInvoices": "Неоплаченные счета",
+    "status": {
+      "scheduled": "Запланировано",
+      "confirmed": "Подтверждено",
+      "arrived": "Пришел",
+      "in_consultation": "На приеме",
+      "completed": "Завершено",
+      "cancelled": "Отменено",
+      "no_show": "Неявка"
+    },
+    "payment": "Наличные",
+    "terminal": "Терминал",
+    "quickActions": "Быстрые действия",
+    "quickActionsDesc": "Частые сценарии в один клик",
+    "newAppointment": "Новая запись",
+    "newPatient": "Новый пациент",
+    "schedule": "Расписание",
+    "refresh": "Обновить",
+    "updateAnalysis": "Обновить анализ"
+  },
+  "appointment": {
+    "status": {
+      "scheduled": "Запланировано",
+      "confirmed": "Подтверждено",
+      "arrived": "Пришел",
+      "in_consultation": "На приеме",
+      "completed": "Завершено",
+      "cancelled": "Отменено",
+      "no_show": "Неявка"
+    },
+    "markArrived": "Отметить приход",
+    "markCompleted": "Завершить",
+    "reschedule": "Перенести",
+    "cancel": "Отменить"
+  },
+  "debt": {
+    "title": "Задолженность",
+    "status": "Просрочено"
+  },
+  "shift": {
+    "active": "Активна",
+    "closed": "Закрыта",
+    "open": "Открыть смену",
+    "close": "Закрыть смену"
+  },
+  "ai": {
+    "insights": "Утренняя сводка",
+    "yesterday": "Вчера:",
+    "problems": "Проблемы:",
+    "actions": "Действия:",
+    "revenue": "Выручка",
+    "patients": "пациентов"
+  },
+  "setup": {
+    "title": "Начните с основного",
+    "desc": "Добавьте врачей, услуги и расписание — всё остальное пойдет как по маслу",
+    "doctors": "Врачи",
+    "services": "Услуги",
+    "patients": "Пациенты"
   }
 }

@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Inbox,
   Loader2,
@@ -54,30 +55,31 @@ import { Button } from "../../../ui/Button";
 const PAYABLE_STATUSES = new Set<InvoiceStatus>(["issued", "partially_paid"]);
 
 const ENTRY_TYPE_LABEL: Record<CashRegisterEntry["type"], string> = {
-  payment: "Оплата",
-  refund: "Возврат",
-  manual_in: "Внесение",
-  manual_out: "Изъятие",
+  payment: "billing.payment",
+  refund: "billing.refund",
+  manual_in: "billing.manualIn",
+  manual_out: "billing.manualOut",
 };
 
 const METHOD_LABEL: Record<PaymentMethod, string> = {
-  cash: "Наличные",
-  card: "Терминал",
+  cash: "billing.cash",
+  card: "billing.terminal",
 };
 
 const INVOICE_STATUS_RECEIPT: Partial<Record<InvoiceStatus, string>> = {
-  draft: "Черновик",
-  issued: "К оплате",
-  partially_paid: "Частично оплачен",
-  paid: "Оплачен",
-  cancelled: "Отменён",
-  refunded: "Возвращён",
+  draft: "billing.status.draft",
+  issued: "billing.status.issued",
+  partially_paid: "billing.status.partial",
+  paid: "billing.status.paid",
+  cancelled: "billing.status.cancelled",
+  refunded: "billing.status.refundedReceipt",
 };
 
-const receiptStatusLabel = (inv: InvoiceSummary | InvoiceDetail | undefined): string | undefined => {
+const receiptStatusLabel = (inv: InvoiceSummary | InvoiceDetail | undefined, t?: any): string | undefined => {
   if (!inv) return undefined;
-  if (inv.paidAmount >= inv.total - 1e-9) return "Оплачено";
-  return INVOICE_STATUS_RECEIPT[inv.status] ?? inv.status;
+  if (inv.paidAmount >= inv.total - 1e-9) return t?.("billing.paid") ?? "Оплачено";
+  const key = INVOICE_STATUS_RECEIPT[inv.status];
+  return key ? (t?.(key) ?? inv.status) : inv.status;
 };
 
 type EntryPreset = "all" | "today" | "yesterday" | "last7" | "custom";
@@ -86,6 +88,7 @@ export const CashDeskPage: React.FC = () => {
   const navigate = useNavigate();
   const { token, user } = useAuth();
   const { clinic } = useClinic();
+  const { t } = useTranslation();
   const canOperate = canWriteBilling(user?.role);
   const canRefund = canRefundPayments(user?.role);
   const isSuperadmin = user?.role === "superadmin";

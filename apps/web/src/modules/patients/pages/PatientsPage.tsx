@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Archive,
   CalendarPlus,
@@ -114,27 +115,27 @@ function normalizePatientRow(
 
 const phoneAllowedCharsRe = /^[+()\-\s\d]+$/;
 
-function getPatientFormValidationError(state: PatientFormState): string | null {
+function getPatientFormValidationError(state: PatientFormState, t: any): string | null {
   const fullName = state.fullName.trim();
   const apiPhone = phoneToApiValue(state.phone);
   const birthDate = state.birthDate.trim();
   const notesTrim = state.notes.trim();
 
-  if (!fullName) return "Укажите ФИО пациента.";
-  if (fullName.length < 2) return "ФИО слишком короткое.";
-  if (!apiPhone) return "Укажите номер телефона.";
-  if (!phoneAllowedCharsRe.test(apiPhone)) return "Телефон содержит недопустимые символы.";
-  if (apiPhone.includes("+") && !apiPhone.startsWith("+")) return "Символ «+» допустим только в начале номера.";
+  if (!fullName) return t("validation.fullNameRequired");
+  if (fullName.length < 2) return t("validation.fullNameTooShort");
+  if (!apiPhone) return t("validation.phoneRequired");
+  if (!phoneAllowedCharsRe.test(apiPhone)) return t("validation.phoneInvalidChars");
+  if (apiPhone.includes("+") && !apiPhone.startsWith("+")) return t("validation.plusOnlyStart");
   const digits = apiPhone.replace(/\D/g, "");
-  if (digits.length < 10 || digits.length > 15) return "В номере должно быть от 10 до 15 цифр.";
+  if (digits.length < 10 || digits.length > 15) return t("validation.phoneDigitsRange");
 
   if (birthDate) {
     const date = new Date(birthDate);
-    if (Number.isNaN(date.getTime())) return "Проверьте дату рождения.";
-    if (date > new Date()) return "Дата рождения не может быть в будущем.";
+    if (Number.isNaN(date.getTime())) return t("validation.birthDateInvalid");
+    if (date > new Date()) return t("validation.birthDateFuture");
   }
 
-  if (notesTrim.length > 2000) return "Комментарий не длиннее 2000 символов.";
+  if (notesTrim.length > 2000) return t("validation.notesTooLong");
 
   return null;
 }
@@ -171,6 +172,7 @@ function buildDebtByPatient(invoices: InvoiceSummary[]): Map<number, number> {
 }
 
 export const PatientsPage: React.FC = () => {
+  const { t } = useTranslation("patients");
   const { user, token } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [lastVisitByPatientId, setLastVisitByPatientId] = useState<Map<number, string>>(
@@ -293,7 +295,7 @@ export const PatientsPage: React.FC = () => {
   }, [debouncedSearch, normalizedPatients.length]);
 
   const patientFormMeta = useMemo(() => {
-    const validationError = getPatientFormValidationError(formState);
+    const validationError = getPatientFormValidationError(formState, t);
     const apiPhone = phoneToApiValue(formState.phone);
     const digits = apiPhone.replace(/\D/g, "");
     const duplicatePhone =
@@ -309,7 +311,7 @@ export const PatientsPage: React.FC = () => {
       duplicatePhone,
       canSubmit: !validationError && !duplicatePhone && permissionOk,
     };
-  }, [formState, editingPatientId, normalizedPatients, canCreatePatient, canUpdatePatient]);
+  }, [formState, editingPatientId, normalizedPatients, canCreatePatient, canUpdatePatient, t]);
 
   const openCreateModal = () => {
     setEditingPatientId(null);
@@ -340,18 +342,18 @@ export const PatientsPage: React.FC = () => {
   };
 
   const handleSavePatient = async () => {
-    const validationError = getPatientFormValidationError(formState);
+    const validationError = getPatientFormValidationError(formState, t);
     if (validationError) {
       setFormError(validationError);
       return;
     }
     const isEdit = Boolean(editingPatientId);
     if (isEdit && !canUpdatePatient) {
-      setFormError("Недостаточно прав для изменения карточки.");
+      setFormError(t("errors.insufficientPermissionsUpdate"));
       return;
     }
     if (!isEdit && !canCreatePatient) {
-      setFormError("Недостаточно прав для создания пациента.");
+      setFormError(t("errors.insufficientPermissionsCreate"));
       return;
     }
 
@@ -381,15 +383,15 @@ export const PatientsPage: React.FC = () => {
         );
         setPatients((prev) => [normalized, ...prev.filter((p) => p.id !== normalized.id)]);
         closeModal();
-        setToast("Пациент успешно добавлен");
+        setToast(t("messages.patientAdded"));
         void loadPatients({ silent: true });
       } else {
         await loadPatients();
         closeModal();
-        setToast("Пациент успешно обновлён.");
+        setToast(t("messages.patientUpdated"));
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Ошибка сохранения";
+      const message = err instanceof Error ? err.message : t("errors.saveFailed");
       setFormError(message);
     } finally {
       setIsSaving(false);
@@ -400,7 +402,7 @@ export const PatientsPage: React.FC = () => {
     e.stopPropagation();
     if (archivingPatientId !== null) return;
     const confirmed = window.confirm(
-      `Архивировать пациента «${patient.fullName}»?\n\nПациент будет скрыт из списка, но сохранится в истории (записи и связи не затрагиваются).`
+      t("messages.archiveConfirm", { name: patient.fullName })
     );
     if (!confirmed) return;
 
@@ -412,9 +414,9 @@ export const PatientsPage: React.FC = () => {
       });
 
       await loadPatients();
-      setToast("Пациент архивирован.");
+      setToast(t("messages.patientArchived"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка архивации");
+      setError(err instanceof Error ? err.message : t("errors.archiveFailed"));
     } finally {
       setArchivingPatientId(null);
     }
@@ -437,7 +439,7 @@ export const PatientsPage: React.FC = () => {
       setDoctorsMap(Object.fromEntries(doctors.map((d) => [d.id, d.name])));
       setServicesMap(Object.fromEntries(services.map((s) => [s.id, s.name])));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка загрузки истории");
+      setError(err instanceof Error ? err.message : t("errors.historyLoadFailed"));
     } finally {
       setHistoryLoading(false);
     }
@@ -495,7 +497,7 @@ export const PatientsPage: React.FC = () => {
     >
       <header className="flex flex-wrap items-end justify-between gap-3 md:gap-4">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">Пациенты</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">{t("title")}</h2>
           <p
             className={
               role === "doctor" || role === "nurse"
@@ -504,10 +506,10 @@ export const PatientsPage: React.FC = () => {
             }
           >
             {role === "doctor" || role === "nurse"
-              ? "Здесь отображаются ваши пациенты и пациенты, которых вы добавили сами."
+              ? t("subtitle.doctor")
               : role === "operator"
-                ? "Поиск и создание новых пациентов."
-                : "Карточки пациентов для ежедневной работы администратора."}
+                ? t("subtitle.operator")
+                : t("subtitle.admin")}
           </p>
         </div>
         {canCreatePatient && (
@@ -516,7 +518,7 @@ export const PatientsPage: React.FC = () => {
             onClick={openCreateModal}
             className="hidden h-11 items-center justify-center rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white shadow-sm transition duration-200 hover:bg-emerald-700 active:scale-[0.98] md:inline-flex"
           >
-            Добавить пациента
+            {t("addPatient")}
           </button>
         )}
       </header>
@@ -538,8 +540,8 @@ export const PatientsPage: React.FC = () => {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className={cn(fieldInputClass, "h-11 w-full pl-10 pr-3 max-md:border-slate-200 max-md:bg-white")}
-              aria-label="Поиск по имени и телефону"
-              placeholder="Поиск пациента..."
+              aria-label={t("search")}
+              placeholder={t("search")}
             />
           </div>
         </div>
@@ -557,25 +559,25 @@ export const PatientsPage: React.FC = () => {
       ) : null}
       {loading ? (
         <div className="rounded-2xl border border-[#e2e8f0] bg-white px-6 py-16 text-center text-sm text-[#64748b] shadow-sm">
-          Загрузка пациентов…
+          {t("loading")}
         </div>
       ) : showEmptyNoData ? (
         <ListEmptyState
           icon={UserRound}
-          title="Пациентов пока нет"
-          actionLabel="Добавить пациента"
+          title={t("emptyState.noPatients")}
+          actionLabel={t("addPatient")}
           onAction={openCreateModal}
           showAction={canCreatePatient}
           actionDisabled={isSaving || archivingPatientId !== null}
         />
       ) : showEmptyFilter ? (
         <div className="rounded-xl border border-slate-100 bg-white px-5 py-12 text-center text-sm text-slate-500 shadow-sm">
-          <p className="font-medium text-slate-900">Никого не нашли</p>
-          <p className="mt-1 text-slate-500">Измените запрос.</p>
+          <p className="font-medium text-slate-900">{t("emptyState.notFound")}</p>
+          <p className="mt-1 text-slate-500">{t("emptyState.changeQuery")}</p>
         </div>
       ) : (
         <div className="space-y-2.5">
-          <ul className="flex flex-col gap-2.5 md:hidden" aria-label="Список пациентов">
+          <ul className="flex flex-col gap-2.5 md:hidden" aria-label={t("list")}>
             {windowedPatients.map((patient) => {
               const birthLabel = patient.birthDate?.trim() ? formatDate(patient.birthDate) : null;
               return (
@@ -601,12 +603,12 @@ export const PatientsPage: React.FC = () => {
             <table className="w-full min-w-[720px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  <th className="whitespace-nowrap px-4 py-3">ФИО</th>
-                  <th className="whitespace-nowrap px-4 py-3">Телефон</th>
-                  <th className="whitespace-nowrap px-4 py-3">Дата рождения</th>
-                  <th className="whitespace-nowrap px-4 py-3">Последний визит</th>
-                  {showPatientDebt ? <th className="whitespace-nowrap px-4 py-3">Долг</th> : null}
-                  <th className="whitespace-nowrap px-4 py-3 text-right">Действия</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("fullName")}</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("phone")}</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("birthDate")}</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("lastVisit")}</th>
+                  {showPatientDebt ? <th className="whitespace-nowrap px-4 py-3">{t("debt")}</th> : null}
+                  <th className="whitespace-nowrap px-4 py-3 text-right">{t("actions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -641,7 +643,7 @@ export const PatientsPage: React.FC = () => {
                             className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50"
                             onClick={() => void openPatientHistory(patient)}
                           >
-                            Открыть
+                            {t("open")}
                           </button>
                           {canBookAppointment ? (
                             <Link
@@ -649,14 +651,14 @@ export const PatientsPage: React.FC = () => {
                               className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
                             >
                               <CalendarPlus className="h-3.5 w-3.5" strokeWidth={1.75} />
-                              Запись
+                              {t("bookAppointment")}
                             </Link>
                           ) : null}
                           {canUpdatePatient ? (
                             <button
                               type="button"
                               className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50"
-                              title="Изменить"
+                              title={t("edit")}
                               disabled={isSaving || archivingPatientId !== null}
                               onClick={() => openEditModal(patient)}
                             >
@@ -667,7 +669,7 @@ export const PatientsPage: React.FC = () => {
                             <button
                               type="button"
                               className="rounded-lg border border-red-100 bg-red-50 p-1.5 text-red-700 hover:bg-red-100"
-                              title="Архивировать"
+                              title={t("archive")}
                               disabled={archivingPatientId !== null}
                               onClick={(e) => void handleArchivePatient(patient, e)}
                             >
@@ -690,7 +692,7 @@ export const PatientsPage: React.FC = () => {
                 onClick={() => setListWindow((n) => n + LIST_WINDOW_STEP)}
                 className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
               >
-                Показать ещё ({filteredPatients.length - windowedPatients.length})
+                {t("loadMore", { count: filteredPatients.length - windowedPatients.length })}
               </button>
             </div>
           ) : null}
@@ -702,10 +704,10 @@ export const PatientsPage: React.FC = () => {
           type="button"
           onClick={openCreateModal}
           className="fixed bottom-16 left-0 right-0 z-[90] flex justify-center px-4 transition-transform duration-150 ease-out active:scale-[0.98] md:hidden"
-          aria-label="Добавить пациента"
+          aria-label={t("addPatient")}
         >
           <span className="flex min-h-[48px] w-full max-w-none items-center justify-center gap-2 rounded-[14px] bg-emerald-600 px-4 text-sm font-semibold text-white shadow-md">
-            + Пациент
+            + {t("patient")}
           </span>
         </button>
       ) : null}
@@ -719,9 +721,9 @@ export const PatientsPage: React.FC = () => {
           className="w-full max-w-2xl max-h-[min(92vh,880px)] overflow-y-auto rounded-[20px] border border-[#e2e8f0] bg-white p-6 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.2)]"
         >
           <h3 className="text-lg font-semibold tracking-tight text-[#0f172a]">
-            {editingPatientId ? "Редактировать пациента" : "Добавить пациента"}
+            {editingPatientId ? t("editPatient") : t("addPatient")}
           </h3>
-          <p className="mt-1 text-sm text-[#64748b]">Заполните карточку. Поля с * обязательны.</p>
+          <p className="mt-1 text-sm text-[#64748b]">{t("formHint")}</p>
           {formError ? (
             <div className="mt-4 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2.5 text-sm text-[#991b1b]">
               {formError}

@@ -1,5 +1,6 @@
 import React from "react";
 import { BriefcaseMedical, Plus, Search, Stethoscope, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { requestJson } from "../../../api/http";
 import { useAuth } from "../../../auth/AuthContext";
 import { hasPermission } from "../../../auth/permissions";
@@ -27,15 +28,15 @@ const SERVICE_CATEGORIES = [
   "other",
 ] as const;
 
-const CATEGORY_LABELS: Record<string, string> = {
-  consultation: "Консультация",
-  diagnostics: "Диагностика",
-  hygiene: "Гигиена",
-  treatment: "Лечение",
-  surgery: "Хирургия",
-  orthodontics: "Ортодонтия",
-  other: "Прочее",
-};
+const CATEGORY_KEYS = {
+  consultation: "services.category.consultation",
+  diagnostics: "services.category.diagnostics",
+  hygiene: "services.category.hygiene",
+  treatment: "services.category.treatment",
+  surgery: "services.category.surgery",
+  orthodontics: "services.category.orthodontics",
+  other: "services.category.other",
+} as const;
 
 type ServiceRow = {
   id: number;
@@ -72,6 +73,7 @@ const initialFormState: ServiceFormState = {
 };
 
 export const ServicesPage: React.FC = () => {
+  const { t } = useTranslation();
   const { user, token } = useAuth();
   const canManage = !!user?.role && hasPermission(user.role, "services", "create");
   const [services, setServices] = React.useState<ServiceRow[]>(
@@ -112,7 +114,7 @@ export const ServicesPage: React.FC = () => {
           // Ignore background refresh errors; initial data already rendered.
         });
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка загрузки");
+      setError(requestError instanceof Error ? requestError.message : t("services.errors.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -171,15 +173,15 @@ export const ServicesPage: React.FC = () => {
     const durationRaw = normalizeMoneyInput(formState.duration);
     const duration = durationRaw != null ? Math.round(durationRaw) : NaN;
     if (!name) {
-      setError("Укажите название услуги");
+      setError(t("services.errors.nameRequired"));
       return;
     }
     if (!Number.isFinite(price) || price < 0) {
-      setError("Цена должна быть числом не меньше 0");
+      setError(t("services.errors.priceInvalid"));
       return;
     }
     if (!Number.isInteger(duration) || duration <= 0) {
-      setError("Длительность — целое число минут, больше 0");
+      setError(t("services.errors.durationInvalid"));
       return;
     }
 
@@ -199,7 +201,7 @@ export const ServicesPage: React.FC = () => {
             doctorIds: formState.doctorIds,
           },
         });
-        setToast("Услуга создана");
+        setToast(t("services.messages.created"));
       } else {
         await requestJson<ServiceRow>(`/api/services/${editingId}`, {
           method: "PUT",
@@ -213,12 +215,12 @@ export const ServicesPage: React.FC = () => {
             doctorIds: formState.doctorIds,
           },
         });
-        setToast("Услуга обновлена");
+        setToast(t("services.messages.updated"));
       }
       closeModal();
       await loadAll();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка сохранения");
+      setError(requestError instanceof Error ? requestError.message : t("services.errors.saveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -234,10 +236,10 @@ export const ServicesPage: React.FC = () => {
         token,
         body: { active: !service.active },
       });
-      setToast(!service.active ? "Услуга активирована" : "Услуга отключена");
+      setToast(!service.active ? t("services.messages.activated") : t("services.messages.deactivated"));
       await loadAll();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка переключения статуса");
+      setError(requestError instanceof Error ? requestError.message : t("services.errors.toggleFailed"));
     } finally {
       setTogglingId(null);
     }
@@ -251,9 +253,8 @@ export const ServicesPage: React.FC = () => {
     if (!normalizedSearch) return services;
     return services.filter((service) => {
       const byName = service.name.toLowerCase().includes(normalizedSearch);
-      const byCategory = (CATEGORY_LABELS[service.category] ?? service.category)
-        .toLowerCase()
-        .includes(normalizedSearch);
+      const categoryLabel = t(CATEGORY_KEYS[service.category as keyof typeof CATEGORY_KEYS] ?? "services.category.other");
+      const byCategory = categoryLabel.toLowerCase().includes(normalizedSearch);
       return byName || byCategory;
     });
   }, [services, normalizedSearch]);
@@ -270,8 +271,8 @@ export const ServicesPage: React.FC = () => {
     <div className="page-enter space-y-6 p-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-[#0f172a]">Услуги</h2>
-          <p className="mt-1 text-sm text-[#64748b]">Управление услугами клиники и связями с врачами.</p>
+          <h2 className="text-2xl font-semibold text-[#0f172a]">{t("services.title")}</h2>
+          <p className="mt-1 text-sm text-[#64748b]">{t("services.description")}</p>
         </div>
         <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
           <div className="relative w-full sm:w-[280px]">
@@ -281,7 +282,7 @@ export const ServicesPage: React.FC = () => {
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Поиск..."
+              placeholder={t("services.searchPlaceholder")}
               className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-9 text-sm text-[#0f172a] outline-none transition focus:ring-2 focus:ring-blue-500"
             />
             {search ? (
@@ -289,7 +290,7 @@ export const ServicesPage: React.FC = () => {
                 type="button"
                 onClick={() => setSearch("")}
                 className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                aria-label="Очистить поиск"
+                aria-label={t("services.clearSearch")}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -303,7 +304,7 @@ export const ServicesPage: React.FC = () => {
               disabled={isSaving}
             >
               <Plus className="h-4 w-4" strokeWidth={2.2} />
-              Добавить услугу
+              {t("services.addService")}
             </button>
           ) : null}
         </div>
@@ -328,17 +329,17 @@ export const ServicesPage: React.FC = () => {
       ) : services.length === 0 ? (
         <ListEmptyState
           icon={BriefcaseMedical}
-          title="Пока нет услуг"
-          description="Создайте услуги клиники и при необходимости привяжите к ним врачей."
-          actionLabel="Добавить"
+          title={t("services.empty.title")}
+          description={t("services.empty.description")}
+          actionLabel={t("services.addService")}
           onAction={openCreateModal}
           showAction={canManage}
           actionDisabled={isSaving}
         />
       ) : filteredServices.length === 0 ? (
         <div className="rounded-2xl border border-[#e2e8f0] bg-white px-6 py-16 text-center shadow-sm">
-          <p className="text-base font-medium text-slate-400">Ничего не найдено</p>
-          <p className="mt-1 text-sm text-slate-400">Попробуйте изменить запрос</p>
+          <p className="text-base font-medium text-slate-400">{t("services.noResults.title")}</p>
+          <p className="mt-1 text-sm text-slate-400">{t("services.noResults.description")}</p>
         </div>
       ) : (
         <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
@@ -350,7 +351,7 @@ export const ServicesPage: React.FC = () => {
                     <h3 className="truncate text-base font-semibold text-[#0f172a]">{service.name}</h3>
                     <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-[#64748b]">
                       <Stethoscope className="h-3.5 w-3.5 text-[#94a3b8]" strokeWidth={1.75} />
-                      {CATEGORY_LABELS[service.category] ?? service.category}
+                      {t(CATEGORY_KEYS[service.category as keyof typeof CATEGORY_KEYS] ?? "services.category.other")}
                     </p>
                   </div>
                   <span
@@ -360,17 +361,17 @@ export const ServicesPage: React.FC = () => {
                         : "border-[#fecaca] bg-[#fef2f2] text-[#991b1b]"
                     }`}
                   >
-                    {service.active ? "Активна" : "Не активна"}
+                    {service.active ? t("services.active") : t("services.inactive")}
                   </span>
                 </div>
 
                 <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-[#94a3b8]">Длительность</p>
-                    <p className="mt-1 text-sm font-semibold tabular-nums text-[#0f172a]">{service.duration} мин</p>
+                    <p className="text-xs uppercase tracking-wide text-[#94a3b8]">{t("services.duration")}</p>
+                    <p className="mt-1 text-sm font-semibold tabular-nums text-[#0f172a]">{service.duration} {t("services.minutes")}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-[#94a3b8]">Цена</p>
+                    <p className="text-xs uppercase tracking-wide text-[#94a3b8]">{t("services.price")}</p>
                     <p className="mt-1 text-sm font-semibold tabular-nums text-[#0f172a]">
                       {formatSum(service.price)}
                     </p>
@@ -378,7 +379,7 @@ export const ServicesPage: React.FC = () => {
                 </div>
 
                 <div className="mt-3">
-                  <p className="text-xs uppercase tracking-wide text-[#94a3b8]">Врачи</p>
+                  <p className="text-xs uppercase tracking-wide text-[#94a3b8]">{t("services.doctors")}</p>
                   {service.doctorIds.length > 0 ? (
                     <CollapsibleChips
                       items={service.doctorIds}
@@ -394,7 +395,7 @@ export const ServicesPage: React.FC = () => {
                       )}
                     />
                   ) : (
-                    <p className="mt-1 text-sm text-[#94a3b8]">Врачи не назначены</p>
+                    <p className="mt-1 text-sm text-[#94a3b8]">{t("services.noDoctorsAssigned")}</p>
                   )}
                 </div>
 
@@ -406,7 +407,7 @@ export const ServicesPage: React.FC = () => {
                       onClick={() => openEditModal(service)}
                       disabled={isSaving || togglingId !== null}
                     >
-                      Изменить
+                      {t("services.editService")}
                     </button>
                     <button
                       type="button"
@@ -418,7 +419,7 @@ export const ServicesPage: React.FC = () => {
                       onClick={() => void toggleActive(service)}
                       disabled={togglingId === service.id || isSaving}
                     >
-                      {togglingId === service.id ? "..." : service.active ? "Деактивировать" : "Активировать"}
+                      {togglingId === service.id ? "..." : service.active ? t("services.deactivate") : t("services.activate")}
                     </button>
                   </div>
                 )}
@@ -435,11 +436,11 @@ export const ServicesPage: React.FC = () => {
           className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-[20px] border border-[#e2e8f0] bg-white p-6 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.22)]"
         >
             <h3 className="text-lg font-semibold text-[#0f172a]">
-              {editingId === null ? "Новая услуга" : "Редактировать услугу"}
+              {editingId === null ? t("services.newService") : t("services.editService")}
             </h3>
             <div className="mt-4 grid grid-cols-1 gap-3">
               <label className="text-sm text-[#334155]">
-                Название
+                {t("services.name")}
                 <input
                   className="mt-1 h-11 w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:bg-white focus:ring-1 focus:ring-[#16a34a]/25"
                   value={formState.name}
@@ -448,7 +449,7 @@ export const ServicesPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm text-[#334155]">
-                Категория
+                {t("services.category")}
                 <select
                   className="mt-1 h-11 w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:bg-white focus:ring-1 focus:ring-[#16a34a]/25"
                   value={formState.category}
@@ -457,13 +458,13 @@ export const ServicesPage: React.FC = () => {
                 >
                   {SERVICE_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
-                      {CATEGORY_LABELS[c] ?? c}
+                      {t(CATEGORY_KEYS[c] ?? "services.category.other")}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="text-sm text-[#334155]">
-                Длительность (мин)
+                {t("services.durationLabel")}
                 <input
                   type="number"
                   min={1}
@@ -475,7 +476,7 @@ export const ServicesPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm text-[#334155]">
-                Цена (сум)
+                {t("services.priceLabel")}
                 <MoneyInput
                   mode="integer"
                   className="mt-1 h-11 w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:bg-white focus:ring-1 focus:ring-[#16a34a]/25"
@@ -492,14 +493,14 @@ export const ServicesPage: React.FC = () => {
                   disabled={isSaving}
                   className="h-4 w-4 rounded border-[#cbd5e1] text-[#16a34a] focus:ring-[#16a34a]/30"
                 />
-                Активна (доступна для новых записей)
+                {t("services.activeLabel")}
               </label>
               <div className="text-sm text-[#334155]">
-                <span className="block">Врачи</span>
-                <p className="mt-1 text-xs text-[#94a3b8]">Услуга может быть привязана к нескольким врачам.</p>
+                <span className="block">{t("services.doctors")}</span>
+                <p className="mt-1 text-xs text-[#94a3b8]">{t("services.doctorsHelp")}</p>
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <p className="text-sm font-medium text-[#334155]">
-                    Выбрано врачей: {formState.doctorIds.length}
+                    {t("services.doctorsSelected")}: {formState.doctorIds.length}
                   </p>
                   <button
                     type="button"
@@ -507,11 +508,11 @@ export const ServicesPage: React.FC = () => {
                     disabled={isSaving || doctors.length === 0}
                     className="inline-flex h-9 items-center rounded-lg border border-[#e2e8f0] bg-white px-3 text-xs font-semibold text-[#0f172a] transition hover:bg-[#f8fafc] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {formState.doctorIds.length === 0 ? "+ Добавить врачей" : "Изменить"}
+                    {formState.doctorIds.length === 0 ? t("services.addDoctors") : t("services.changeDoctors")}
                   </button>
                 </div>
                 {doctors.length === 0 ? (
-                  <span className="mt-2 block text-xs text-[#94a3b8]">Нет врачей в справочнике</span>
+                  <span className="mt-2 block text-xs text-[#94a3b8]">{t("services.noDoctorsAvailable")}</span>
                 ) : selectedDoctorRefs.length > 0 ? (
                   <CollapsibleChips
                     items={selectedDoctorRefs}
@@ -527,7 +528,7 @@ export const ServicesPage: React.FC = () => {
                     )}
                   />
                 ) : (
-                  <span className="mt-2 block text-xs text-[#94a3b8]">Пока ничего не выбрано</span>
+                  <span className="mt-2 block text-xs text-[#94a3b8]">{t("services.nothingSelected")}</span>
                 )}
               </div>
             </div>
@@ -538,7 +539,7 @@ export const ServicesPage: React.FC = () => {
                 onClick={closeModal}
                 disabled={isSaving}
               >
-                Отмена
+                {t("services.cancel")}
               </button>
               <button
                 type="button"
@@ -546,7 +547,7 @@ export const ServicesPage: React.FC = () => {
                 onClick={() => void submitService()}
                 disabled={isSaving}
               >
-                {isSaving ? "Сохранение…" : "Сохранить"}
+                {isSaving ? t("services.saving") : t("services.save")}
               </button>
             </div>
         </Modal>
@@ -554,10 +555,10 @@ export const ServicesPage: React.FC = () => {
       {canManage && (
         <SelectableItemsModal
           isOpen={doctorPickerOpen}
-          title="Выбор врачей"
+          title={t("services.selectDoctors")}
           options={doctors}
           selectedIds={formState.doctorIds}
-          searchPlaceholder="Поиск врачей..."
+          searchPlaceholder={t("services.searchDoctors")}
           onClose={() => setDoctorPickerOpen(false)}
           onSave={(nextIds) => {
             setFormState((prev) => ({ ...prev, doctorIds: nextIds }));

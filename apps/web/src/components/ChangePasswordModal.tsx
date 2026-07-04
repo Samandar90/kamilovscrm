@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import { changePassword } from "../api/userApi";
 
@@ -8,6 +9,7 @@ type ChangePasswordModalProps = {
 };
 
 export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, onClose }) => {
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
@@ -21,17 +23,17 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, 
     setSuccess(false);
 
     if (!currentPassword || !newPassword) {
-      setError("Все поля обязательны");
+      setError(t("forms.required"));
       return;
     }
 
     if (newPassword.length < 6) {
-      setError("Новый пароль должен быть минимум 6 символов");
+      setError(t("forms.passwordTooShort"));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError("Пароли не совпадают");
+      setError(t("forms.passwordMismatch"));
       return;
     }
 
@@ -47,7 +49,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, 
         setSuccess(false);
       }, 1500);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Не удалось сменить пароль");
+      setError(err instanceof Error ? err.message : t("errors.serverError"));
     } finally {
       setLoading(false);
     }
@@ -59,7 +61,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-slate-900">Смена пароля</h2>
+          <h2 className="text-lg font-bold text-slate-900">{t("auth.changePassword")}</h2>
           <button
             onClick={onClose}
             className="rounded-lg p-1 hover:bg-slate-100"
@@ -70,13 +72,13 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, 
 
         {success ? (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            ✓ Пароль успешно изменён
+            ✓ {t("auth.passwordChanged")}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600">
-                Текущий пароль
+                {t("auth.currentPassword")}
               </label>
               <input
                 type="password"
@@ -90,7 +92,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, 
 
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600">
-                Новый пароль
+                {t("auth.newPassword")}
               </label>
               <input
                 type="password"
@@ -104,7 +106,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, 
 
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600">
-                Подтверждение пароля
+                {t("forms.confirmPasswordLabel")}
               </label>
               <input
                 type="password"
@@ -129,14 +131,14 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, 
                 disabled={loading}
                 className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
               >
-                Отмена
+                {t("common.cancel")}
               </button>
               <button
                 type="submit"
                 disabled={loading}
                 className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
               >
-                {loading ? "Сохранение…" : "Сохранить"}
+                {loading ? `${t("common.save")}…` : t("common.save")}
               </button>
             </div>
           </form>

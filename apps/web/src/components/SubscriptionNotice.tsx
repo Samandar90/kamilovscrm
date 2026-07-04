@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { useClinic } from "../hooks/useClinic";
 import { useAuth } from "../auth/AuthContext";
 import { SALES_CONTACTS } from "../shared/config/branding";
@@ -11,6 +12,7 @@ export const PAYMENT_REQUIRED_EVENT = "sazion:payment-required";
  * Рендерится в MainLayout, чтобы работать на всех страницах клиники.
  */
 export const SubscriptionNotice: React.FC = () => {
+  const { t } = useTranslation();
   const { clinic } = useClinic();
   const { logout } = useAuth();
   const [blockedMessage, setBlockedMessage] = React.useState<string | null>(null);
@@ -21,7 +23,7 @@ export const SubscriptionNotice: React.FC = () => {
       setBlockedMessage(
         detail && detail.trim()
           ? detail
-          : "Срок подписки истёк. Продлите подписку, чтобы продолжить работу."
+          : t("subscription.accessBlockedDesc")
       );
     };
     window.addEventListener(PAYMENT_REQUIRED_EVENT, onPaymentRequired);
@@ -35,7 +37,7 @@ export const SubscriptionNotice: React.FC = () => {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-3xl">
             ⏳
           </div>
-          <h2 className="text-lg font-bold text-slate-900">Доступ приостановлен</h2>
+          <h2 className="text-lg font-bold text-slate-900">{t("subscription.accessBlocked")}</h2>
           <p className="mt-2 text-sm text-slate-600">{blockedMessage}</p>
           <div className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
             <div className="font-medium text-slate-900">Для продления свяжитесь с нами:</div>
@@ -58,7 +60,7 @@ export const SubscriptionNotice: React.FC = () => {
             onClick={() => void logout()}
             className="mt-5 h-10 w-full rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 transition hover:bg-slate-50"
           >
-            Выйти из системы
+            {t("common.logout")}
           </button>
         </div>
       </div>

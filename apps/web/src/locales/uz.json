@@ -298,5 +298,90 @@
     "serverError": "Server xatosi",
     "networkError": "Tarmoq xatosi",
     "tryAgain": "Qayta urinish"
+  },
+  "dashboard": {
+    "superadmin": "Superadmin paneli",
+    "superadminDesc": "Tizimga to'liq kirish",
+    "director": "Operatsion ko'rinish",
+    "directorDesc": "Klinikaning kunlik ko'rinishi bitta ekranda",
+    "cashier": "Kassirning ish stoli",
+    "cashierDesc": "To'lovlar, qarzlar, smena va yaqin bemorlar",
+    "doctor": "Shifokorning ish stoli",
+    "doctorDesc": "Asosiy metrikalar, qabullari va bugungi harakatlar",
+    "nurse": "Hamshiraning ish stoli",
+    "nurseDesc": "Qabullari va sizning shifokoringiz uchun vazifalar",
+    "reception": "Qabul xonasi",
+    "receptionDesc": "Bemorlar, qabullari va jadavali",
+    "operator": "Qabul operatori",
+    "operatorDesc": "Jadavali va slotlar",
+    "accountant": "Moliya",
+    "accountantDesc": "Hisob-kitoblar, to'lovlar va hisobotlar",
+    "default": "Bosh sahifa",
+    "defaultDesc": "Klinikaning asosiy ish markazi",
+    "today": "Bugun",
+    "revenue": "Bugungi daromad",
+    "appointments": "Bugungi qabullari",
+    "newPatients": "Yangi bemorlar",
+    "debts": "Bemor qarzi",
+    "shift": "Faol smena",
+    "unpaidInvoices": "To'lanmagan hisob-kitoblar",
+    "status": {
+      "scheduled": "Rejalashtiriliush",
+      "confirmed": "Tasdiqlangan",
+      "arrived": "Keldi",
+      "in_consultation": "Qabulda",
+      "completed": "Bajarilgan",
+      "cancelled": "Bekor qilingan",
+      "no_show": "Kelmagan"
+    },
+    "payment": "Naqd pul",
+    "terminal": "Terminal",
+    "quickActions": "Tezkor amallar",
+    "quickActionsDesc": "Tez-tez ishlatiladigan stsenarylar",
+    "newAppointment": "Yangi qabul",
+    "newPatient": "Yangi bemor",
+    "schedule": "Jadavali",
+    "refresh": "Yangilash",
+    "updateAnalysis": "Tahlilni yangilash"
+  },
+  "appointment": {
+    "status": {
+      "scheduled": "Rejalashtiriliush",
+      "confirmed": "Tasdiqlangan",
+      "arrived": "Keldi",
+      "in_consultation": "Qabulda",
+      "completed": "Bajarilgan",
+      "cancelled": "Bekor qilingan",
+      "no_show": "Kelmagan"
+    },
+    "markArrived": "Kelgan deb belgilash",
+    "markCompleted": "Yakunlash",
+    "reschedule": "Ko'chirish",
+    "cancel": "Bekor qilish"
+  },
+  "debt": {
+    "title": "Qarz",
+    "status": "Muddati o'tgan"
+  },
+  "shift": {
+    "active": "Faol",
+    "closed": "Yopilgan",
+    "open": "Smenani ochish",
+    "close": "Smenani yopish"
+  },
+  "ai": {
+    "insights": "Ertalabki shumatni",
+    "yesterday": "Kecha:",
+    "problems": "Muammolar:",
+    "actions": "Amallar:",
+    "revenue": "Daromad",
+    "patients": "bemorlar"
+  },
+  "setup": {
+    "title": "Asosiy bilan boshlang",
+    "desc": "Shifokorlar, xizmatlar va jadavalni qo'shing — boshqa hamma o'zi ketadi",
+    "doctors": "Shifokorlar",
+    "services": "Xizmatlar",
+    "patients": "Bemorlar"
   }
 }

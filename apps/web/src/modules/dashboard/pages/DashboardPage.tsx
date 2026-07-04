@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Banknote,
   CalendarCheck2,
@@ -47,16 +48,6 @@ import { requestJson } from "../../../api/http";
 const DEBT_STATUSES: InvoiceStatus[] = ["draft", "issued", "partially_paid"];
 const UNPAID_STATUSES = new Set<InvoiceStatus>(["issued", "partially_paid"]);
 
-const statusLabel: Record<AppointmentStatus, string> = {
-  scheduled: "Запланировано",
-  confirmed: "Подтверждено",
-  arrived: "Пришел",
-  in_consultation: "На приеме",
-  completed: "Завершено",
-  cancelled: "Отменено",
-  no_show: "Неявка",
-};
-
 const statusColor: Record<AppointmentStatus, string> = {
   scheduled: "border-[#e5e7eb] bg-[#f8fafc] text-[#0f172a]",
   confirmed: "border-[#e5e7eb] bg-[#f8fafc] text-[#0f172a]",
@@ -73,31 +64,38 @@ const isToday = (iso: string): boolean => {
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
 };
 
-const paymentMethodRu = (method: Payment["method"]): string => {
-  if (method === "cash") return "Наличные";
-  return "Терминал";
-};
-
-const roleDashboardCopy = (role: UserRole | undefined): { title: string; subtitle: string } => {
-  if (role === "doctor") return { title: "Рабочий стол врача", subtitle: "Ключевые метрики, записи и действия на сегодня" };
-  if (role === "nurse") return { title: "Рабочий стол медсестры", subtitle: "Записи и задачи по вашему врачу" };
-  if (role === "cashier") return { title: "Рабочий стол кассы", subtitle: "Оплаты, долги, смена и ближайшие пациенты" };
-  if (role === "reception") return { title: "Регистратура", subtitle: "Пациенты, записи и расписание" };
-  if (role === "operator") return { title: "Оператор записи", subtitle: "Расписание и слоты" };
-  if (role === "director") return { title: "Операционный обзор", subtitle: "Ежедневная картина по клинике в одном экране" };
-  if (role === "accountant") return { title: "Финансы", subtitle: "Счета, оплаты и отчёты" };
-  if (role === "superadmin") return { title: "Панель суперадмина", subtitle: "Полный доступ к системе" };
-  return { title: "Панель управления", subtitle: "Главный рабочий центр клиники" };
-};
-
 const canMarkArrived = (status: AppointmentStatus): boolean => status === "scheduled" || status === "confirmed";
 const canMarkCompleted = (status: AppointmentStatus): boolean =>
   status === "confirmed" || status === "arrived" || status === "in_consultation";
 
 export const DashboardPage: React.FC = () => {
+  const { t } = useTranslation();
   const { user, token } = useAuth();
   const role = user?.role;
-  const { title: headerTitle, subtitle: headerSubtitle } = roleDashboardCopy(role);
+
+  // Helper functions using t()
+  const getStatusLabel = (status: AppointmentStatus): string => {
+    return t(`dashboard.status.${status}`);
+  };
+
+  const getPaymentMethod = (method: Payment["method"]): string => {
+    if (method === "cash") return t("billing.cash");
+    return t("billing.terminal");
+  };
+
+  const getRoleDashboardCopy = (userRole: UserRole | undefined): { title: string; subtitle: string } => {
+    if (userRole === "doctor") return { title: t("dashboard.doctor"), subtitle: t("dashboard.doctorDesc") };
+    if (userRole === "nurse") return { title: t("dashboard.nurse"), subtitle: t("dashboard.nurseDesc") };
+    if (userRole === "cashier") return { title: t("dashboard.cashier"), subtitle: t("dashboard.cashierDesc") };
+    if (userRole === "reception") return { title: t("dashboard.reception"), subtitle: t("dashboard.receptionDesc") };
+    if (userRole === "operator") return { title: t("dashboard.operator"), subtitle: t("dashboard.operatorDesc") };
+    if (userRole === "director") return { title: t("dashboard.director"), subtitle: t("dashboard.directorDesc") };
+    if (userRole === "accountant") return { title: t("dashboard.accountant"), subtitle: t("dashboard.accountantDesc") };
+    if (userRole === "superadmin") return { title: t("dashboard.superadmin"), subtitle: t("dashboard.superadminDesc") };
+    return { title: t("dashboard.default"), subtitle: t("dashboard.defaultDesc") };
+  };
+
+  const { title: headerTitle, subtitle: headerSubtitle } = getRoleDashboardCopy(role);
 
   const {
     loading,
@@ -207,54 +205,54 @@ export const DashboardPage: React.FC = () => {
     return [
       {
         to: "/appointments",
-        label: "Новая запись",
-        subLabel: "Расписание",
+        label: t("dashboard.newAppointment"),
+        subLabel: t("dashboard.schedule"),
         icon: CalendarPlus,
         disabled: !readAppointments,
-        disabledReason: "Нет доступа к расписанию",
+        disabledReason: t("dashboard.quickActionsDesc"),
       },
       {
         to: "/patients",
-        label: "Новый пациент",
-        subLabel: "Карточка в базе",
+        label: t("dashboard.newPatient"),
+        subLabel: t("patients.fullName"),
         icon: UserPlus,
         disabled: !readPatients,
-        disabledReason: "Нет доступа к пациентам",
+        disabledReason: t("errors.unauthorized"),
       },
       {
         to: "/billing/cash-desk",
-        label: "Принять оплату",
-        subLabel: "Касса",
+        label: t("billing.pay"),
+        subLabel: t("billing.cashDesk"),
         icon: Wallet,
         disabled: !readBilling,
-        disabledReason: "Нет доступа к биллингу",
+        disabledReason: t("errors.unauthorized"),
       },
       {
         to: "/billing/cash-desk",
-        label: "Открыть смену",
-        subLabel: "Смена",
+        label: t("billing.openShift"),
+        subLabel: t("billing.shift"),
         icon: Store,
         disabled: !readBilling,
-        disabledReason: "Нет доступа к кассе",
+        disabledReason: t("errors.unauthorized"),
       },
       {
         to: "/billing/invoices",
-        label: "Выставить счет",
-        subLabel: "Биллинг",
+        label: t("billing.createInvoice"),
+        subLabel: t("billing.invoices"),
         icon: FileText,
         disabled: !readBilling,
-        disabledReason: "Нет доступа к счетам",
+        disabledReason: t("errors.unauthorized"),
       },
       {
         to: "/appointments",
-        label: "Расписание",
-        subLabel: "Все записи",
+        label: t("dashboard.schedule"),
+        subLabel: t("appointments.title"),
         icon: CalendarClock,
         disabled: !readAppointments,
-        disabledReason: "Нет доступа к расписанию",
+        disabledReason: t("errors.unauthorized"),
       },
     ];
-  }, [readAppointments, readBilling, readPatients]);
+  }, [readAppointments, readBilling, readPatients, t]);
 
   const runAppointmentAction = async (appointmentId: number, action: "arrived" | "completed" | "invoice") => {
     try {
@@ -275,7 +273,7 @@ export const DashboardPage: React.FC = () => {
       }
       await reload();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Не удалось выполнить действие");
+      setActionError(e instanceof Error ? e.message : t("errors.serverError"));
     } finally {
       setActionPendingById((prev) => {
         const clone = { ...prev };
@@ -317,7 +315,7 @@ export const DashboardPage: React.FC = () => {
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-semibold tracking-tight text-[#0f172a] md:text-2xl lg:text-3xl">{headerTitle}</h1>
           <p className="mt-0.5 hidden text-sm text-[#64748b] sm:block">{headerSubtitle}</p>
-          <p className="mt-0.5 text-xs text-[#94a3b8] md:text-sm">Сегодня, {todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)}</p>
+          <p className="mt-0.5 text-xs text-[#94a3b8] md:text-sm">{t("dashboard.today")}, {todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {canQuickPatientBooking ? (
@@ -328,7 +326,7 @@ export const DashboardPage: React.FC = () => {
               className={`${primaryActionButtonClass} max-md:hidden`}
             >
               <CalendarPlus className="h-4 w-4" />
-              + Быстрая запись пациента
+              + {t("dashboard.newPatient")}
             </button>
           ) : null}
           <button
@@ -338,8 +336,8 @@ export const DashboardPage: React.FC = () => {
             }}
             className="crm-btn-interactive inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#e5e7eb] bg-[#f1f5f9] text-[#64748b] shadow-sm transition-transform duration-100 ease-out active:scale-[0.98] max-md:active:scale-[0.98] md:h-11 md:w-11 md:transition-colors md:duration-200 md:ease-out md:hover:bg-[#e2e8f0] md:hover:text-[#0f172a]"
             disabled={loading}
-            aria-label="Обновить"
-            title="Обновить"
+            aria-label={t("dashboard.refresh")}
+            title={t("dashboard.refresh")}
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </button>
@@ -362,8 +360,8 @@ export const DashboardPage: React.FC = () => {
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2.5">
             <div className="min-w-0 sm:col-span-2">
               <DashboardCard
-                title="Выручка сегодня"
-                subtitle={readBilling && !loading ? "Сумма оплат за день" : undefined}
+                title={t("dashboard.revenue")}
+                subtitle={readBilling && !loading ? t("dashboard.today") : undefined}
                 value={loading ? "..." : readBilling ? formatSum(revenueToday) : "—"}
                 icon={Banknote}
                 animationIndex={0}
@@ -375,8 +373,8 @@ export const DashboardPage: React.FC = () => {
               />
             </div>
             <DashboardCard
-              title="Записи сегодня"
-              subtitle={readAppointments && !loading ? "На сегодня" : undefined}
+              title={t("dashboard.appointments")}
+              subtitle={readAppointments && !loading ? t("dashboard.today") : undefined}
               value={loading ? "..." : readAppointments ? String(todayAppointments.length) : "—"}
               icon={CalendarClock}
               animationIndex={1}
@@ -385,8 +383,8 @@ export const DashboardPage: React.FC = () => {
               iconTone="indigo"
             />
             <DashboardCard
-              title="Новые пациенты"
-              subtitle={readPatients && !loading ? "Сегодня" : undefined}
+              title={t("dashboard.newPatients")}
+              subtitle={readPatients && !loading ? t("dashboard.today") : undefined}
               value={loading ? "..." : readPatients ? String(newPatientsToday) : "—"}
               icon={Users}
               animationIndex={2}
@@ -399,17 +397,17 @@ export const DashboardPage: React.FC = () => {
           {showSetupBanner ? (
             <DashboardSetupBanner
               steps={[
-                { label: "Добавить пациента", to: "/patients", done: patients.length > 0, icon: UserPlus },
-                { label: "Создать запись", to: "/appointments", done: appointments.length > 0, icon: CalendarPlus },
-                { label: "Выставить счёт", to: "/billing/invoices", done: invoices.length > 0, icon: FileText },
+                { label: t("setup.patients"), to: "/patients", done: patients.length > 0, icon: UserPlus },
+                { label: t("setup.doctors"), to: "/appointments", done: appointments.length > 0, icon: CalendarPlus },
+                { label: t("billing.createInvoice"), to: "/billing/invoices", done: invoices.length > 0, icon: FileText },
               ]}
             />
           ) : null}
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-2.5 xl:auto-rows-fr">
             <DashboardCard
-              title="Долги пациентов"
-              subtitle={readBilling && !loading ? "Задолженность" : undefined}
+              title={t("dashboard.debts")}
+              subtitle={readBilling && !loading ? t("debt.title") : undefined}
               value={loading ? "..." : readBilling ? formatSum(debtTotal) : "—"}
               icon={Receipt}
               animationIndex={3}
@@ -418,9 +416,9 @@ export const DashboardPage: React.FC = () => {
               iconTone="rose"
             />
             <DashboardCard
-              title="Активная смена"
-              subtitle={readBilling && !loading ? "Касса" : undefined}
-              value={loading ? "..." : readBilling ? (activeShift && !activeShift.closedAt ? "Открыта" : "Закрыта") : "—"}
+              title={t("dashboard.shift")}
+              subtitle={readBilling && !loading ? t("billing.cashDesk") : undefined}
+              value={loading ? "..." : readBilling ? (activeShift && !activeShift.closedAt ? t("shift.active") : t("shift.closed")) : "—"}
               icon={Store}
               animationIndex={4}
               loading={loading}
@@ -428,8 +426,8 @@ export const DashboardPage: React.FC = () => {
               iconTone="amber"
             />
             <DashboardCard
-              title="Неоплаченные счета"
-              subtitle={readBilling && !loading ? "К оплате" : undefined}
+              title={t("dashboard.unpaidInvoices")}
+              subtitle={readBilling && !loading ? t("billing.status") : undefined}
               value={loading ? "..." : readBilling ? String(openInvoices.length) : "—"}
               icon={CreditCard}
               animationIndex={5}
@@ -469,18 +467,18 @@ export const DashboardPage: React.FC = () => {
       <section className="grid grid-cols-1 gap-3 md:gap-6 xl:grid-cols-2">
         <div className="rounded-[20px] border border-slate-100/90 bg-white p-4 shadow-sm backdrop-blur-sm md:p-6 md:transition-all md:duration-200 md:hover:shadow-md">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-[#111827]">Ближайшие записи сегодня</h2>
+            <h2 className="text-base font-semibold text-[#111827]">{t("ai.insights")}</h2>
             <Link to="/appointments" className="text-xs font-semibold text-[#6366f1] hover:text-[#4f46e5]">
-              Открыть расписание
+              {t("dashboard.schedule")}
             </Link>
           </div>
 
           {!readAppointments ? (
-            <DashboardEmptyState icon={CalendarClock} title="Нет доступа" description="Расписание недоступно для вашей роли" />
+            <DashboardEmptyState icon={CalendarClock} title={t("errors.unauthorized")} description={t("errors.forbidden")} />
           ) : loading ? (
             <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-lg bg-[#f3f4f6]" />)}</div>
           ) : upcomingAppointments.length === 0 ? (
-            <DashboardEmptyState icon={CalendarClock} title="На сегодня ближайших записей нет" description="Когда появятся записи, они будут здесь" action={{ label: "Новая запись", to: "/appointments" }} />
+            <DashboardEmptyState icon={CalendarClock} title={t("appointments.title")} description={t("appointments.title")} action={{ label: t("dashboard.newAppointment"), to: "/appointments" }} />
           ) : (
             <div className="space-y-2">
               {upcomingAppointments.map((a) => {
@@ -495,17 +493,17 @@ export const DashboardPage: React.FC = () => {
                       <div className="text-sm font-semibold text-[#111827]">
                         {new Date(a.startAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
                       </div>
-                      <div className="text-sm text-[#111827]">{patientsMap[a.patientId] ?? `Пациент #${a.patientId}`}</div>
-                      <div className="text-sm text-[#374151]">{doctorsMap[a.doctorId] ?? `Врач #${a.doctorId}`}</div>
-                      <div className="text-sm text-[#6b7280]">{servicesMap[a.serviceId] ?? `Услуга #${a.serviceId}`}</div>
-                      <span className={`inline-flex w-fit rounded-full border px-2 py-0.5 text-xs ${statusColor[a.status]}`}>{statusLabel[a.status]}</span>
+                      <div className="text-sm text-[#111827]">{patientsMap[a.patientId] ?? `${t("patients.title")} #${a.patientId}`}</div>
+                      <div className="text-sm text-[#374151]">{doctorsMap[a.doctorId] ?? `${t("doctors.title")} #${a.doctorId}`}</div>
+                      <div className="text-sm text-[#6b7280]">{servicesMap[a.serviceId] ?? `${t("services.title")} #${a.serviceId}`}</div>
+                      <span className={`inline-flex w-fit rounded-full border px-2 py-0.5 text-xs ${statusColor[a.status]}`}>{getStatusLabel(a.status)}</span>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Link
                         to="/appointments"
                         className="rounded-lg border border-[#e5e7eb] bg-white px-2.5 py-1 text-xs font-medium text-[#111827] transition hover:bg-[#f3f4f6]"
                       >
-                        Открыть
+                        {t("common.edit")}
                       </Link>
                       <button
                         type="button"
@@ -513,7 +511,7 @@ export const DashboardPage: React.FC = () => {
                         onClick={() => void runAppointmentAction(a.id, "arrived")}
                         className="rounded-lg border border-[#e5e7eb] bg-white px-2.5 py-1 text-xs font-medium text-[#111827] transition hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {busy === "arrived" ? "Обновление..." : "Отметить пришел"}
+                        {busy === "arrived" ? t("common.loading") : t("appointment.markArrived")}
                       </button>
                       <button
                         type="button"
@@ -521,7 +519,7 @@ export const DashboardPage: React.FC = () => {
                         onClick={() => void runAppointmentAction(a.id, "completed")}
                         className="rounded-lg bg-[#22c55e] px-2.5 py-1 text-xs font-medium text-white transition hover:bg-[#16a34a] disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {busy === "completed" ? "Обновление..." : "Завершить"}
+                        {busy === "completed" ? t("common.loading") : t("appointment.markCompleted")}
                       </button>
                       <button
                         type="button"
@@ -529,7 +527,7 @@ export const DashboardPage: React.FC = () => {
                         onClick={() => void runAppointmentAction(a.id, "invoice")}
                         className="rounded-lg border border-[#e5e7eb] bg-white px-2.5 py-1 text-xs font-medium text-[#111827] transition hover:bg-[#f3f4f6] disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {hasInvoice ? "Счет уже есть" : busy === "invoice" ? "Создание..." : "Выставить счет"}
+                        {hasInvoice ? t("billing.paid") : busy === "invoice" ? t("common.loading") : t("billing.createInvoice")}
                       </button>
                     </div>
                   </div>
