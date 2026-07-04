@@ -7,6 +7,7 @@ import { cn } from "../ui/utils/cn";
 import { MobileBottomNav } from "../shared/ui/MobileBottomNav";
 import { SubscriptionNotice } from "../components/SubscriptionNotice";
 import { ChangePasswordModal } from "../components/ChangePasswordModal";
+import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { Logo } from "@/shared/ui/Logo";
 import { BRANDING } from "../shared/config/branding";
 import { useClinic } from "../hooks/useClinic";
@@ -80,6 +81,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             <div className="hidden max-w-[220px] truncate text-xs text-slate-500 sm:block">
               {user ? `${user.fullName ?? user.username} · ${user.role}` : "Гость"}
             </div>
+            <LanguageSwitcher />
             <Button
               type="button"
               variant="secondary"

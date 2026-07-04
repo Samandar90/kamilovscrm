@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import {
   BarChart3,
@@ -14,49 +15,33 @@ import {
 import { Logo } from "../../shared/ui/Logo";
 import { BRANDING, SALES_CONTACTS } from "../../shared/config/branding";
 
-const FEATURES = [
-  {
-    icon: Users,
-    title: "Пациенты и история визитов",
-    text: "Картотека пациентов, источники обращений, телефоны и заметки — всё в одном месте.",
-  },
-  {
-    icon: CalendarDays,
-    title: "Записи и расписание врачей",
-    text: "Запись на приём за пару кликов, статусы визитов, перенос и напоминания регистратуре.",
-  },
-  {
-    icon: CreditCard,
-    title: "Касса, счета и оплаты",
-    text: "Счета из приёма в один клик, кассовые смены, наличные и терминал, возвраты.",
-  },
-  {
-    icon: Printer,
-    title: "Фирменные чеки",
-    text: "Квитанции с логотипом и названием вашей клиники — печать сразу из кассы.",
-  },
-  {
-    icon: BarChart3,
-    title: "Отчёты и аналитика",
-    text: "Выручка по дням, врачам и услугам. Видно, что приносит деньги, а что простаивает.",
-  },
-  {
-    icon: Bot,
-    title: "AI-ассистент",
-    text: "Утренняя сводка, ответы на вопросы по данным клиники, рекомендации по загрузке.",
-  },
-];
+const FEATURE_ICONS = [Users, CalendarDays, CreditCard, Printer, BarChart3, Bot];
 
-const STEPS = [
-  { n: "1", title: "Оставьте заявку", text: "Напишите нам в Telegram или позвоните — расскажем и покажем систему." },
-  { n: "2", title: "Мы создаём вашу клинику", text: "Название, логотип, аккаунты для персонала — готово за один день." },
-  { n: "3", title: "14 дней бесплатно", text: "Полный доступ ко всем функциям. Понравится — продлите подписку." },
-];
+const STEPS_COUNT = 3;
 
 export const LandingPage: React.FC = () => {
+  const { t, i18n } = useTranslation();
+
   React.useEffect(() => {
     document.title = `${BRANDING.productName} — ${BRANDING.productTagline}`;
   }, []);
+
+  const features = [
+    { icon: Users, keyPrefix: "feature1" },
+    { icon: CalendarDays, keyPrefix: "feature2" },
+    { icon: CreditCard, keyPrefix: "feature3" },
+    { icon: Printer, keyPrefix: "feature4" },
+    { icon: BarChart3, keyPrefix: "feature5" },
+    { icon: Bot, keyPrefix: "feature6" },
+  ];
+
+  const steps = [
+    { n: "1", keyPrefix: "step1" },
+    { n: "2", keyPrefix: "step2" },
+    { n: "3", keyPrefix: "step3" },
+  ];
+
+  const benefits = ["benefits", "benefit1", "benefit2", "benefit3"];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F8FAFC] to-[#EEF2F7] text-slate-900">
@@ -70,7 +55,7 @@ export const LandingPage: React.FC = () => {
           to="/login"
           className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
         >
-          Войти
+          {t("auth.login")}
         </Link>
       </header>
 
@@ -78,11 +63,10 @@ export const LandingPage: React.FC = () => {
       <section className="mx-auto max-w-6xl px-5 pb-14 pt-10 text-center md:pt-16">
         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
           <h1 className="mx-auto max-w-3xl text-4xl font-extrabold leading-tight tracking-tight md:text-5xl">
-            CRM-система для вашей клиники
+            {t("landing.title")}
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
-            Пациенты, записи, касса, отчёты и AI-ассистент — всё, что нужно клинике,
-            в одной системе. Под вашим брендом, с вашим логотипом.
+            {t("landing.subtitle")}
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a
@@ -91,34 +75,33 @@ export const LandingPage: React.FC = () => {
               rel="noreferrer"
               className="w-full rounded-xl bg-[#2563EB] px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-[#1D4ED8] sm:w-auto"
             >
-              Подключить клинику — 14 дней бесплатно
+              {t("landing.cta")}
             </a>
             <Link
               to="/login"
               className="w-full rounded-xl border border-slate-200 bg-white px-7 py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:w-auto"
             >
-              Посмотреть демо
+              {t("landing.demo")}
             </Link>
           </div>
           <div className="mx-auto mt-5 inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-xl border border-slate-200 bg-white/70 px-4 py-2 text-xs text-slate-500">
-            <span>Демо-доступ:</span>
-            <span>
-              логин <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono font-semibold text-slate-700">demo</code>
-            </span>
-            <span>
-              пароль <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono font-semibold text-slate-700">demo123</code>
-            </span>
+            <span>{t("landing.demoLogin")}</span>
+            <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono font-semibold text-slate-700">demo</code>
+            <span>{t("landing.demoPassword")}</span>
+            <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono font-semibold text-slate-700">demo123</code>
           </div>
         </motion.div>
       </section>
 
       {/* Функции */}
       <section className="mx-auto max-w-6xl px-5 pb-16">
-        <h2 className="text-center text-2xl font-bold tracking-tight md:text-3xl">Всё нужное — из коробки</h2>
+        <h2 className="text-center text-2xl font-bold tracking-tight md:text-3xl">
+          {t("landing.features")}
+        </h2>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f, i) => (
+          {features.map((f, i) => (
             <motion.div
-              key={f.title}
+              key={f.keyPrefix}
               initial={{ opacity: 0, y: 14 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
@@ -128,8 +111,10 @@ export const LandingPage: React.FC = () => {
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#2563EB]">
                 <f.icon size={22} strokeWidth={1.8} />
               </div>
-              <h3 className="mt-4 font-semibold">{f.title}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{f.text}</p>
+              <h3 className="mt-4 font-semibold">{t(`landing.${f.keyPrefix}`)}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+                {t(`landing.${f.keyPrefix}Desc`)}
+              </p>
             </motion.div>
           ))}
         </div>
@@ -138,15 +123,17 @@ export const LandingPage: React.FC = () => {
       {/* Как подключиться */}
       <section className="border-y border-slate-200 bg-white/60 py-16">
         <div className="mx-auto max-w-6xl px-5">
-          <h2 className="text-center text-2xl font-bold tracking-tight md:text-3xl">Как подключиться</h2>
+          <h2 className="text-center text-2xl font-bold tracking-tight md:text-3xl">
+            {t("landing.howToConnect")}
+          </h2>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {STEPS.map((s) => (
+            {steps.map((s) => (
               <div key={s.n} className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
                 <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#2563EB] text-sm font-bold text-white">
                   {s.n}
                 </div>
-                <h3 className="mt-4 font-semibold">{s.title}</h3>
-                <p className="mt-1.5 text-sm text-slate-500">{s.text}</p>
+                <h3 className="mt-4 font-semibold">{t(`landing.${s.keyPrefix}`)}</h3>
+                <p className="mt-1.5 text-sm text-slate-500">{t(`landing.${s.keyPrefix}Desc`)}</p>
               </div>
             ))}
           </div>
@@ -157,22 +144,15 @@ export const LandingPage: React.FC = () => {
       <section className="mx-auto max-w-6xl px-5 py-16">
         <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm md:p-10">
           <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-            <CheckCircle2 size={14} /> 14 дней бесплатно, без карты
+            <CheckCircle2 size={14} /> {t("landing.pricing")}
           </div>
-          <h2 className="mt-4 text-2xl font-bold tracking-tight">Простая подписка для всей клиники</h2>
-          <p className="mt-2 text-slate-600">
-            Одна цена — все функции, без ограничений по числу врачей и пациентов.
-            Стоимость обсудим при подключении.
-          </p>
+          <h2 className="mt-4 text-2xl font-bold tracking-tight">{t("landing.pricing")}</h2>
+          <p className="mt-2 text-slate-600">{t("landing.pricingDesc")}</p>
           <ul className="mx-auto mt-5 grid max-w-md gap-2 text-left text-sm text-slate-600">
-            {[
-              "Все модули: записи, касса, отчёты, AI-ассистент",
-              "Ваш логотип в системе и на чеках",
-              "Данные каждой клиники полностью изолированы",
-              "Поддержка на русском в Telegram",
-            ].map((t) => (
-              <li key={t} className="flex items-start gap-2">
-                <ShieldCheck size={16} className="mt-0.5 shrink-0 text-emerald-600" /> {t}
+            {benefits.map((key) => (
+              <li key={key} className="flex items-start gap-2">
+                <ShieldCheck size={16} className="mt-0.5 shrink-0 text-emerald-600" />
+                {t(`landing.${key}`)}
               </li>
             ))}
           </ul>
