@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, Search, Stethoscope, X } from "lucide-react";
 import { requestJson } from "../../../api/http";
 import { useAuth } from "../../../auth/AuthContext";
@@ -80,6 +81,7 @@ const DoctorServicesChips: React.FC<DoctorServicesChipsProps> = ({
 };
 
 export const DoctorsPage: React.FC = () => {
+  const { t } = useTranslation("doctors");
   const { user } = useAuth();
   const canManage = !!user?.role && hasPermission(user.role, "doctors", "create");
   const [doctors, setDoctors] = React.useState<Doctor[]>([]);
@@ -109,11 +111,11 @@ export const DoctorsPage: React.FC = () => {
       setDoctors(doctorRows);
       setServices(serviceRows);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка загрузки врачей");
+      setError(requestError instanceof Error ? requestError.message : t("errors.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   React.useEffect(() => {
     void loadData();
@@ -164,10 +166,10 @@ export const DoctorsPage: React.FC = () => {
     const name = formState.name.trim();
     const speciality = formState.speciality.trim();
     const percent = Number(formState.percent);
-    if (!name) return "Укажите ФИО врача.";
-    if (!speciality) return "Укажите специальность.";
+    if (!name) return t("validation.nameRequired");
+    if (!speciality) return t("validation.specialityRequired");
     if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
-      return "Процент должен быть числом от 0 до 100.";
+      return t("validation.percentRange");
     }
     return null;
   };
@@ -204,9 +206,9 @@ export const DoctorsPage: React.FC = () => {
       }
       closeModal();
       await loadData();
-      setSuccessMessage(isEdit ? "Врач обновлён." : "Врач добавлен.");
+      setSuccessMessage(isEdit ? t("messages.doctorUpdated") : t("messages.doctorAdded"));
     } catch (requestError) {
-      setFormError(requestError instanceof Error ? requestError.message : "Ошибка сохранения");
+      setFormError(requestError instanceof Error ? requestError.message : t("errors.saveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -216,8 +218,8 @@ export const DoctorsPage: React.FC = () => {
     if (isDeletingId !== null) return;
     const confirmed = window.confirm(
       doctor.active
-        ? `Деактивировать врача «${doctor.name}»?`
-        : `Активировать врача «${doctor.name}»?`
+        ? t("confirmDeactivate", { name: doctor.name })
+        : t("confirmActivate", { name: doctor.name })
     );
     if (!confirmed) return;
 
@@ -233,9 +235,9 @@ export const DoctorsPage: React.FC = () => {
         });
       }
       await loadData();
-      setSuccessMessage(doctor.active ? "Врач деактивирован." : "Врач активирован.");
+      setSuccessMessage(doctor.active ? t("messages.doctorDeactivated") : t("messages.doctorActivated"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка обновления статуса");
+      setError(requestError instanceof Error ? requestError.message : t("errors.updateFailed"));
     } finally {
       setIsDeletingId(null);
     }
@@ -268,9 +270,9 @@ export const DoctorsPage: React.FC = () => {
     <div className="page-enter space-y-6 p-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-[#0f172a]">Врачи</h2>
+          <h2 className="text-2xl font-semibold text-[#0f172a]">{t("title")}</h2>
           <p className="mt-1 text-sm text-[#64748b]">
-            Управление персоналом клиники, услугами и процентами выплат.
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
@@ -281,7 +283,7 @@ export const DoctorsPage: React.FC = () => {
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Поиск..."
+              placeholder={t("search")}
               className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-9 text-sm text-[#0f172a] outline-none transition focus:ring-2 focus:ring-blue-500"
             />
             {search ? (
@@ -303,7 +305,7 @@ export const DoctorsPage: React.FC = () => {
               disabled={busy}
             >
               <Plus className="h-4 w-4" strokeWidth={2.2} />
-              Добавить врача
+              {t("addDoctor")}
             </button>
           ) : null}
         </div>
@@ -322,22 +324,22 @@ export const DoctorsPage: React.FC = () => {
 
       {loading ? (
         <div className="rounded-2xl border border-[#e2e8f0] bg-white px-6 py-16 text-center text-sm text-[#64748b] shadow-sm">
-          Загрузка врачей...
+          {t("loading")}
         </div>
       ) : doctors.length === 0 ? (
         <ListEmptyState
           icon={Stethoscope}
-          title="Пока нет врачей"
-          description="Добавьте врачей в справочник, чтобы назначать услуги и вести записи."
-          actionLabel="Добавить"
+          title={t("emptyState.noDoctors")}
+          description={t("emptyState.noDoctorsDesc")}
+          actionLabel={t("add")}
           onAction={openCreate}
           showAction={canManage}
           actionDisabled={busy}
         />
       ) : filteredDoctors.length === 0 ? (
         <div className="rounded-2xl border border-[#e2e8f0] bg-white px-6 py-16 text-center shadow-sm">
-          <p className="text-base font-medium text-slate-400">Ничего не найдено</p>
-          <p className="mt-1 text-sm text-slate-400">Попробуйте изменить запрос</p>
+          <p className="text-base font-medium text-slate-400">{t("emptyState.notFound")}</p>
+          <p className="mt-1 text-sm text-slate-400">{t("emptyState.changeQuery")}</p>
         </div>
       ) : (
         <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
@@ -359,7 +361,7 @@ export const DoctorsPage: React.FC = () => {
                         : "border-[#fecaca] bg-[#fef2f2] text-[#991b1b]"
                     }`}
                   >
-                    {doctor.active ? "Активен" : "Не активен"}
+                    {doctor.active ? t("active") : t("inactive")}
                   </span>
                 </div>
 

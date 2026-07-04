@@ -733,20 +733,20 @@ export const PatientsPage: React.FC = () => {
           <div className="mt-6 space-y-8">
             <section>
               <h4 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">
-                Основная информация
+                {t("sections.basic")}
               </h4>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="ФИО" required>
+                <Field label={t("fullName")} required>
                   <input
                     value={formState.fullName}
                     onChange={(e) => setFormState((prev) => ({ ...prev, fullName: e.target.value }))}
                     className={fieldInputClass}
-                    placeholder="Иванов Иван Иванович"
+                    placeholder={t("placeholders.fullName")}
                     autoComplete="name"
                   />
                 </Field>
                 <div>
-                  <Field label="Телефон" required>
+                  <Field label={t("phone")} required>
                     <PhoneInput
                       value={formState.phone}
                       onChange={(normalized) =>
@@ -760,11 +760,11 @@ export const PatientsPage: React.FC = () => {
                   </Field>
                   {patientFormMeta.duplicatePhone ? (
                     <p className="mt-2 text-xs font-medium text-[#b45309]" role="alert">
-                      Пациент уже существует
+                      {t("errors.patientExists")}
                     </p>
                   ) : null}
                 </div>
-                <Field label="Пол">
+                <Field label={t("gender")}>
                   <select
                     value={formState.gender}
                     onChange={(e) =>
@@ -775,11 +775,11 @@ export const PatientsPage: React.FC = () => {
                     }
                     className={selectFieldClass}
                   >
-                    <option value="male">Мужской</option>
-                    <option value="female">Женский</option>
+                    <option value="male">{t("male")}</option>
+                    <option value="female">{t("female")}</option>
                   </select>
                 </Field>
-                <Field label="Дата рождения">
+                <Field label={t("birthDate")}>
                   <input
                     type="date"
                     value={formState.birthDate}
@@ -793,11 +793,11 @@ export const PatientsPage: React.FC = () => {
 
             <section className="border-t border-[#f1f5f9] pt-8">
               <h4 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">
-                Дополнительно
+                {t("sections.additional")}
               </h4>
               <div className="grid gap-4 sm:grid-cols-2">
                 {role !== "doctor" && role !== "nurse" ? (
-                  <Field label="Источник обращения">
+                  <Field label={t("source")}>
                     <select
                       value={formState.source}
                       onChange={(e) =>
@@ -808,7 +808,7 @@ export const PatientsPage: React.FC = () => {
                       }
                       className={selectFieldClass}
                     >
-                      <option value="">Не выбрано</option>
+                      <option value="">{t("notSelected")}</option>
                       {PATIENT_SOURCE_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>
                           {opt.label}
@@ -818,12 +818,12 @@ export const PatientsPage: React.FC = () => {
                   </Field>
                 ) : null}
                 <div className="sm:col-span-2">
-                  <Field label="Комментарий">
+                  <Field label={t("notes")}>
                     <textarea
                       value={formState.notes}
                       onChange={(e) => setFormState((prev) => ({ ...prev, notes: e.target.value }))}
                       className={textareaFieldClass}
-                      placeholder="Комментарий или особенности пациента"
+                      placeholder={t("placeholders.notes")}
                       rows={4}
                     />
                   </Field>
@@ -838,7 +838,7 @@ export const PatientsPage: React.FC = () => {
               onClick={closeModal}
               className="rounded-xl border border-[#e2e8f0] bg-white px-4 py-2.5 text-sm font-medium text-[#0f172a] shadow-sm transition hover:bg-[#f8fafc] hover:border-[#cbd5e1]"
             >
-              Отмена
+              {t("cancel")}
             </button>
             <button
               type="button"
@@ -846,7 +846,7 @@ export const PatientsPage: React.FC = () => {
               disabled={isSaving || !patientFormMeta.canSubmit}
               className="rounded-xl bg-[#16a34a] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#22c55e] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSaving ? "Сохранение..." : "Сохранить"}
+              {isSaving ? t("saving") : t("save")}
             </button>
           </div>
         </Modal>
@@ -861,7 +861,7 @@ export const PatientsPage: React.FC = () => {
           <div
               role="dialog"
               aria-modal="true"
-              aria-label={`История пациента ${historyPatient.fullName}`}
+              aria-label={t("patientHistoryTitle", { name: historyPatient.fullName })}
               style={{
                 boxShadow:
                   "0 42px 95px -30px rgba(15,23,42,0.45), 0 18px 40px -22px rgba(15,23,42,0.35)",
@@ -869,11 +869,11 @@ export const PatientsPage: React.FC = () => {
             >
             <div className="mb-4 flex items-start justify-between gap-3">
               <h3 className="text-lg font-semibold text-[#0f172a]">
-                История пациента: {historyPatient.fullName}
+                {t("patientHistory")}: {historyPatient.fullName}
               </h3>
               <button
                 type="button"
-                aria-label="Закрыть историю пациента"
+                aria-label={t("closeHistory")}
                 onClick={closeHistoryModal}
                 className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#e2e8f0] bg-white text-[#64748b] transition hover:bg-[#f8fafc] hover:text-[#0f172a]"
               >
@@ -881,9 +881,9 @@ export const PatientsPage: React.FC = () => {
               </button>
             </div>
             {historyLoading ? (
-              <p className="text-sm text-[#64748b]">Загрузка истории...</p>
+              <p className="text-sm text-[#64748b]">{t("loadingHistory")}</p>
             ) : visitHistory.length === 0 ? (
-              <p className="text-sm text-[#64748b]">Визиты не найдены.</p>
+              <p className="text-sm text-[#64748b]">{t("noVisits")}</p>
             ) : (
               <div className="max-h-[60vh] space-y-2 overflow-auto pr-1">
                 {[...visitHistory]
@@ -921,43 +921,43 @@ export const PatientsPage: React.FC = () => {
                     const activeVisit =
                       visitHistory.find((visit) => visit.id === selectedVisitId) ??
                       [...visitHistory].sort((a, b) => b.startAt.localeCompare(a.startAt))[0];
-                    if (!activeVisit) return <div className="text-[#64748b]">Нет данных</div>;
+                    if (!activeVisit) return <div className="text-[#64748b]">{t("noData")}</div>;
                     return (
                       <div className="space-y-3">
                         <div className="text-[#0f172a]">
-                          <span className="text-[#64748b]">Дата: </span>
+                          <span className="text-[#64748b]">{t("date")}: </span>
                           {formatDateTime(activeVisit.startAt)}
                         </div>
                         <div className="text-[#0f172a]">
-                          <span className="text-[#64748b]">Врач: </span>
+                          <span className="text-[#64748b]">{t("doctor")}: </span>
                           {doctorsMap[activeVisit.doctorId] ?? `#${activeVisit.doctorId}`}
                         </div>
                         <div className="text-[#0f172a]">
-                          <span className="text-[#64748b]">Услуга: </span>
+                          <span className="text-[#64748b]">{t("service")}: </span>
                           {servicesMap[activeVisit.serviceId] ?? `#${activeVisit.serviceId}`}
                         </div>
                         {showVisitClinical ? (
                           <>
                             <div className="rounded-[14px] bg-[#f8fafc] p-4">
                               <div className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                                Diagnosis
+                                {t("diagnosis")}
                               </div>
                               <p className="mt-2 whitespace-pre-wrap leading-relaxed text-[#0f172a]">
-                                {activeVisit.diagnosis ?? "Не указан"}
+                                {activeVisit.diagnosis ?? t("notSpecified")}
                               </p>
                             </div>
                             <div className="rounded-[14px] bg-[#f8fafc] p-4">
                               <div className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                                Treatment
+                                {t("treatment")}
                               </div>
                               <p className="mt-2 whitespace-pre-wrap leading-relaxed text-[#0f172a]">
-                                {activeVisit.treatment ?? "Не указано"}
+                                {activeVisit.treatment ?? t("notSpecified")}
                               </p>
                             </div>
                             {activeVisit.notes && (
                               <div className="rounded-[14px] bg-[#f8fafc] p-4">
                                 <div className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                                  Notes
+                                  {t("notes")}
                                 </div>
                                 <p className="mt-2 whitespace-pre-wrap leading-relaxed text-[#374151]">
                                   {activeVisit.notes}
@@ -967,7 +967,7 @@ export const PatientsPage: React.FC = () => {
                           </>
                         ) : (
                           <p className="text-xs text-[#64748b]">
-                            Клинические данные визита недоступны для вашей роли.
+                            {t("clinicalDataUnavailable")}
                           </p>
                         )}
                       </div>

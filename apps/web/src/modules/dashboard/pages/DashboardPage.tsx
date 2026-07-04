@@ -539,13 +539,13 @@ export const DashboardPage: React.FC = () => {
 
         <div className="space-y-3 md:space-y-6">
           <div className="rounded-[20px] border border-slate-100/90 bg-white p-4 shadow-sm backdrop-blur-sm sm:p-5 md:transition-all md:duration-200 md:hover:shadow-md">
-            <h2 className="mb-2 text-base font-semibold text-[#111827]">Последние оплаты</h2>
+            <h2 className="mb-2 text-base font-semibold text-[#111827]">{t("billing.pay")}</h2>
             {!readBilling ? (
-              <DashboardEmptyState icon={CreditCard} title="Нет доступа" description="Оплаты доступны ролям с правами биллинга" />
+              <DashboardEmptyState icon={CreditCard} title={t("errors.unauthorized")} description={t("errors.forbidden")} />
             ) : loading ? (
               <div className="space-y-1.5">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-9 animate-pulse rounded-md bg-[#f3f4f6]" />)}</div>
             ) : recentPayments.length === 0 ? (
-              <DashboardEmptyState icon={CreditCard} title="Оплат пока нет" description="Платежи появятся после операций в кассе" />
+              <DashboardEmptyState icon={CreditCard} title={t("common.error")} description={t("errors.notFound")} />
             ) : (
               <ul className="divide-y divide-[#f1f5f9]">
                 {recentPayments.map((p) => (
@@ -555,7 +555,7 @@ export const DashboardPage: React.FC = () => {
                     </time>
                     <span className="text-sm font-semibold tabular-nums text-[#111827]">{formatSum(p.amount)}</span>
                     <span className="inline-flex rounded-full border border-[#e5e7eb] bg-[#f9fafb] px-2 py-0.5 text-[10px] font-medium text-[#4b5563] sm:text-[11px]">
-                      {paymentMethodRu(p.method)}
+                      {getPaymentMethod(p.method)}
                     </span>
                   </li>
                 ))}
@@ -565,29 +565,29 @@ export const DashboardPage: React.FC = () => {
 
           <div className="rounded-[20px] border border-slate-100/90 bg-white p-4 shadow-sm backdrop-blur-sm md:p-6 md:transition-all md:duration-200 md:hover:shadow-md">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-[#111827]">Долги пациентов</h2>
+              <h2 className="text-base font-semibold text-[#111827]">{t("dashboard.debts")}</h2>
               <Link to="/billing/invoices" className="text-xs font-semibold text-[#6366f1] hover:text-[#4f46e5]">
-                Перейти в биллинг
+                {t("billing.invoices")}
               </Link>
             </div>
             {!readBilling ? (
-              <DashboardEmptyState icon={Receipt} title="Нет доступа" description="Список долгов виден ролям биллинга" />
+              <DashboardEmptyState icon={Receipt} title={t("errors.unauthorized")} description={t("errors.forbidden")} />
             ) : loading ? (
               <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-12 animate-pulse rounded-lg bg-[#f3f4f6]" />)}</div>
             ) : debtRows.length === 0 ? (
-              <DashboardEmptyState icon={CalendarCheck2} title="Задолженностей нет" description="Открытые счета без долга не обнаружены" />
+              <DashboardEmptyState icon={CalendarCheck2} title={t("debt.title")} description={t("debt.status")} />
             ) : (
               <div className="space-y-2">
                 {debtRows.map((row) => (
                   <div key={row.invoiceId} className="flex items-center justify-between rounded-lg border border-[#e5e7eb] bg-[#fafafa] px-3 py-2">
                     <div>
-                      <p className="text-sm text-[#111827]">{patientsMap[row.patientId] ?? `Пациент #${row.patientId}`}</p>
-                      <p className="text-xs text-[#6b7280]">Счет #{row.invoiceId}</p>
+                      <p className="text-sm text-[#111827]">{patientsMap[row.patientId] ?? `${t("patients.title")} #${row.patientId}`}</p>
+                      <p className="text-xs text-[#6b7280]">{t("billing.invoice")} #{row.invoiceId}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-semibold tabular-nums text-[#111827]">{formatSum(row.debt)}</p>
                       <Link to="/billing/invoices" className="text-xs font-semibold text-[#6366f1] hover:text-[#4f46e5]">
-                        Открыть
+                        {t("common.edit")}
                       </Link>
                     </div>
                   </div>
@@ -603,11 +603,11 @@ export const DashboardPage: React.FC = () => {
           type="button"
           onClick={openQuickModal}
           className="fixed bottom-16 left-0 right-0 z-[90] flex w-full justify-center px-4 transition-transform duration-150 ease-out active:scale-[0.98] md:hidden"
-          aria-label="Быстрая запись пациента"
+          aria-label={t("dashboard.newPatient")}
         >
           <span className="flex min-h-[48px] w-full max-w-none items-center justify-center gap-2 rounded-[14px] bg-emerald-600 px-4 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(5,150,105,0.45)]">
             <CalendarPlus className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
-            + Быстрая запись пациента
+            + {t("dashboard.newPatient")}
           </span>
         </button>
       ) : null}
@@ -617,7 +617,7 @@ export const DashboardPage: React.FC = () => {
           onClose={() => setQuickModalOpen(false)}
           onCreated={async () => {
             await reload();
-            setToast("Запись создана");
+            setToast(t("common.success"));
           }}
           token={token ?? null}
           canCreateNewPatient={role ? canCreatePatients(role) : false}

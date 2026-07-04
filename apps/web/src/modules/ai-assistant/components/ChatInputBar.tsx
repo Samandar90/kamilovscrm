@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { SendHorizontal } from "lucide-react";
 import { cn } from "../../../ui/utils/cn";
@@ -21,11 +22,12 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
   onChange,
   onSubmit,
   disabled,
-  placeholder = "Сообщение ассистенту…",
+  placeholder,
   className,
   onFocus,
   size = "default",
 }) => {
+  const { t } = useTranslation();
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           ref={taRef}
           value={value}
           disabled={disabled}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t("ai.messagePlaceholder")}
           rows={1}
           onChange={(e) => onChange(e.target.value)}
           onFocus={() => onFocus?.()}
@@ -74,7 +76,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
           whileTap={{ scale: 0.94 }}
           transition={{ type: "spring", stiffness: 500, damping: 26 }}
           onClick={onSubmit}
-          aria-label="Отправить"
+          aria-label={t("common.save")}
           className={cn(
             "absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full",
             "bg-blue-600 text-white",
@@ -87,7 +89,7 @@ export const ChatInputBar: React.FC<ChatInputBarProps> = ({
         </motion.button>
       </div>
       <p className="sr-only">
-        Enter — отправить сообщение. Shift+Enter — новая строка.
+        {t("ai.sendHint")}
       </p>
     </div>
   );

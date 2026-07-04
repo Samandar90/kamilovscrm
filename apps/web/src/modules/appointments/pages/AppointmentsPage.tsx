@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { CalendarDays, Plus, Search, Zap } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
@@ -96,15 +97,15 @@ function formatTimeOnly(iso: string): string {
   return d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 }
 
-function formatRangeDateLabel(tab: RangeTab, customDateYmd: string): string {
+function formatRangeDateLabel(tab: RangeTab, customDateYmd: string, t: any): string {
   const now = new Date();
   const toRu = (d: Date) =>
     d.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "long" });
-  if (tab === "today") return `Сегодня, ${toRu(now)}`;
+  if (tab === "today") return `${t("range.today")}, ${toRu(now)}`;
   if (tab === "tomorrow") {
     const d = new Date(now);
     d.setDate(d.getDate() + 1);
-    return `Завтра, ${toRu(d)}`;
+    return `${t("range.tomorrow")}, ${toRu(d)}`;
   }
   if (customDateYmd && /^\d{4}-\d{2}-\d{2}$/.test(customDateYmd)) {
     const [y, m, d] = customDateYmd.split("-").map(Number);
@@ -153,16 +154,16 @@ function getFilterRange(
   return { start: startOfDay(now), end: endOfDay(now) };
 }
 
-function emptyRangeMessage(tab: RangeTab): string {
+function emptyRangeMessage(tab: RangeTab, t: any): string {
   switch (tab) {
     case "today":
-      return "Сегодня нет записей";
+      return t("emptyState.today");
     case "tomorrow":
-      return "Завтра нет записей";
+      return t("emptyState.tomorrow");
     case "week":
-      return "На этой неделе нет записей";
+      return t("emptyState.week");
     default:
-      return "Нет записей на выбранную дату";
+      return t("emptyState.custom");
   }
 }
 
@@ -271,6 +272,7 @@ const emptyFullForm = (): FullFormFields => ({
 });
 
 export const AppointmentsPage: React.FC = () => {
+  const { t } = useTranslation("appointments");
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { token, user } = useAuth();
@@ -1179,8 +1181,8 @@ export const AppointmentsPage: React.FC = () => {
         <div className="grid grid-cols-12 gap-6">
       <div className="col-span-12 space-y-6 lg:col-span-8">
         <PageHeader
-          title="Записи"
-          subtitle="Управление расписанием пациентов"
+          title={t("title")}
+          subtitle={t("subtitle")}
           actions={
             canOpenAppointmentCreateModals ? (
               <div className="hidden items-center gap-2 md:flex">
@@ -1192,7 +1194,7 @@ export const AppointmentsPage: React.FC = () => {
                     className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all duration-150"
                   >
                     <Zap className="h-4 w-4" />
-                    Быстрая запись
+                    {t("quickCreate")}
                   </Button>
                 ) : null}
                 <Button
@@ -1202,7 +1204,7 @@ export const AppointmentsPage: React.FC = () => {
                   className={primaryActionButtonClass}
                 >
                   <Plus className="h-4 w-4" strokeWidth={2.5} />
-                  {isDoctorUser ? "Создать запись" : "Новая запись"}
+                  {isDoctorUser ? t("createAppointment") : t("newAppointment")}
                 </Button>
               </div>
             ) : null
@@ -1244,7 +1246,7 @@ export const AppointmentsPage: React.FC = () => {
         <SectionCard className="hidden p-4 md:block">
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">Дата</label>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("date")}</label>
               <input
                 type="date"
                 value={customDate}
@@ -1256,7 +1258,7 @@ export const AppointmentsPage: React.FC = () => {
               />
             </div>
             <div className="relative flex-1">
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">Поиск</label>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("search")}</label>
               <Search className="pointer-events-none absolute left-3 top-[34px] h-4 w-4 text-[#9ca3af]" />
               <input
                 type="search"

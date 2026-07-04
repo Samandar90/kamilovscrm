@@ -223,9 +223,9 @@ export const CashDeskPage: React.FC = () => {
           // eslint-disable-next-line no-console
           console.log("[cash] summary", summary);
         }
-        if (mode === "refresh" && opts?.showDataRefreshedToast) setToast("Данные обновлены");
+        if (mode === "refresh" && opts?.showDataRefreshedToast) setToast(t("billing.dataRefreshed"));
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : "Ошибка загрузки");
+        setError(requestError instanceof Error ? requestError.message : t("billing.errorLoading"));
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -307,7 +307,7 @@ export const CashDeskPage: React.FC = () => {
 
   const patientLabel = (patientId: number | null | undefined): string => {
     if (patientId == null) return "—";
-    return patientsMap[patientId] ?? `Пациент #${patientId}`;
+    return patientsMap[patientId] ?? `${t("billing.patient")} #${patientId}`;
   };
 
   const entryPatientLabel = (e: CashRegisterEntry): string => {
@@ -332,7 +332,7 @@ export const CashDeskPage: React.FC = () => {
 
   const printFromEntry = async (e: CashRegisterEntry) => {
     if (!e.paymentId || !e.invoiceId) {
-      setError("Недостаточно данных для печати чека.");
+      setError(t("billing.insufficientDataPrint"));
       return;
     }
     let detail = invoiceById[e.invoiceId];
@@ -357,7 +357,7 @@ export const CashDeskPage: React.FC = () => {
       doctor: null,
       invoiceId: invNum,
       date: formatDateTimeRu(e.createdAt),
-      paymentMethod: METHOD_LABEL[e.method],
+      paymentMethod: t(METHOD_LABEL[e.method]),
       total: detail?.total ?? e.amount,
       paid: e.amount,
       items:
@@ -387,15 +387,15 @@ export const CashDeskPage: React.FC = () => {
         (payModalInvoice.total - payModalInvoice.paidAmount + Number.EPSILON) * 100
       ) / 100;
     if (!shiftOpen) {
-      setPayModalError("Сначала откройте кассовую смену");
+      setPayModalError(t("billing.openShiftFirst"));
       return;
     }
     if (!Number.isFinite(amountToPay) || amountToPay <= 0) {
-      setPayModalError("Введите сумму больше нуля.");
+      setPayModalError(t("billing.enterPositiveAmount"));
       return;
     }
     if (maxPay > 0 && amountToPay > maxPay + 1e-9) {
-      setPayModalError(`Сумма не может превышать остаток (${formatSum(maxPay)})`);
+      setPayModalError(t("billing.amountExceedsBalance", { balance: formatSum(maxPay) }));
       return;
     }
     setPaySubmitting(true);
@@ -415,10 +415,10 @@ export const CashDeskPage: React.FC = () => {
       setPayModalInvoice(null);
       await loadCore("refresh");
       await loadEntries();
-      setToast("Оплата принята");
+      setToast(t("billing.paymentAccepted"));
     } catch (requestError) {
       setPayModalError(
-        requestError instanceof Error ? requestError.message : "Не удалось провести оплату"
+        requestError instanceof Error ? requestError.message : t("billing.paymentFailed")
       );
     } finally {
       setPaySubmitting(false);
@@ -429,7 +429,7 @@ export const CashDeskPage: React.FC = () => {
     if (!token || !canOperate) return;
     const bal = Math.round(openingBalanceInput * 100) / 100;
     if (!Number.isFinite(bal) || bal < 0) {
-      setError("Введите неотрицательный остаток на начало смены.");
+      setError(t("billing.enterNonNegativeBalance"));
       return;
     }
     setOpenShiftSubmitting(true);
@@ -441,9 +441,9 @@ export const CashDeskPage: React.FC = () => {
       setModalOpenShift(false);
       setOpeningBalanceInput(0);
       await loadCore("refresh");
-      setToast("Смена открыта");
+      setToast(t("billing.shiftOpened"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Не удалось открыть смену");
+      setError(requestError instanceof Error ? requestError.message : t("billing.openShiftFailed"));
     } finally {
       setOpenShiftSubmitting(false);
     }
@@ -459,9 +459,9 @@ export const CashDeskPage: React.FC = () => {
       console.log("[cash] close shift ok", { shiftId: closed.id });
       setModalCloseShift(false);
       await loadCore("refresh");
-      setToast("Смена закрыта");
+      setToast(t("billing.shiftClosed"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Не удалось закрыть смену");
+      setError(requestError instanceof Error ? requestError.message : t("billing.closeShiftFailed"));
     } finally {
       setCloseShiftSubmitting(false);
     }
@@ -473,12 +473,12 @@ export const CashDeskPage: React.FC = () => {
       const s = await cashDeskApi.getSummaryCurrent(token);
       setCashSummary(s);
       if (!s) {
-        setError("Не удалось получить сводку смены. Нажмите «Обновить».");
+        setError(t("billing.cannotGetShiftSummary"));
         return;
       }
       setModalCloseShift(true);
     } catch {
-      setError("Не удалось получить сводку смены. Проверьте соединение и попробуйте снова.");
+      setError(t("billing.cannotGetShiftSummaryRetry"));
     }
   };
 
@@ -492,17 +492,17 @@ export const CashDeskPage: React.FC = () => {
     if (!token || !canOperate || !canRefund || !refundEntry?.paymentId) return;
     const r = refundReason.trim();
     if (r.length < 3) {
-      setError("Укажите причину возврата (не менее 3 символов).");
+      setError(t("billing.specifyRefundReason"));
       return;
     }
     const maxAmt = maxRefundForEntry(refundEntry);
     const parsedAmount = Math.round(refundAmountInput * 100) / 100;
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setError("Некорректная сумма возврата");
+      setError(t("billing.invalidRefundAmount"));
       return;
     }
     if (parsedAmount > maxAmt + 1e-9) {
-      setError("Некорректная сумма возврата");
+      setError(t("billing.invalidRefundAmount"));
       return;
     }
     setRefundSubmitting(true);
@@ -517,9 +517,9 @@ export const CashDeskPage: React.FC = () => {
       setRefundAmountInput(0);
       await loadCore("refresh");
       await loadEntries();
-      setToast("Возврат оформлен");
+      setToast(t("billing.refundProcessed"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка возврата");
+      setError(requestError instanceof Error ? requestError.message : t("billing.refundError"));
     } finally {
       setRefundSubmitting(false);
     }
@@ -561,9 +561,9 @@ export const CashDeskPage: React.FC = () => {
       await cashDeskApi.createInvoiceFromAppointment(token, appointmentId);
       await loadCore("refresh");
       await loadEntries();
-      setToast("Счет оформлен");
+      setToast(t("billing.invoiceCreated"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Не удалось оформить счет");
+      setError(requestError instanceof Error ? requestError.message : t("billing.createInvoiceFailed"));
     } finally {
       setRefreshing(false);
     }
@@ -571,7 +571,7 @@ export const CashDeskPage: React.FC = () => {
 
   const clearCashDeskData = async () => {
     if (!token || !isSuperadmin) return;
-    const confirmed = window.confirm("Очистить все финансовые данные?");
+    const confirmed = window.confirm(t("billing.clearAllFinancialDataConfirm"));
     if (!confirmed) return;
     setRefreshing(true);
     setError(null);
@@ -579,9 +579,9 @@ export const CashDeskPage: React.FC = () => {
       await cashDeskApi.clearFinancialData(token);
       await loadCore("refresh");
       await loadEntries();
-      setToast("Касса очищена");
+      setToast(t("billing.cashCleared"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Не удалось очистить кассу");
+      setError(requestError instanceof Error ? requestError.message : t("billing.clearCashFailed"));
     } finally {
       setRefreshing(false);
     }
@@ -592,12 +592,12 @@ export const CashDeskPage: React.FC = () => {
       <AppContainer className="max-w-[1400px] space-y-5">
       {/* Верхняя зона */}
       <PageHeader
-        title="Касса"
-        subtitle="Смена и операции"
+        title={t("billing.cashDesk")}
+        subtitle={t("billing.shiftAndOperations")}
         actions={
           <div className="flex items-center gap-2">
             <StatusBadge tone={shiftOpen ? "success" : "neutral"}>
-              {shiftOpen ? "Смена открыта" : "Смена закрыта"}
+              {shiftOpen ? t("billing.shiftOpen") : t("billing.shiftClosed")}
             </StatusBadge>
             <Button
               type="button"
@@ -606,7 +606,7 @@ export const CashDeskPage: React.FC = () => {
               disabled={loading || refreshing || !token}
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-              {refreshing ? "Обновление…" : "Обновить"}
+              {refreshing ? t("billing.refreshing") : t("billing.refresh")}
             </Button>
             {isSuperadmin ? (
               <Button
@@ -616,7 +616,7 @@ export const CashDeskPage: React.FC = () => {
                 onClick={() => void clearCashDeskData()}
                 disabled={refreshing || loading}
               >
-                Очистить кассу
+                {t("billing.clearCash")}
               </Button>
             ) : null}
           </div>
@@ -634,7 +634,7 @@ export const CashDeskPage: React.FC = () => {
         </SectionCard>
       )}
       {loading ? (
-        <PageLoader label="Загрузка кассы..." />
+        <PageLoader label={t("billing.loadingCash")} />
       ) : (
         <>
           {/* Статус смены — компактно */}
@@ -642,23 +642,23 @@ export const CashDeskPage: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium uppercase tracking-wide text-[#64748b]">
-                  Текущая смена
+                  {t("billing.currentShift")}
                 </p>
                 {shiftOpen && activeShift ? (
                   <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm text-[#334155]">
                     <span className="font-mono text-xs text-[#64748b]">#{activeShift.id}</span>
                     <span>
-                      <span className="text-[#64748b]">Открыта:</span>{" "}
+                      <span className="text-[#64748b]">{t("billing.opened")}:</span>{" "}
                       {formatDateTimeRu(activeShift.openedAt)}
                     </span>
                     <span>
-                      <span className="text-[#64748b]">Старт:</span>{" "}
+                      <span className="text-[#64748b]">{t("billing.start")}:</span>{" "}
                       {formatSum(activeShift.openingBalance)}
                     </span>
                   </div>
                 ) : (
                   <p className="mt-2 text-sm text-[#64748b]">
-                    Нет активной смены — оплаты и возвраты недоступны, пока смена не открыта.
+                    {t("billing.noActiveShift")}
                   </p>
                 )}
               </div>
@@ -675,7 +675,7 @@ export const CashDeskPage: React.FC = () => {
                       }}
                       disabled={anyBusy}
                     >
-                      Открыть смену
+                      {t("billing.openShift")}
                     </Button>
                   ) : (
                     <Button
@@ -685,7 +685,7 @@ export const CashDeskPage: React.FC = () => {
                       onClick={() => void refreshSummaryBeforeClose()}
                       disabled={anyBusy}
                     >
-                      Закрыть смену
+                      {t("billing.closeShift")}
                     </Button>
                   )}
                 </div>
@@ -696,16 +696,16 @@ export const CashDeskPage: React.FC = () => {
           {/* Финансовые карточки */}
           {shiftOpen && cashSummary ? (
             <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              <StatCard label="Наличные" value={formatSum(cashSummary.totalCash)} tone="success" />
-              <StatCard label="Терминал" value={formatSum(cashSummary.totalCard)} tone="success" />
-              <StatCard label="Всего за смену" value={formatSum(cashSummary.totalIncome)} tone="success" trend="Сумма приходов по смене" />
+              <StatCard label={t("billing.cash")} value={formatSum(cashSummary.totalCash)} tone="success" />
+              <StatCard label={t("billing.terminal")} value={formatSum(cashSummary.totalCard)} tone="success" />
+              <StatCard label={t("billing.totalForShift")} value={formatSum(cashSummary.totalIncome)} tone="success" trend={t("billing.totalIncome")} />
             </section>
           ) : (
             !shiftOpen && (
               <SectionCard className="border-dashed p-6 text-center">
                 <Wallet className="mx-auto h-8 w-8 text-[#94a3b8]" />
                 <p className="mt-2 text-sm text-[#64748b]">
-                  Сводка по методам оплаты появится после открытия смены.
+                  {t("billing.summaryAfterShiftOpen")}
                 </p>
               </SectionCard>
             )
@@ -713,14 +713,14 @@ export const CashDeskPage: React.FC = () => {
 
           <div className="grid gap-5 lg:grid-cols-12 lg:items-start">
             <SectionCard className="p-4 lg:col-span-12">
-              <h2 className="text-sm font-semibold text-[#0f172a]">Ожидают оплаты</h2>
+              <h2 className="text-sm font-semibold text-[#0f172a]">{t("billing.awaitingPayment")}</h2>
               <p className="mt-0.5 text-xs text-[#64748b]">
-                Приёмы, завершенные врачом и готовые к выставлению счета.
+                {t("billing.appointmentsReadyForInvoice")}
               </p>
               {readyAppointments.length === 0 ? (
                 <EmptyState
-                  title="Нет пациентов, ожидающих оплаты"
-                  subtitle="После завершения приема врачом запись появится здесь."
+                  title={t("billing.noAppointmentsAwaitingPayment")}
+                  subtitle={t("billing.appointmentsAppearsAfterCompletion")}
                 />
               ) : (
                 <div className="mt-4 space-y-2.5">
@@ -738,10 +738,10 @@ export const CashDeskPage: React.FC = () => {
                         className="rounded-[14px] border border-[#eef2f7] bg-white px-4 py-3.5"
                       >
                         <p className="font-semibold text-[#0f172a]">
-                          {patientsMap[row.patientId] ?? `Пациент #${row.patientId}`}
+                          {patientsMap[row.patientId] ?? `${t("billing.patient")} #${row.patientId}`}
                         </p>
                         <p className="mt-0.5 text-xs text-[#64748b]">
-                          Врач: {doctorsMap[row.doctorId] ?? `#${row.doctorId}`}
+                          {t("billing.doctor")}: {doctorsMap[row.doctorId] ?? `#${row.doctorId}`}
                         </p>
                         <ul className="mt-2 text-sm text-[#334155]">
                           {allServices.map((service) => (
@@ -751,7 +751,7 @@ export const CashDeskPage: React.FC = () => {
                           ))}
                         </ul>
                         <p className="mt-2 text-sm font-semibold text-[#0f172a]">
-                          Итого: {formatSum(total)}
+                          {t("billing.total")}: {formatSum(total)}
                         </p>
                         <div className="mt-3 flex justify-end">
                           <button
@@ -760,7 +760,7 @@ export const CashDeskPage: React.FC = () => {
                             onClick={() => void createInvoiceForAppointment(row.id)}
                             disabled={!canOperate || refreshing}
                           >
-                            Оформить счёт
+                            {t("billing.createInvoice")}
                           </button>
                         </div>
                       </article>
@@ -772,14 +772,14 @@ export const CashDeskPage: React.FC = () => {
 
             {/* Неоплаченные счета */}
             <SectionCard className="p-4 lg:col-span-7">
-              <h2 className="text-sm font-semibold text-[#0f172a]">Неоплаченные счета</h2>
+              <h2 className="text-sm font-semibold text-[#0f172a]">{t("billing.unpaidInvoices")}</h2>
               <p className="mt-0.5 text-xs text-[#64748b]">
-                Остаток к оплате по выставленным счетам.
+                {t("billing.balanceDueOnInvoices")}
               </p>
               {payableInvoices.length === 0 ? (
                 <EmptyState
-                  title="Нет неоплаченных счетов"
-                  subtitle="Новые счета появятся после выставления из раздела биллинга."
+                  title={t("billing.noUnpaidInvoices")}
+                  subtitle={t("billing.invoicesAppearAfterIssuing")}
                 />
               ) : (
                 <div className="mt-4 space-y-2.5">
@@ -795,29 +795,29 @@ export const CashDeskPage: React.FC = () => {
                         <div className="min-w-0 flex-1">
                           <p className="font-semibold text-[#0f172a]">{inv.number}</p>
                           <p className="mt-0.5 truncate text-xs text-[#64748b]">
-                            Пациент: {patientsMap[inv.patientId] ?? `ID ${inv.patientId}`}
+                            {t("billing.patient")}: {patientsMap[inv.patientId] ?? `ID ${inv.patientId}`}
                           </p>
                           <dl className="mt-2.5 grid gap-1 text-sm sm:max-w-md">
                             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
-                              <dt className="text-[#64748b]">Общая сумма</dt>
+                              <dt className="text-[#64748b]">{t("billing.totalAmount")}</dt>
                               <dd className="tabular-nums font-medium text-[#334155]">
                                 {formatSum(inv.total)}
                               </dd>
                             </div>
                             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
-                              <dt className="text-[#64748b]">Оплачено</dt>
+                              <dt className="text-[#64748b]">{t("billing.paid")}</dt>
                               <dd className="tabular-nums font-medium text-[#334155]">
                                 {formatSum(inv.paidAmount)}
                               </dd>
                             </div>
                             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-t border-[#eef2f7] pt-1.5">
-                              <dt className="sr-only">Остаток</dt>
+                              <dt className="sr-only">{t("billing.balance")}</dt>
                               <dd
                                 className={`w-full text-base font-semibold tabular-nums sm:text-left ${
                                   hasDebt ? "text-rose-600" : "text-emerald-600"
                                 }`}
                               >
-                                Остаток: {formatSum(remainder)}
+                                {t("billing.balance")}: {formatSum(remainder)}
                               </dd>
                             </div>
                           </dl>
@@ -830,7 +830,7 @@ export const CashDeskPage: React.FC = () => {
                             disabled={!canOperate || anyBusy}
                             onClick={() => openPayModal(inv)}
                           >
-                            Оплатить
+                            {t("billing.pay")}
                           </button>
                         </div>
                       </article>
@@ -842,18 +842,18 @@ export const CashDeskPage: React.FC = () => {
 
             {/* Итог смены */}
             <SectionCard className="p-4 lg:col-span-5">
-              <h2 className="text-sm font-semibold text-[#0f172a]">Итог смены</h2>
+              <h2 className="text-sm font-semibold text-[#0f172a]">{t("billing.shiftSummary")}</h2>
               <p className="mt-0.5 text-xs text-[#64748b]">
-                Полная сводка по смене (не зависит от фильтра истории).
+                {t("billing.fullShiftSummary")}
               </p>
               {!shiftOpen || !cashSummary ? (
-                <p className="mt-6 text-sm text-[#64748b]">Откройте смену, чтобы увидеть итоги.</p>
+                <p className="mt-6 text-sm text-[#64748b]">{t("billing.openShiftToSeeSummary")}</p>
               ) : (
                 <dl className="mt-4 space-y-3 text-sm">
                   {[
-                    ["Старт в кассе", formatSum(cashSummary.openingBalance)],
-                    ["Приход за смену", formatSum(cashSummary.totalIncome)],
-                    ["Операций", String(cashSummary.operationsCount)],
+                    [t("billing.startBalance"), formatSum(cashSummary.openingBalance)],
+                    [t("billing.shiftIncome"), formatSum(cashSummary.totalIncome)],
+                    [t("billing.operations"), String(cashSummary.operationsCount)],
                   ].map(([k, v]) => (
                     <div key={k} className="flex justify-between gap-4 border-b border-slate-800/70 pb-2">
                       <dt className="text-[#64748b]">{k}</dt>
@@ -861,7 +861,7 @@ export const CashDeskPage: React.FC = () => {
                     </div>
                   ))}
                   <div className="flex justify-between gap-4 pt-1">
-                    <dt className="font-medium text-[#0f172a]">Прогноз остатка</dt>
+                    <dt className="font-medium text-[#0f172a]">{t("billing.estimatedBalance")}</dt>
                     <dd className="text-lg font-semibold tabular-nums text-[#16a34a]">
                       {formatSum(cashSummary.closingBalancePreview)}
                     </dd>
@@ -876,17 +876,17 @@ export const CashDeskPage: React.FC = () => {
             <div className="border-b border-[#eef2f7] px-5 py-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <h2 className="text-[15px] font-semibold tracking-tight text-[#0f172a]">Операции</h2>
-                  <p className="mt-0.5 text-xs text-[#64748b]">Текущая смена · выберите строку справа — детали</p>
+                  <h2 className="text-[15px] font-semibold tracking-tight text-[#0f172a]">{t("billing.operations")}</h2>
+                  <p className="mt-0.5 text-xs text-[#64748b]">{t("billing.operationsCurrentShiftSelect")}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {(
                     [
-                      ["all", "Все"],
-                      ["today", "Сегодня"],
-                      ["yesterday", "Вчера"],
-                      ["last7", "7 дней"],
-                      ["custom", "Дата"],
+                      ["all", t("billing.all")],
+                      ["today", t("billing.today")],
+                      ["yesterday", t("billing.yesterday")],
+                      ["last7", t("billing.last7days")],
+                      ["custom", t("billing.date")],
                     ] as const
                   ).map(([id, label]) => (
                     <button
@@ -907,14 +907,14 @@ export const CashDeskPage: React.FC = () => {
                     className="rounded-xl px-3 py-1.5 text-xs text-[#64748b] transition hover:bg-[#f1f5f9]"
                     onClick={() => setEntryPreset("all")}
                   >
-                    Сбросить
+                    {t("billing.reset")}
                   </button>
                 </div>
               </div>
               {entryPreset === "custom" && (
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <label className="text-xs text-[#64748b]">
-                    День
+                    {t("billing.day")}
                     <input
                       type="date"
                       className="ml-2 rounded-xl border border-[#e2e8f0] bg-white px-2.5 py-1.5 text-sm text-[#334155] shadow-sm"
@@ -928,16 +928,16 @@ export const CashDeskPage: React.FC = () => {
 
             {entriesLoading ? (
               <div className="p-12">
-                <PageLoader label="Загрузка операций…" />
+                <PageLoader label={t("billing.loadingOperations")} />
               </div>
             ) : !shiftOpen || cashEntries.length === 0 ? (
               <div className="p-10">
                 <EmptyState
-                  title={!shiftOpen ? "Смена закрыта" : "Нет операций"}
+                  title={!shiftOpen ? t("billing.shiftClosed") : t("billing.noOperations")}
                   subtitle={
                     !shiftOpen
-                      ? "Откройте смену, чтобы увидеть операции."
-                      : "За выбранный период движений нет."
+                      ? t("billing.openShiftToSeeOperations")
+                      : t("billing.noMovementsForPeriod")
                   }
                 />
               </div>

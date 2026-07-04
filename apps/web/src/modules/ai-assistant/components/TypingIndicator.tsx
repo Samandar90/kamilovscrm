@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { AiChatAvatar, AI_CHAT_GUTTER } from "./ChatMessage";
 import { cn } from "../../../ui/utils/cn";
@@ -38,7 +39,9 @@ export const TypingInline: React.FC<{ label: string; className?: string }> = ({ 
   </div>
 );
 
-export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ mode = "thinking", className }) => (
+export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ mode = "thinking", className }) => {
+  const { t } = useTranslation();
+  return (
   <motion.div
     className={className}
     initial={{ opacity: 0, y: 8 }}
@@ -63,7 +66,7 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ mode = "thinki
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-50/60 to-transparent" aria-hidden />
         <span className="relative flex items-center gap-3">
           <BouncingDots />
-          <span className="text-slate-500">{mode === "thinking" ? "Думаю…" : "Печатаю…"}</span>
+          <span className="text-slate-500">{mode === "thinking" ? t("ai.thinking") : t("ai.typing")}</span>
         </span>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../../auth/AuthContext";
 import { aiAssistantService } from "../services/aiAssistantService";
 import { AIAssistantHeader } from "../components/AIAssistantHeader";
@@ -7,6 +8,7 @@ import { ChatInputBar } from "../components/ChatInputBar";
 import { ChatMessageList, type ChatUiMessage } from "../components/ChatMessageList";
 
 export const AIAssistantPage = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const [messages, setMessages] = useState<ChatUiMessage[]>([]);
@@ -48,7 +50,7 @@ export const AIAssistantPage = () => {
         setMessages(rows.map((m) => ({ role: m.role === "assistant" ? "ai" : "user", text: m.content })));
       })
       .catch(() => {
-        if (!cancelled) setChatError("Не удалось загрузить историю чата.");
+        if (!cancelled) setChatError(t("ai.errors.loadHistory"));
       })
       .finally(() => {
         if (!cancelled) setLoadingHistory(false);
@@ -86,7 +88,7 @@ export const AIAssistantPage = () => {
         });
       })
       .catch(() => {
-        if (!cancelled) setSummaryError("Не удалось загрузить аналитику.");
+        if (!cancelled) setSummaryError(t("ai.errors.loadAnalytics"));
       })
       .finally(() => {
         if (!cancelled) setSummaryLoading(false);
@@ -116,11 +118,11 @@ export const AIAssistantPage = () => {
 
     try {
       const res = await aiAssistantService.ask(text);
-      setMessages((prev) => [...prev, { role: "ai", text: res.answer?.trim() || "Ответ не получен." }]);
+      setMessages((prev) => [...prev, { role: "ai", text: res.answer?.trim() || t("ai.errors.noAnswer") }]);
       scrollToBottom();
     } catch (error) {
-      setChatError(error instanceof Error ? error.message : "Не удалось получить ответ.");
-      setMessages((prev) => [...prev, { role: "ai", text: "Не удалось получить ответ. Попробуйте ещё раз." }]);
+      setChatError(error instanceof Error ? error.message : t("ai.errors.answerFailed"));
+      setMessages((prev) => [...prev, { role: "ai", text: t("ai.errors.answerFailedWithRetry") }]);
       scrollToBottom();
     } finally {
       setSending(false);
@@ -136,8 +138,8 @@ export const AIAssistantPage = () => {
       type="button"
       onClick={clearChat}
       className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/50 bg-white/60 text-slate-400 shadow-sm backdrop-blur-md transition-all duration-200 hover:border-red-200/60 hover:bg-red-50/80 hover:text-red-600 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-300/50"
-      title="Очистить чат"
-      aria-label="Очистить чат"
+      title={t("ai.clearChat")}
+      aria-label={t("ai.clearChat")}
     >
       <Trash2 className="h-[17px] w-[17px]" strokeWidth={1.75} />
     </button>
@@ -172,7 +174,7 @@ export const AIAssistantPage = () => {
                   onChange={setInput}
                   onSubmit={handleSend}
                   disabled={sending || loadingHistory}
-                  placeholder="Спросите про выручку, пациентов..."
+                  placeholder={t("ai.chatPlaceholder")}
                   size="desktop"
                 />
               </div>
@@ -181,21 +183,21 @@ export const AIAssistantPage = () => {
 
           <aside className="hidden h-[calc(100dvh-80px)] min-h-0 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:block">
             <section>
-              <h2 className="text-sm font-semibold text-slate-900">Аналитика сегодня</h2>
-              {summaryLoading ? <p className="mt-2 text-xs text-slate-500">Загрузка...</p> : null}
+              <h2 className="text-sm font-semibold text-slate-900">{t("ai.analytics")}</h2>
+              {summaryLoading ? <p className="mt-2 text-xs text-slate-500">{t("ai.loading")}</p> : null}
               {summaryError ? <p className="mt-2 text-xs text-rose-600">{summaryError}</p> : null}
               {!summaryLoading && !summaryError ? (
                 <div className="mt-3 space-y-2.5">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Выручка</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{t("ai.revenue")}</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">{analyticsByKey("revenueToday")}</p>
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Пациенты</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{t("ai.patients")}</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">{analyticsByKey("appointmentsToday")}</p>
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Статус</p>
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{t("ai.status")}</p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">{analyticsByKey("noShow30d")}</p>
                   </div>
                 </div>
@@ -203,28 +205,28 @@ export const AIAssistantPage = () => {
             </section>
 
             <section className="mt-5">
-              <h3 className="text-sm font-semibold text-slate-900">Подсказки</h3>
+              <h3 className="text-sm font-semibold text-slate-900">{t("ai.hints")}</h3>
               <div className="mt-3 space-y-2">
                 <button
                   type="button"
-                  onClick={() => void sendMessage("Какая выручка сегодня?")}
+                  onClick={() => void sendMessage(t("ai.hint1Text"))}
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
                 >
-                  Какая выручка сегодня?
+                  {t("ai.hint1")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => void sendMessage("Сколько пациентов сегодня?")}
+                  onClick={() => void sendMessage(t("ai.hint2Text"))}
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
                 >
-                  Сколько пациентов сегодня?
+                  {t("ai.hint2")}
                 </button>
                 <button
                   type="button"
-                  onClick={() => void sendMessage("Какие приёмы требуют внимания сейчас?")}
+                  onClick={() => void sendMessage(t("ai.hint3Text"))}
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50"
                 >
-                  Какие приёмы требуют внимания сейчас?
+                  {t("ai.hint3")}
                 </button>
               </div>
               {summary?.recommendationText ? (
@@ -245,7 +247,7 @@ export const AIAssistantPage = () => {
             onChange={setInput}
             onSubmit={handleSend}
             disabled={sending || loadingHistory}
-            placeholder="Спросите про выручку, пациентов..."
+            placeholder={t("ai.chatPlaceholder")}
           />
         </div>
       </div>
