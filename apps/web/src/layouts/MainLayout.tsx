@@ -6,6 +6,7 @@ import { Button } from "../ui/Button";
 import { cn } from "../ui/utils/cn";
 import { MobileBottomNav } from "../shared/ui/MobileBottomNav";
 import { SubscriptionNotice } from "../components/SubscriptionNotice";
+import { ChangePasswordModal } from "../components/ChangePasswordModal";
 import { Logo } from "@/shared/ui/Logo";
 import { BRANDING } from "../shared/config/branding";
 import { useClinic } from "../hooks/useClinic";
@@ -41,6 +42,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { clinic } = useClinic();
+  const [showChangePassword, setShowChangePassword] = React.useState(false);
   const title = getTitleForPath(location.pathname);
   const brandName = clinic.name || BRANDING.productName;
   const lockMainScroll = location.pathname === "/ai-assistant";
@@ -82,6 +84,16 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               type="button"
               variant="secondary"
               size="sm"
+              onClick={() => setShowChangePassword(true)}
+              className="shrink-0 border-slate-200 px-2.5 text-xs shadow-sm max-md:h-8 max-md:py-0 md:px-3"
+              title="Смена пароля"
+            >
+              Пароль
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => void logout()}
               className="shrink-0 border-slate-200 px-2.5 text-xs shadow-sm max-md:h-8 max-md:py-0 md:px-3"
             >
@@ -100,6 +112,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         </main>
         {!isDoctorWorkspaceScreen ? <MobileBottomNav /> : null}
       </div>
+      <ChangePasswordModal open={showChangePassword} onClose={() => setShowChangePassword(false)} />
     </div>
   );
 };
