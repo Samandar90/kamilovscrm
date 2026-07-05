@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import type { CashRegisterEntry } from "../api/cashDeskApi";
 import { formatSum } from "../../../utils/formatMoney";
 import { Modal } from "../../../components/ui/Modal";
@@ -32,6 +33,7 @@ export const RefundModal: React.FC<Props> = ({
   onClose,
   onConfirm,
 }) => {
+  const { t } = useTranslation();
   return (
     <Modal
       isOpen={open && Boolean(entry)}
@@ -41,23 +43,22 @@ export const RefundModal: React.FC<Props> = ({
       {entry ? (
         <>
           <h3 id="refund-modal-title" className="text-lg font-semibold text-[#0f172a]">
-            Возврат оплаты
+            {t("billing.refundTitle")}
           </h3>
           <p className="mt-1 text-sm text-[#64748b]">
-            Сумма спишется из кассы, счёт и статус обновятся. Укажите сумму (не больше доступной по
-            операции).
+            {t("billing.refundDescription")}
           </p>
           <p className="mt-3 text-sm text-[#334155]">
-            Счёт: <span className="font-mono">{invoiceLabel}</span>
+            {t("billing.invoiceLabel")} <span className="font-mono">{invoiceLabel}</span>
             {entry.paymentId != null ? (
               <>
                 {" "}
-                · Оплата #{entry.paymentId} · макс. {formatSum(maxRefundable)}
+                · {t("billing.paymentPrefix")} #{entry.paymentId} · {t("billing.max")} {formatSum(maxRefundable)}
               </>
             ) : null}
           </p>
           <label className="mt-4 block text-sm text-[#334155]">
-            Сумма возврата (сум)
+            {t("billing.refundAmountLabel")}
             <MoneyInput
               mode="decimal"
               max={maxRefundable}
@@ -69,14 +70,14 @@ export const RefundModal: React.FC<Props> = ({
             />
           </label>
           <label className="mt-3 block text-sm text-[#334155]">
-            Причина возврата
+            {t("billing.refundReasonLabel")}
             <textarea
               className="mt-1.5 w-full rounded-xl border border-[#e2e8f0] bg-white px-3 py-2 text-sm text-[#334155]"
               rows={3}
               value={reason}
               onChange={(e) => onReasonChange(e.target.value)}
               disabled={submitting}
-              placeholder="Укажите причину"
+              placeholder={t("billing.refundReasonPlaceholder")}
             />
           </label>
           <div className="mt-5 flex justify-end gap-2">
@@ -86,7 +87,7 @@ export const RefundModal: React.FC<Props> = ({
               onClick={onClose}
               disabled={submitting}
             >
-              Отмена
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -94,7 +95,7 @@ export const RefundModal: React.FC<Props> = ({
               onClick={onConfirm}
               disabled={submitting}
             >
-              {submitting ? "Оформление…" : "Подтвердить возврат"}
+              {submitting ? t("billing.refundProcessing") : t("billing.confirmRefund")}
             </button>
           </div>
         </>

@@ -47,46 +47,46 @@ export type NavigationSection = {
 
 export const navigationConfig: NavigationSection[] = [
   {
-    section: "Основное",
+    section: "",
     sectionKey: "nav.main",
     items: [
-      { label: "Панель управления", labelKey: "pages.dashboard", path: "/dashboard", roles: DASHBOARD_NAV_ROLES, icon: LayoutDashboard },
-      { label: "Пациенты", labelKey: "pages.patients", path: "/patients", roles: PATIENTS_PAGE_ROUTE_ROLES, icon: Users },
-      { label: "Записи", labelKey: "pages.appointments", path: "/appointments", roles: APPOINTMENTS_PAGE_ROUTE_ROLES, icon: CalendarDays },
-      { label: "Врачи", labelKey: "pages.doctors", path: "/doctors", roles: DOCTORS_DIRECTORY_ROLES, icon: Stethoscope },
-      { label: "Услуги", labelKey: "pages.services", path: "/services", roles: SERVICES_DIRECTORY_ROLES, icon: FileText },
-      { label: "AI Ассистент", labelKey: "pages.aiAssistant", path: "/ai-assistant", roles: CLINIC_STAFF, icon: Bot },
+      { label: "", labelKey: "pages.dashboard", path: "/dashboard", roles: DASHBOARD_NAV_ROLES, icon: LayoutDashboard },
+      { label: "", labelKey: "pages.patients", path: "/patients", roles: PATIENTS_PAGE_ROUTE_ROLES, icon: Users },
+      { label: "", labelKey: "pages.appointments", path: "/appointments", roles: APPOINTMENTS_PAGE_ROUTE_ROLES, icon: CalendarDays },
+      { label: "", labelKey: "pages.doctors", path: "/doctors", roles: DOCTORS_DIRECTORY_ROLES, icon: Stethoscope },
+      { label: "", labelKey: "pages.services", path: "/services", roles: SERVICES_DIRECTORY_ROLES, icon: FileText },
+      { label: "", labelKey: "pages.aiAssistant", path: "/ai-assistant", roles: CLINIC_STAFF, icon: Bot },
     ],
   },
   {
-    section: "Отчеты",
+    section: "",
     sectionKey: "nav.reports",
-    items: [{ label: "Отчеты", labelKey: "pages.reports", path: "/reports", roles: REPORT_ROLES, icon: BarChart3 }],
+    items: [{ label: "", labelKey: "pages.reports", path: "/reports", roles: REPORT_ROLES, icon: BarChart3 }],
   },
   {
-    section: "Финансы",
+    section: "",
     sectionKey: "nav.billing",
     items: [
       {
-        label: "Биллинг",
+        label: "",
         labelKey: "nav.billing",
         roles: BILLING_ROLES,
         icon: CreditCard,
         children: [
-          { label: "Счета", labelKey: "pages.invoices", path: "/billing/invoices", roles: BILLING_ROLES, icon: FileText },
-          { label: "Платежи", labelKey: "nav.payments", path: "/billing/payments", roles: PAYMENTS_READ_PAGE_ROLES, icon: Wallet },
-          { label: "Расходы", labelKey: "nav.expenses", path: "/billing/expenses", roles: EXPENSES_READ_ROLES, icon: DollarSign },
-          { label: "Касса", labelKey: "pages.cashDesk", path: "/billing/cash-desk", roles: BILLING_ROLES, icon: Landmark },
+          { label: "", labelKey: "pages.invoices", path: "/billing/invoices", roles: BILLING_ROLES, icon: FileText },
+          { label: "", labelKey: "nav.payments", path: "/billing/payments", roles: PAYMENTS_READ_PAGE_ROLES, icon: Wallet },
+          { label: "", labelKey: "nav.expenses", path: "/billing/expenses", roles: EXPENSES_READ_ROLES, icon: DollarSign },
+          { label: "", labelKey: "pages.cashDesk", path: "/billing/cash-desk", roles: BILLING_ROLES, icon: Landmark },
         ],
       },
     ],
   },
   {
-    section: "Администрирование",
+    section: "",
     sectionKey: "nav.admin",
     items: [
-      { label: "Пользователи", labelKey: "pages.users", path: "/users", roles: USERS_PAGE_ROLES, icon: UsersRound },
-      { label: "Архитектура системы", labelKey: "pages.systemArchitecture", path: "/system/architecture", roles: SYSTEM_ARCH_ROLES, icon: Network },
+      { label: "", labelKey: "pages.users", path: "/users", roles: USERS_PAGE_ROLES, icon: UsersRound },
+      { label: "", labelKey: "pages.systemArchitecture", path: "/system/architecture", roles: SYSTEM_ARCH_ROLES, icon: Network },
     ],
   },
 ];

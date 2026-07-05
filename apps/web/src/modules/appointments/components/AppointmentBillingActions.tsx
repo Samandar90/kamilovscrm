@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import type { Appointment } from "../api/appointmentsFlowApi";
 
 type Props = {
@@ -20,13 +21,14 @@ export const AppointmentBillingActions: React.FC<Props> = ({
   canCreateInvoice,
   onCreateInvoice,
 }) => {
+  const { t } = useTranslation("billing");
   if (!canCreateInvoice) return null;
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {canCreateInvoice && appointment.status === "completed" && !hasInvoice && (
         <button type="button" className={linkBtn} disabled={disabled} onClick={onCreateInvoice}>
-          Счёт
+          {t("invoice")}
         </button>
       )}
     </div>

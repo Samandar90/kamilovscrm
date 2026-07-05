@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { requestJson } from "../../../api/http";
 import type { UserRole } from "../../../auth/types";
 import { USER_ROLES } from "../../../auth/permissions";
@@ -75,6 +76,7 @@ const statusChipClass = (isActive: boolean): string =>
     : "bg-slate-100 text-slate-600 border-slate-200";
 
 export const UsersPage: React.FC = () => {
+  const { t } = useTranslation();
   const [users, setUsers] = React.useState<User[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -126,7 +128,7 @@ export const UsersPage: React.FC = () => {
       const usersRows = await requestJson<User[]>(`/api/users${q}`);
       setUsers(usersRows);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка загрузки");
+      setError(requestError instanceof Error ? requestError.message : t("users.errorLoading"));
     } finally {
       setLoading(false);
     }
@@ -189,18 +191,18 @@ export const UsersPage: React.FC = () => {
 
   const saveUser = async () => {
     const nextFieldErrors: UserFieldErrors = {};
-    if (!form.fullName.trim()) nextFieldErrors.fullName = "Имя обязательно";
-    if (!form.username.trim()) nextFieldErrors.username = "Логин обязателен";
-    if (!form.role) nextFieldErrors.role = "Роль обязательна";
+    if (!form.fullName.trim()) nextFieldErrors.fullName = t("users.fullNameRequired");
+    if (!form.username.trim()) nextFieldErrors.username = t("users.usernameRequired");
+    if (!form.role) nextFieldErrors.role = t("users.roleRequired");
     if (form.role === "doctor" || form.role === "nurse") {
       if (form.doctorId === "" || form.doctorId === undefined) {
-        nextFieldErrors.doctorId = "Выберите врача из списка";
+        nextFieldErrors.doctorId = t("users.selectDoctorFromList");
       }
     }
     if (!editingId && !form.password.trim()) {
-      nextFieldErrors.password = "Пароль обязателен";
+      nextFieldErrors.password = t("users.passwordRequired");
     } else if (!editingId && form.password.trim().length < 6) {
-      nextFieldErrors.password = "Минимум 6 символов";
+      nextFieldErrors.password = t("users.passwordMinimum");
     }
     setFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0) {
@@ -233,18 +235,18 @@ export const UsersPage: React.FC = () => {
               : {}),
           },
         });
-        setToast("Пользователь обновлён");
+        setToast(t("users.userUpdated"));
       } else {
         await requestJson<User>("/api/users", {
           method: "POST",
           body: { ...payload, password: form.password.trim() },
         });
-        setToast("Пользователь создан");
+        setToast(t("users.userCreated"));
       }
       closeModal();
       await loadData();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка сохранения");
+      setError(requestError instanceof Error ? requestError.message : t("users.savingError"));
     } finally {
       setIsSaving(false);
     }
@@ -252,14 +254,14 @@ export const UsersPage: React.FC = () => {
   const savePassword = async () => {
     const nextErrors: PasswordFieldErrors = {};
     if (!passwordForm.password.trim()) {
-      nextErrors.password = "Введите новый пароль";
+      nextErrors.password = t("users.enterNewPassword");
     } else if (passwordForm.password.trim().length < 6) {
-      nextErrors.password = "Минимум 6 символов";
+      nextErrors.password = t("users.passwordMinimum");
     }
     if (!passwordForm.confirmPassword.trim()) {
-      nextErrors.confirmPassword = "Подтвердите пароль";
+      nextErrors.confirmPassword = t("users.confirmPassword");
     } else if (passwordForm.confirmPassword !== passwordForm.password) {
-      nextErrors.confirmPassword = "Пароли не совпадают";
+      nextErrors.confirmPassword = t("users.passwordsDoNotMatch");
     }
     setPasswordErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0 || passwordUserId == null) return;
@@ -272,11 +274,11 @@ export const UsersPage: React.FC = () => {
         body: { password: passwordForm.password },
       });
       closePasswordModal();
-      setToast("Пароль пользователя обновлён");
+      setToast(t("users.passwordUpdated"));
       await loadData();
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : "Ошибка смены пароля"
+        requestError instanceof Error ? requestError.message : t("users.passwordChangeError")
       );
     } finally {
       setIsSaving(false);
@@ -290,9 +292,9 @@ export const UsersPage: React.FC = () => {
     try {
       await requestJson<User>(`/api/users/${user.id}/toggle-active`, { method: "PATCH" });
       await loadData();
-      setToast(user.isActive ? "Пользователь отключен" : "Пользователь активирован");
+      setToast(user.isActive ? t("users.userDisabled") : t("users.userEnabled"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка изменения статуса");
+      setError(requestError instanceof Error ? requestError.message : t("users.statusChangeError"));
     } finally {
       setTogglingId(null);
     }
@@ -300,16 +302,16 @@ export const UsersPage: React.FC = () => {
 
   const deleteUser = async (user: User) => {
     if (deletingId !== null) return;
-    const confirmed = window.confirm(`Удалить пользователя "${user.username}"?`);
+    const confirmed = window.confirm(t("users.confirmDelete", { username: user.username }));
     if (!confirmed) return;
     setError(null);
     setDeletingId(user.id);
     try {
       await requestJson<{ success: boolean }>(`/api/users/${user.id}`, { method: "DELETE" });
       await loadData();
-      setToast("Пользователь удалён");
+      setToast(t("users.userDeleted"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка удаления");
+      setError(requestError instanceof Error ? requestError.message : t("users.deletionError"));
     } finally {
       setDeletingId(null);
     }
@@ -319,9 +321,9 @@ export const UsersPage: React.FC = () => {
     <div className="space-y-5 p-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-[#0f172a]">Пользователи</h2>
+          <h2 className="text-2xl font-semibold text-[#0f172a]">{t("users.title")}</h2>
           <p className="text-sm text-[#64748b]">
-            Управление доступами сотрудников
+            {t("users.subtitle")}
           </p>
         </div>
         <button
@@ -329,7 +331,7 @@ export const UsersPage: React.FC = () => {
           onClick={openCreate}
           disabled={isSaving || deletingId !== null || togglingId !== null}
         >
-          ➕ Добавить пользователя
+          ➕ {t("users.addUser")}
         </button>
       </header>
 
@@ -338,7 +340,7 @@ export const UsersPage: React.FC = () => {
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className="w-full rounded-lg border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2 text-sm text-[#0f172a] outline-none transition focus:border-[#94a3b8]"
-          placeholder="Поиск по имени или логину..."
+          placeholder={t("users.searchPlaceholder")}
         />
       </div>
 
@@ -363,28 +365,28 @@ export const UsersPage: React.FC = () => {
         ) : users.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 p-10 text-center">
             <div className="text-2xl">👥</div>
-            <div className="font-medium text-[#0f172a]">Нет пользователей</div>
-            <p className="text-sm text-[#64748b]">Добавьте первого пользователя, чтобы начать работу</p>
+            <div className="font-medium text-[#0f172a]">{t("users.noUsers")}</div>
+            <p className="text-sm text-[#64748b]">{t("users.addFirstUserToStart")}</p>
             <button
               className="mt-2 rounded-lg bg-[#0f172a] px-3 py-2 text-sm font-medium text-white hover:bg-[#1e293b] disabled:opacity-50"
               onClick={openCreate}
               disabled={isSaving || deletingId !== null || togglingId !== null}
             >
-              ➕ Добавить пользователя
+              ➕ {t("users.addUser")}
             </button>
           </div>
         ) : (
           <table className="min-w-full text-left text-sm">
             <thead className="bg-[#f8fafc] text-xs uppercase tracking-wide text-[#64748b]">
               <tr>
-                <th className="px-4 py-3">Имя</th>
-                <th className="px-3 py-2">Логин</th>
-                <th className="px-3 py-2">Роль</th>
-                <th className="px-3 py-2">Врач (профиль)</th>
-                <th className="px-3 py-2">Статус</th>
-                <th className="px-3 py-2">Дата создания</th>
-                <th className="px-3 py-2">Последний вход</th>
-                <th className="px-3 py-2">Действия</th>
+                <th className="px-4 py-3">{t("users.fullName")}</th>
+                <th className="px-3 py-2">{t("users.username")}</th>
+                <th className="px-3 py-2">{t("users.role")}</th>
+                <th className="px-3 py-2">{t("users.doctorProfile")}</th>
+                <th className="px-3 py-2">{t("users.status")}</th>
+                <th className="px-3 py-2">{t("users.createdAt")}</th>
+                <th className="px-3 py-2">{t("users.lastLogin")}</th>
+                <th className="px-3 py-2">{t("users.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -406,7 +408,7 @@ export const UsersPage: React.FC = () => {
                   </td>
                   <td className="px-3 py-2">
                     <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${statusChipClass(user.isActive)}`}>
-                      {user.isActive ? "active" : "inactive"}
+                      {user.isActive ? t("users.active") : t("users.inactive")}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-[#64748b]">{formatCreatedAt(user.createdAt)}</td>
@@ -418,14 +420,14 @@ export const UsersPage: React.FC = () => {
                         onClick={() => openEdit(user)}
                         disabled={isSaving || deletingId !== null || togglingId !== null}
                       >
-                        Редактировать
+                        {t("users.edit")}
                       </button>
                       <button
                         className="rounded-md border border-[#e2e8f0] px-2 py-1 text-xs text-[#334155] hover:bg-[#f8fafc]"
                         onClick={() => openChangePassword(user)}
                         disabled={isSaving || deletingId !== null || togglingId !== null}
                       >
-                        Сменить пароль
+                        {t("users.changePassword")}
                       </button>
                       <button
                         className="rounded-md border border-[#e2e8f0] px-2 py-1 text-xs text-[#475569] hover:bg-[#f8fafc]"
@@ -435,15 +437,15 @@ export const UsersPage: React.FC = () => {
                         {togglingId === user.id
                           ? "..."
                           : user.isActive
-                            ? "Отключить"
-                            : "Включить"}
+                            ? t("users.disable")
+                            : t("users.enable")}
                       </button>
                       <button
                         className="rounded-md border border-rose-200 px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
                         onClick={() => void deleteUser(user)}
                         disabled={isSaving || deletingId !== null || togglingId !== null}
                       >
-                        {deletingId === user.id ? "Удаление..." : "Удалить"}
+                        {deletingId === user.id ? t("users.deleting") : t("users.delete")}
                       </button>
                     </div>
                   </td>
@@ -460,13 +462,13 @@ export const UsersPage: React.FC = () => {
         className="w-full max-w-2xl rounded-xl border border-[#e2e8f0] bg-white p-5"
       >
         <h3 className="text-lg font-semibold text-[#0f172a]">
-          {editingId ? "Редактировать пользователя" : "Добавить пользователя"}
+          {editingId ? t("users.editUser") : t("users.addUser")}
         </h3>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
             <input
               className="w-full rounded-md border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2 text-sm text-[#0f172a]"
-              placeholder="Имя"
+              placeholder={t("users.fullName")}
               value={form.fullName}
               onChange={(event) => {
                 setForm((prev) => ({ ...prev, fullName: event.target.value }));
@@ -479,7 +481,7 @@ export const UsersPage: React.FC = () => {
             <input
               className="w-full rounded-md border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2 text-sm text-[#0f172a]"
               aria-label="username"
-              placeholder="Логин"
+              placeholder={t("users.username")}
               value={form.username}
               disabled={editingId !== null}
               onChange={(event) => {
@@ -495,7 +497,7 @@ export const UsersPage: React.FC = () => {
                 type="password"
                 className="w-full rounded-md border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2 text-sm text-[#0f172a]"
                 aria-label="password"
-                placeholder="Пароль (мин. 6 символов)"
+                placeholder={t("users.passwordPlaceholder")}
                 value={form.password}
                 onChange={(event) => {
                   setForm((prev) => ({ ...prev, password: event.target.value }));
@@ -530,7 +532,7 @@ export const UsersPage: React.FC = () => {
           </div>
           {form.role === "doctor" || form.role === "nurse" ? (
             <div className="md:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-[#64748b]">Врач (профиль)</label>
+              <label className="mb-1 block text-xs font-medium text-[#64748b]">{t("users.doctorProfile")}</label>
               <select
                 className="w-full rounded-md border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2 text-sm text-[#0f172a]"
                 value={form.doctorId === "" ? "" : String(form.doctorId)}
@@ -544,7 +546,7 @@ export const UsersPage: React.FC = () => {
                   setFieldErrors((prev) => ({ ...prev, doctorId: undefined }));
                 }}
               >
-                <option value="">{doctorsLoading ? "Загрузка…" : "Выберите врача"}</option>
+                <option value="">{doctorsLoading ? t("users.loading") : t("users.selectDoctor")}</option>
                 {doctorsList.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
@@ -563,7 +565,7 @@ export const UsersPage: React.FC = () => {
               checked={form.isActive}
               onChange={(event) => setForm((prev) => ({ ...prev, isActive: event.target.checked }))}
             />
-            Активен
+            {t("users.active")}
           </label>
         </div>
         <div className="mt-4 flex justify-end gap-2">
@@ -572,14 +574,14 @@ export const UsersPage: React.FC = () => {
             onClick={closeModal}
             disabled={isSaving}
           >
-            Отмена
+            {t("users.cancel")}
           </button>
           <button
             className="rounded-md bg-[#0f172a] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#1e293b] disabled:opacity-50"
             onClick={() => void saveUser()}
             disabled={isSaving}
           >
-            Сохранить
+            {t("users.save")}
           </button>
         </div>
       </Modal>
@@ -589,13 +591,13 @@ export const UsersPage: React.FC = () => {
         onClose={closePasswordModal}
         className="w-full max-w-md rounded-xl border border-[#e2e8f0] bg-white p-5"
       >
-        <h3 className="text-lg font-semibold text-[#0f172a]">Сменить пароль</h3>
+        <h3 className="text-lg font-semibold text-[#0f172a]">{t("users.changePassword")}</h3>
         <div className="mt-4 space-y-3">
           <div>
             <input
               type="password"
               className="w-full rounded-md border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2 text-sm text-[#0f172a]"
-              placeholder="Новый пароль"
+              placeholder={t("users.newPassword")}
               value={passwordForm.password}
               onChange={(event) => {
                 setPasswordForm((prev) => ({ ...prev, password: event.target.value }));
@@ -610,7 +612,7 @@ export const UsersPage: React.FC = () => {
             <input
               type="password"
               className="w-full rounded-md border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2 text-sm text-[#0f172a]"
-              placeholder="Подтверждение пароля"
+              placeholder={t("users.confirmPasswordPlaceholder")}
               value={passwordForm.confirmPassword}
               onChange={(event) => {
                 setPasswordForm((prev) => ({
@@ -631,14 +633,14 @@ export const UsersPage: React.FC = () => {
             onClick={closePasswordModal}
             disabled={isSaving}
           >
-            Отмена
+            {t("users.cancel")}
           </button>
           <button
             className="rounded-md bg-[#0f172a] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#1e293b] disabled:opacity-50"
             onClick={() => void savePassword()}
             disabled={isSaving}
           >
-            Сохранить
+            {t("users.save")}
           </button>
         </div>
       </Modal>

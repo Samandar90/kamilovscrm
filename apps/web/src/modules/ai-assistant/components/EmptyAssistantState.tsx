@@ -1,22 +1,26 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { ChevronRight, Sparkles } from "lucide-react";
 import type { EmptyHeroAction } from "../constants";
 import { AiChipIcon } from "./aiChipIcons";
 
-export const ClearedChatEmptyState: React.FC = () => (
-  <motion.div
-    initial={{ opacity: 0, y: 12 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-    className="flex flex-col items-center justify-center px-4 py-14 text-center sm:py-20"
-    role="status"
-  >
-    <p className="max-w-md text-[15px] font-medium leading-relaxed text-neutral-500">
-      Чат очищен. Задайте новый вопрос.
-    </p>
-  </motion.div>
-);
+export const ClearedChatEmptyState: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-col items-center justify-center px-4 py-14 text-center sm:py-20"
+      role="status"
+    >
+      <p className="max-w-md text-[15px] font-medium leading-relaxed text-neutral-500">
+        {t("ai.clearedChat")}
+      </p>
+    </motion.div>
+  );
+};
 
 export type EmptyAssistantStateProps = {
   actions: readonly EmptyHeroAction[] | EmptyHeroAction[];
@@ -28,8 +32,10 @@ export const EmptyAssistantState: React.FC<EmptyAssistantStateProps> = ({
   actions,
   onSelect,
   disabled,
-}) => (
-  <div className="relative flex flex-col items-center px-3 py-4 text-center sm:py-8">
+}) => {
+  const { t } = useTranslation();
+  return (
+    <div className="relative flex flex-col items-center px-3 py-4 text-center sm:py-8">
     <motion.div
       initial={{ opacity: 0, scale: 0.9, y: 12 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -59,7 +65,7 @@ export const EmptyAssistantState: React.FC<EmptyAssistantStateProps> = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.06, ease: [0.16, 1, 0.3, 1] }}
     >
-      Задайте вопрос ассистенту
+      {t("ai.emptyStateTitle")}
     </motion.h2>
 
     <div className="relative mt-12 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
@@ -107,5 +113,6 @@ export const EmptyAssistantState: React.FC<EmptyAssistantStateProps> = ({
         </motion.button>
       ))}
     </div>
-  </div>
-);
+    </div>
+  );
+};

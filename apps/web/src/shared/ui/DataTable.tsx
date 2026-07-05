@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { EmptyState } from "./EmptyState";
 import { PageLoader } from "./PageLoader";
 import { SectionCard } from "./SectionCard";
@@ -18,10 +19,15 @@ export const DataTable: React.FC<DataTableProps> = ({
   subtitle,
   loading = false,
   empty = false,
-  emptyTitle = "Нет данных",
-  emptySubtitle = "Записи появятся после операций",
+  emptyTitle,
+  emptySubtitle,
   children,
-}) => (
+}) => {
+  const { t } = useTranslation("common");
+  const finalEmptyTitle = emptyTitle ?? t("components.noData");
+  const finalEmptySubtitle = emptySubtitle ?? t("components.empty");
+
+  return (
   <SectionCard className="crm-data-table overflow-hidden p-0">
     {title || subtitle ? (
       <div className="border-b border-gray-200 px-4 py-3">
@@ -30,7 +36,8 @@ export const DataTable: React.FC<DataTableProps> = ({
       </div>
     ) : null}
 
-    {loading ? <PageLoader /> : empty ? <EmptyState title={emptyTitle} subtitle={emptySubtitle} /> : children}
-  </SectionCard>
-);
+      {loading ? <PageLoader /> : empty ? <EmptyState title={finalEmptyTitle} subtitle={finalEmptySubtitle} /> : children}
+    </SectionCard>
+  );
+};
 

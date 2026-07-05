@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { cn } from "../../../ui/utils/cn";
 import type { SmartQuickChip } from "../constants";
@@ -9,7 +10,6 @@ export type QuickPromptChipsProps = {
   onSelect: (text: string) => void;
   disabled?: boolean;
   className?: string;
-  /** Заголовок секции над чипами */
   sectionTitle?: string;
 };
 
@@ -18,20 +18,22 @@ export const QuickPromptChips: React.FC<QuickPromptChipsProps> = ({
   onSelect,
   disabled,
   className,
-  sectionTitle = "Попробуйте спросить",
-}) => (
-  <div className={cn("relative px-0.5", className)}>
-    {sectionTitle ? (
-      <p className="mb-2.5 px-1 text-xs font-medium tracking-wide text-slate-500">{sectionTitle}</p>
-    ) : null}
-    <div
-      className={cn(
-        "flex gap-2.5 overflow-x-auto overflow-y-hidden pb-1 pt-0.5 [-ms-overflow-style:none] [scrollbar-width:none]",
-        "[&::-webkit-scrollbar]:hidden"
-      )}
-      role="list"
-      aria-label="Быстрые вопросы"
-    >
+  sectionTitle,
+}) => {
+  const { t } = useTranslation();
+  return (
+    <div className={cn("relative px-0.5", className)}>
+      {sectionTitle ? (
+        <p className="mb-2.5 px-1 text-xs font-medium tracking-wide text-slate-500">{sectionTitle ?? t("ai.quickQuestionsTitle")}</p>
+      ) : null}
+      <div
+        className={cn(
+          "flex gap-2.5 overflow-x-auto overflow-y-hidden pb-1 pt-0.5 [-ms-overflow-style:none] [scrollbar-width:none]",
+          "[&::-webkit-scrollbar]:hidden"
+        )}
+        role="list"
+        aria-label={t("common.loading")}
+      >
       {chips.map((chip, i) => (
         <motion.button
           key={chip.text}
@@ -72,6 +74,7 @@ export const QuickPromptChips: React.FC<QuickPromptChipsProps> = ({
           </span>
         </motion.button>
       ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};

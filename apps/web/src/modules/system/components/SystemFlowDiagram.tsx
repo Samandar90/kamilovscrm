@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import {
   BarChart3,
@@ -11,19 +12,19 @@ import {
 
 type FlowNode = {
   key: string;
-  title: string;
+  titleKey: string;
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   tone: "blue" | "green";
 };
 
-const NODES: FlowNode[] = [
-  { key: "patient", title: "Пациент", to: "/patients", icon: User, tone: "blue" },
-  { key: "appointment", title: "Запись", to: "/appointments", icon: Calendar, tone: "blue" },
-  { key: "visit", title: "Прием", to: "/appointments", icon: Stethoscope, tone: "blue" },
-  { key: "invoice", title: "Счет", to: "/billing/invoices", icon: FileText, tone: "green" },
-  { key: "payment", title: "Оплата", to: "/billing/cash-desk", icon: CreditCard, tone: "green" },
-  { key: "report", title: "Отчет", to: "/reports", icon: BarChart3, tone: "green" },
+const NODES_CONFIG: FlowNode[] = [
+  { key: "patient", titleKey: "systemFlow.patient", to: "/patients", icon: User, tone: "blue" },
+  { key: "appointment", titleKey: "systemFlow.appointment", to: "/appointments", icon: Calendar, tone: "blue" },
+  { key: "visit", titleKey: "systemFlow.visit", to: "/appointments", icon: Stethoscope, tone: "blue" },
+  { key: "invoice", titleKey: "systemFlow.invoice", to: "/billing/invoices", icon: FileText, tone: "green" },
+  { key: "payment", titleKey: "systemFlow.payment", to: "/billing/cash-desk", icon: CreditCard, tone: "green" },
+  { key: "report", titleKey: "systemFlow.report", to: "/reports", icon: BarChart3, tone: "green" },
 ];
 
 const toneClass: Record<FlowNode["tone"], string> = {
@@ -34,6 +35,9 @@ const toneClass: Record<FlowNode["tone"], string> = {
 export const SystemFlowDiagram: React.FC<{ onNodeClick: (to: string) => void }> = ({
   onNodeClick,
 }) => {
+  const { t } = useTranslation();
+  const NODES = NODES_CONFIG.map(node => ({ ...node, title: t(node.titleKey) }));
+
   return (
     <div className="overflow-x-auto pb-2">
       <div className="flex min-w-max items-center gap-3">

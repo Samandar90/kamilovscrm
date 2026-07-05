@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
 
@@ -18,6 +19,7 @@ type DashboardQuickActionsProps = {
 export const DashboardQuickActions: React.FC<DashboardQuickActionsProps> = ({
   items,
 }) => {
+  const { t } = useTranslation();
   if (items.length === 0) return null;
 
   const firstEnabledIndex = items.findIndex((i) => !i.disabled);
@@ -25,8 +27,8 @@ export const DashboardQuickActions: React.FC<DashboardQuickActionsProps> = ({
   return (
     <section className="space-y-3 md:space-y-4">
       <div>
-        <h2 className="text-base font-semibold tracking-tight text-[#0f172a] md:text-lg">Быстрые действия</h2>
-        <p className="mt-0.5 hidden text-sm text-[#64748b] md:block">Частые сценарии в один клик</p>
+        <h2 className="text-base font-semibold tracking-tight text-[#0f172a] md:text-lg">{t("dashboard.quickActions")}</h2>
+        <p className="mt-0.5 hidden text-sm text-[#64748b] md:block">{t("dashboard.frequentScenariosOneClick")}</p>
       </div>
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
         {items.map((item, index) => {
@@ -47,7 +49,7 @@ export const DashboardQuickActions: React.FC<DashboardQuickActionsProps> = ({
                 key={`${item.to}-${item.label}`}
                 className={disabledClass}
                 aria-disabled="true"
-                title={item.disabledReason ?? "Недоступно для текущей роли"}
+                title={item.disabledReason ?? t("dashboard.unavailableForCurrentRole")}
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#94a3b8]">
                   <Icon className="h-5 w-5" strokeWidth={1.85} />

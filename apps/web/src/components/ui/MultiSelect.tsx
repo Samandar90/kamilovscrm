@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 type OptionBase = {
   id: number;
@@ -24,6 +25,7 @@ export function MultiSelect<TOption extends OptionBase>({
   placeholder,
   disabled = false,
 }: MultiSelectProps<TOption>) {
+  const { t } = useTranslation();
   const rootRef = React.useRef<HTMLDivElement>(null);
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -113,7 +115,7 @@ export function MultiSelect<TOption extends OptionBase>({
                   onClick={() => removeOption(option.id)}
                   disabled={disabled}
                   className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[#166534] transition hover:bg-[#dcfce7] disabled:cursor-not-allowed"
-                  aria-label={`Удалить ${getLabel(option)}`}
+                  aria-label={t("components.remove", { label: getLabel(option) })}
                 >
                   ✕
                 </button>
@@ -121,7 +123,7 @@ export function MultiSelect<TOption extends OptionBase>({
             ))}
           </div>
         ) : (
-          <p className="mt-3 text-xs text-[#64748b]">Ничего не выбрано</p>
+          <p className="mt-3 text-xs text-[#64748b]">{t("components.noSelection")}</p>
         )}
       </div>
 
@@ -144,7 +146,7 @@ export function MultiSelect<TOption extends OptionBase>({
               </button>
             ))
           ) : open && searchQuery.length > 0 ? (
-            <div className="px-3 py-2.5 text-sm text-[#64748b]">Ничего не найдено</div>
+            <div className="px-3 py-2.5 text-sm text-[#64748b]">{t("components.notFound")}</div>
           ) : null}
         </div>
       </div>

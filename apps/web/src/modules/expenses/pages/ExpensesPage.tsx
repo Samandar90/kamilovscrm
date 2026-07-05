@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, RefreshCw, Trash2, Pencil } from "lucide-react";
 import { formatDateTimeRu } from "../../../utils/formatDateTime";
 import { formatSum } from "../../../utils/formatMoney";
@@ -20,7 +21,14 @@ import {
 } from "../../../shared/ui";
 import { Button } from "../../../ui/Button";
 
-const EXPENSE_CATEGORIES = ["Аренда", "Зарплата", "Маркетинг", "Расходники", "Коммунальные", "Прочее"] as const;
+const EXPENSE_CATEGORIES = [
+  "expenses.categories.rent",
+  "expenses.categories.salary",
+  "expenses.categories.marketing",
+  "expenses.categories.supplies",
+  "expenses.categories.utilities",
+  "expenses.categories.other"
+] as const;
 
 type ExpenseFormState = {
   amount: number;
@@ -47,6 +55,7 @@ const makeDefaultForm = (): ExpenseFormState => ({
 const isBetween = (date: Date, from: Date, to: Date): boolean => date >= from && date < to;
 
 export const ExpensesPage: React.FC = () => {
+  const { t } = useTranslation();
   const [rows, setRows] = React.useState<Expense[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
@@ -70,7 +79,7 @@ export const ExpensesPage: React.FC = () => {
       });
       setRows(list);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Ошибка загрузки расходов");
+      setError(loadError instanceof Error ? loadError.message : t("expenses.errors.loadError"));
       setRows([]);
     } finally {
       setLoading(false);
@@ -137,12 +146,14 @@ export const ExpensesPage: React.FC = () => {
     growthByCategory.sort((a, b) => b.delta - a.delta);
     const topGrowthCategory = growthByCategory[0];
 
+    const growth = Math.abs(growthPct).toFixed(1);
+    const category = topGrowthCategory?.category ?? "—";
     const insight =
       growthPct > 0
-        ? `Расходы выросли на ${Math.abs(growthPct).toFixed(1)}%. Главный рост в категории "${topGrowthCategory?.category ?? "—"}". Рекомендация: проверьте лимиты и согласование крупных трат в этой категории.`
+        ? t("expenses.insights.increased", { percent: growth, category })
         : growthPct < 0
-          ? `Расходы снизились на ${Math.abs(growthPct).toFixed(1)}% относительно прошлого месяца. Рекомендация: закрепите текущие правила закупок и контроль платежей.`
-          : "Расходы на уровне прошлого месяца. Рекомендация: оптимизируйте категории с наибольшей долей для роста маржинальности.";
+          ? t("expenses.insights.decreased", { percent: growth })
+          : t("expenses.insights.stable");
 
     return {
       todayTotal,
@@ -184,7 +195,7 @@ export const ExpensesPage: React.FC = () => {
     try {
       const amountNum = Math.round(form.amount);
       if (!Number.isFinite(amountNum) || amountNum <= 0) {
-        setError("Укажите корректную сумму");
+        setError(t("expenses.errors.invalidAmount"));
         return;
       }
       const payload = {
@@ -202,21 +213,21 @@ export const ExpensesPage: React.FC = () => {
       setIsModalOpen(false);
       await load();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Не удалось сохранить расход");
+      setError(submitError instanceof Error ? submitError.message : t("expenses.errors.saveFailed"));
     } finally {
       setSaving(false);
     }
   };
 
   const removeExpense = async (id: number) => {
-    const confirmed = window.confirm("Удалить расход?");
+    const confirmed = window.confirm(t("expenses.confirmDelete"));
     if (!confirmed) return;
     setError(null);
     try {
       await expensesApi.remove(id);
       await load();
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Не удалось удалить расход");
+      setError(deleteError instanceof Error ? deleteError.message : t("expenses.errors.deleteFailed"));
     }
   };
 
@@ -224,56 +235,56 @@ export const ExpensesPage: React.FC = () => {
     <div className="min-h-full bg-[#f8fafc] text-[#334155]">
       <AppContainer className="space-y-6">
         <PageHeader
-          title="Расходы"
-          subtitle="Учет операционных расходов клиники и подготовка к расчету прибыли."
+          title={t("expenses.title")}
+          subtitle={t("expenses.subtitle")}
           actions={
             <>
               <Button variant="secondary" onClick={() => void load()} disabled={loading}>
                 <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                Обновить
+                {t("common.actions.refresh")}
               </Button>
               <Button onClick={openCreateModal}>
                 <Plus className="h-4 w-4" />
-                Добавить расход
+                {t("expenses.addExpense")}
               </Button>
             </>
           }
         />
 
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Расходы сегодня" value={formatSum(analytics.todayTotal)} />
-          <StatCard label="Расходы за месяц" value={formatSum(analytics.monthTotal)} />
+          <StatCard label={t("expenses.stats.today")} value={formatSum(analytics.todayTotal)} />
+          <StatCard label={t("expenses.stats.month")} value={formatSum(analytics.monthTotal)} />
           <StatCard
-            label="Изменение %"
+            label={t("expenses.stats.change")}
             value={`${analytics.growthPct > 0 ? "+" : ""}${analytics.growthPct.toFixed(1)}%`}
             tone={analytics.growthPct > 0 ? "danger" : analytics.growthPct < 0 ? "success" : "neutral"}
           />
-          <StatCard label="Средний расход в день" value={formatSum(analytics.avgPerDay)} />
+          <StatCard label={t("expenses.stats.avgPerDay")} value={formatSum(analytics.avgPerDay)} />
         </section>
 
         <SectionCard className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">Сводка расходов</p>
-            <p className="mt-1 text-sm text-[#475569]">Всего операций: {rows.length}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("expenses.summary.title")}</p>
+            <p className="mt-1 text-sm text-[#475569]">{t("expenses.summary.totalOperations", { count: rows.length })}</p>
           </div>
           <div className="text-right">
-            <p className="text-xs uppercase tracking-wide text-[#64748b]">Общая сумма</p>
+            <p className="text-xs uppercase tracking-wide text-[#64748b]">{t("expenses.summary.totalAmount")}</p>
             <p className="text-xl font-semibold tabular-nums text-[#0f172a]">{formatSum(totalAmount)}</p>
           </div>
         </SectionCard>
 
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
           <SectionCard className="xl:col-span-2">
-            <h2 className="text-base font-semibold text-[#0f172a]">Аналитика по категориям</h2>
-            <p className="mt-1 text-xs text-[#64748b]">Сумма и доля каждой категории от общего расхода</p>
+            <h2 className="text-base font-semibold text-[#0f172a]">{t("expenses.analytics.byCategory.title")}</h2>
+            <p className="mt-1 text-xs text-[#64748b]">{t("expenses.analytics.byCategory.description")}</p>
             <div className="mt-4 space-y-3">
               {analytics.categoryStats.length === 0 ? (
-                <p className="text-sm text-[#64748b]">Нет данных по категориям</p>
+                <p className="text-sm text-[#64748b]">{t("expenses.analytics.noData")}</p>
               ) : (
                 analytics.categoryStats.map((category) => (
                   <div key={category.category}>
                     <div className="mb-1 flex items-center justify-between gap-3">
-                      <span className="text-sm font-medium text-[#0f172a]">{category.category}</span>
+                      <span className="text-sm font-medium text-[#0f172a]">{t(category.category)}</span>
                       <span className="text-sm font-semibold text-[#334155]">
                         {formatSum(category.amount)} · {category.pct.toFixed(1)}%
                       </span>
@@ -291,11 +302,11 @@ export const ExpensesPage: React.FC = () => {
           </SectionCard>
 
           <SectionCard>
-            <h2 className="text-base font-semibold text-[#0f172a]">Топ расходы</h2>
-            <p className="mt-1 text-xs text-[#64748b]">Самые крупные операции</p>
+            <h2 className="text-base font-semibold text-[#0f172a]">{t("expenses.analytics.topExpenses.title")}</h2>
+            <p className="mt-1 text-xs text-[#64748b]">{t("expenses.analytics.topExpenses.description")}</p>
             <div className="mt-4 space-y-2">
               {analytics.topExpenses.length === 0 ? (
-                <p className="text-sm text-[#64748b]">Нет расходов</p>
+                <p className="text-sm text-[#64748b]">{t("expenses.analytics.noExpenses")}</p>
               ) : (
                 analytics.topExpenses.map((expense) => (
                   <div
@@ -319,13 +330,13 @@ export const ExpensesPage: React.FC = () => {
         </section>
 
         <SectionCard>
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">🧠 Аналитика расходов</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">🧠 {t("expenses.insights.title")}</p>
           <p className="mt-2 text-sm leading-relaxed text-[#334155]">{analytics.insight}</p>
         </SectionCard>
 
         <FiltersBar className="p-5">
           <div className="md:col-span-1">
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">Дата от</label>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("expenses.filters.dateFrom")}</label>
             <input
               type="date"
               value={dateFrom}
@@ -334,7 +345,7 @@ export const ExpensesPage: React.FC = () => {
             />
           </div>
           <div className="md:col-span-1">
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">Дата до</label>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("expenses.filters.dateTo")}</label>
             <input
               type="date"
               value={dateTo}
@@ -343,22 +354,22 @@ export const ExpensesPage: React.FC = () => {
             />
           </div>
           <div className="md:col-span-1">
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">Категория</label>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("expenses.filters.category")}</label>
             <select
               value={categoryFilter}
               onChange={(event) => setCategoryFilter(event.target.value)}
               className="h-10 w-full rounded-xl border border-[#e2e8f0] px-3 text-sm outline-none focus:border-[#16a34a]"
             >
-              <option value="">Все категории</option>
+              <option value="">{t("expenses.filters.allCategories")}</option>
               {EXPENSE_CATEGORIES.map((category) => (
                 <option key={category} value={category}>
-                  {category}
+                  {t(category)}
                 </option>
               ))}
             </select>
           </div>
           <div className="md:col-span-1">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#64748b]">Сумма по фильтру</p>
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("expenses.filters.amountByFilter")}</p>
             <div className="flex h-10 items-center rounded-xl bg-[#f8fafc] px-3 text-sm font-semibold text-[#0f172a]">
               {formatSum(totalAmount)}
             </div>
@@ -370,39 +381,39 @@ export const ExpensesPage: React.FC = () => {
         ) : null}
 
         <DataTable
-          title="Список расходов"
-          subtitle="Операции по выбранным фильтрам"
+          title={t("expenses.table.title")}
+          subtitle={t("expenses.table.subtitle")}
           loading={loading}
           empty={!loading && rows.length === 0}
-          emptyTitle="Расходов не найдено"
-          emptySubtitle="Попробуйте изменить фильтры или добавьте новый расход"
+          emptyTitle={t("expenses.table.emptyTitle")}
+          emptySubtitle={t("expenses.table.emptySubtitle")}
         >
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-[#e5e7eb]">
               <thead className="bg-[#f8fafc]">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#64748b]">Дата</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#64748b]">Категория</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#64748b]">Описание</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-[#64748b]">Сумма</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-[#64748b]">Действия</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("common.table.date")}</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("expenses.table.category")}</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("common.table.description")}</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("common.table.amount")}</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("common.table.actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f1f5f9]">
                 {rows.map((row) => (
                   <tr key={row.id} className="hover:bg-[#f8fafc]">
                     <td className="px-4 py-3 text-sm text-[#334155]">{formatDateTimeRu(row.paidAt)}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-[#0f172a]">{row.category}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-[#0f172a]">{t(row.category)}</td>
                     <td className="px-4 py-3 text-sm text-[#475569]">{row.description || "—"}</td>
                     <td className="px-4 py-3 text-right text-sm font-semibold tabular-nums text-[#0f172a]">
                       {formatSum(row.amount)}
                     </td>
                     <td className="px-4 py-3">
                       <ActionButtons>
-                        <EditActionButton onClick={() => openEditModal(row)} aria-label="Редактировать">
+                        <EditActionButton onClick={() => openEditModal(row)} aria-label={t("common.edit")}>
                           <Pencil className="h-4 w-4" />
                         </EditActionButton>
-                        <DeleteActionButton onClick={() => void removeExpense(row.id)} aria-label="Удалить">
+                        <DeleteActionButton onClick={() => void removeExpense(row.id)} aria-label={t("common.delete")}>
                           <Trash2 className="h-4 w-4" />
                         </DeleteActionButton>
                       </ActionButtons>
@@ -418,21 +429,21 @@ export const ExpensesPage: React.FC = () => {
       <ModalShell
         isOpen={isModalOpen}
         onClose={closeModal}
-        title={editing ? "Редактировать расход" : "Добавить расход"}
-        subtitle="Заполните данные расхода для финансового учета"
+        title={editing ? t("expenses.modal.editTitle") : t("expenses.modal.createTitle")}
+        subtitle={t("expenses.modal.subtitle")}
         footer={
           <ActionButtons>
             <Button variant="secondary" type="button" onClick={closeModal}>
-              Отмена
+              {t("common.actions.cancel")}
             </Button>
             <Button type="submit" form="expense-form" disabled={saving}>
-              {saving ? "Сохранение..." : "Сохранить"}
+              {saving ? t("common.actions.saving") : t("common.actions.save")}
             </Button>
           </ActionButtons>
         }
       >
         <form id="expense-form" className="space-y-4" onSubmit={(event) => void submitExpense(event)}>
-          <FormField label="Сумма">
+          <FormField label={t("expenses.form.amount")}>
             <MoneyInput
               mode="integer"
               min={0}
@@ -441,7 +452,7 @@ export const ExpensesPage: React.FC = () => {
               className="h-10 w-full rounded-xl border border-[#e2e8f0] px-3 text-sm outline-none focus:border-[#16a34a]"
             />
           </FormField>
-          <FormField label="Категория">
+          <FormField label={t("expenses.form.category")}>
             <select
               required
               value={form.category}
@@ -450,12 +461,12 @@ export const ExpensesPage: React.FC = () => {
             >
               {EXPENSE_CATEGORIES.map((category) => (
                 <option key={category} value={category}>
-                  {category}
+                  {t(category)}
                 </option>
               ))}
             </select>
           </FormField>
-          <FormField label="Описание">
+          <FormField label={t("expenses.form.description")}>
             <textarea
               rows={3}
               value={form.description}
@@ -463,7 +474,7 @@ export const ExpensesPage: React.FC = () => {
               className="w-full rounded-xl border border-[#e2e8f0] px-3 py-2 text-sm outline-none focus:border-[#16a34a]"
             />
           </FormField>
-          <FormField label="Дата">
+          <FormField label={t("expenses.form.date")}>
             <input
               type="datetime-local"
               required

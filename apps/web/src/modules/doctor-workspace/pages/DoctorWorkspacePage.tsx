@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
@@ -16,13 +17,14 @@ const fieldClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20";
 
 export const DoctorWorkspacePage: React.FC = () => {
+  const { t } = useTranslation();
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate = useNavigate();
   const { token } = useAuth();
   const { clinic } = useClinic();
   const [appointment, setAppointment] = React.useState<Appointment | null>(null);
-  const [patientName, setPatientName] = React.useState("Пациент");
-  const [serviceName, setServiceName] = React.useState("Услуга");
+  const [patientName, setPatientName] = React.useState(t("common.patient"));
+  const [serviceName, setServiceName] = React.useState(t("common.service"));
   const [servicesCatalog, setServicesCatalog] = React.useState<Service[]>([]);
   const [assignedServiceIds, setAssignedServiceIds] = React.useState<number[]>([]);
   const [servicePickerOpen, setServicePickerOpen] = React.useState(false);
@@ -36,7 +38,7 @@ export const DoctorWorkspacePage: React.FC = () => {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
-  const [clinicPrintName, setClinicPrintName] = React.useState("Клиника");
+  const [clinicPrintName, setClinicPrintName] = React.useState(t("common.clinic"));
 
   const parsedId = Number(appointmentId);
   const noServicesForDoctor = !loading && appointment !== null && servicesCatalog.length === 0;
@@ -52,10 +54,10 @@ export const DoctorWorkspacePage: React.FC = () => {
         appointmentsFlowApi.listAppointmentAssignedServices(token, parsedId).catch(() => []),
         cashDeskApi.getClinicMeta(token).catch(() => null),
       ]);
-      setClinicPrintName(clinicMeta?.clinicName?.trim() || "Клиника");
+      setClinicPrintName(clinicMeta?.clinicName?.trim() || t("common.clinic"));
       const found = rows.find((row) => row.id === parsedId) ?? null;
       if (!found) {
-        setError("Запись не найдена");
+        setError(t("doctorWorkspace.errors.appointmentNotFound"));
         setAppointment(null);
         return;
       }
@@ -65,8 +67,8 @@ export const DoctorWorkspacePage: React.FC = () => {
       setAppointment(found);
       setServicesCatalog(doctorServices);
       setAssignedServiceIds(assignedRows.map((row) => row.serviceId));
-      setPatientName(patient?.fullName ?? `Пациент #${found.patientId}`);
-      setServiceName(service?.name ?? `Услуга #${found.serviceId}`);
+      setPatientName(patient?.fullName ?? t("common.patientWithId", { id: found.patientId }));
+      setServiceName(service?.name ?? t("common.serviceWithId", { id: found.serviceId }));
       setSelectedServiceId("");
       setServicePickerOpen(false);
       setForm({
@@ -75,7 +77,7 @@ export const DoctorWorkspacePage: React.FC = () => {
         notes: found.notes ?? "",
       });
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Не удалось загрузить данные");
+      setError(requestError instanceof Error ? requestError.message : t("common.errors.loadError"));
     } finally {
       setLoading(false);
     }
@@ -102,9 +104,9 @@ export const DoctorWorkspacePage: React.FC = () => {
         notes: form.notes.trim() || null,
       });
       setAppointment(updated);
-      setNotice("Сохранено");
+      setNotice(t("common.actions.saved"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Не удалось сохранить");
+      setError(requestError instanceof Error ? requestError.message : t("doctorWorkspace.errors.saveFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -113,7 +115,7 @@ export const DoctorWorkspacePage: React.FC = () => {
   const completeVisit = async () => {
     if (!token || !appointment) return;
     if (!form.diagnosis.trim() || !form.treatment.trim()) {
-      setError("Для завершения приёма заполните диагноз и лечение.");
+      setError(t("doctorWorkspace.errors.missingDiagnosisTreatment"));
       return;
     }
     setSubmitting(true);
@@ -126,7 +128,7 @@ export const DoctorWorkspacePage: React.FC = () => {
       });
       navigate("/appointments");
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Не удалось завершить приём");
+      setError(requestError instanceof Error ? requestError.message : t("doctorWorkspace.errors.completeFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -143,9 +145,9 @@ export const DoctorWorkspacePage: React.FC = () => {
       setAssignedServiceIds((prev) => (prev.includes(serviceId) ? prev : [...prev, serviceId]));
       setSelectedServiceId("");
       setServicePickerOpen(false);
-      setNotice("Услуга добавлена");
+      setNotice(t("doctorWorkspace.notices.serviceAdded"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Не удалось добавить услугу");
+      setError(requestError instanceof Error ? requestError.message : t("doctorWorkspace.errors.addServiceFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -157,9 +159,9 @@ export const DoctorWorkspacePage: React.FC = () => {
     setError(null);
     try {
       await appointmentsFlowApi.createInvoiceFromAppointment(token, appointment.id);
-      setNotice("Счёт создан");
+      setNotice(t("doctorWorkspace.notices.invoiceCreated"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Не удалось создать счёт");
+      setError(requestError instanceof Error ? requestError.message : t("doctorWorkspace.errors.createInvoiceFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -173,7 +175,7 @@ export const DoctorWorkspacePage: React.FC = () => {
       .replace(/"/g, "&quot;");
     const serviceLines = assignedServiceIds.length
       ? assignedServiceIds
-          .map((id) => servicesCatalog.find((s) => s.id === id)?.name ?? `Услуга #${id}`)
+          .map((id) => servicesCatalog.find((s) => s.id === id)?.name ?? t("common.serviceWithId", { id }))
           .map((name) => `<li>${name}</li>`)
           .join("")
       : `<li>${serviceName}</li>`;
@@ -181,7 +183,7 @@ export const DoctorWorkspacePage: React.FC = () => {
     if (!win) return;
 
     const dateLabel = new Date(targetAppointment.startAt.includes(" ") ? targetAppointment.startAt.replace(" ", "T") : targetAppointment.startAt)
-      .toLocaleString("ru-RU");
+      .toLocaleString(navigator.language);
 
     const html = `<!doctype html>
 <html lang="ru">
@@ -253,38 +255,38 @@ export const DoctorWorkspacePage: React.FC = () => {
   <body>
     <main class="sheet">
       <header class="header">
-        <img src="${clinic.logoUrl}" alt="Логотип клиники" class="logo" />
+        <img src="${clinic.logoUrl}" alt="${t("doctorWorkspace.print.clinicLogo")}" class="logo" />
         <div class="clinic-name">${safeClinicName}</div>
       </header>
 
       <section class="meta">
-        <div class="meta-row"><b>Пациент:</b> ${patientName}</div>
-        <div class="meta-row"><b>Дата:</b> ${dateLabel}</div>
-        <div class="meta-row"><b>Врач:</b> #${targetAppointment.doctorId}</div>
-        <div class="meta-row"><b>Запись:</b> #${targetAppointment.id}</div>
+        <div class="meta-row"><b>${t("doctorWorkspace.print.patient")}:</b> ${patientName}</div>
+        <div class="meta-row"><b>${t("doctorWorkspace.print.date")}:</b> ${dateLabel}</div>
+        <div class="meta-row"><b>${t("doctorWorkspace.print.doctor")}:</b> #${targetAppointment.doctorId}</div>
+        <div class="meta-row"><b>${t("doctorWorkspace.print.appointment")}:</b> #${targetAppointment.id}</div>
       </section>
 
       <section class="section">
-        <div class="section-title">ДИАГНОЗ</div>
+        <div class="section-title">${t("doctorWorkspace.print.diagnosis")}</div>
         <div class="text">${form.diagnosis || "—"}</div>
       </section>
 
       <section class="section">
-        <div class="section-title">ЛЕЧЕНИЕ</div>
+        <div class="section-title">${t("doctorWorkspace.print.treatment")}</div>
         <div class="text">${form.treatment || "—"}</div>
       </section>
 
       <section class="section">
-        <div class="section-title">НАЗНАЧЕНИЕ</div>
+        <div class="section-title">${t("doctorWorkspace.print.prescription")}</div>
         <div class="text">${form.notes || "—"}</div>
       </section>
 
       <section class="section">
-        <div class="section-title">УСЛУГИ</div>
+        <div class="section-title">${t("doctorWorkspace.print.services")}</div>
         <ul class="services">${serviceLines}</ul>
       </section>
 
-      <footer class="footer">Внутренний медицинский документ клиники.</footer>
+      <footer class="footer">${t("doctorWorkspace.print.footer")}</footer>
     </main>
   </body>
 </html>`;
@@ -297,7 +299,7 @@ export const DoctorWorkspacePage: React.FC = () => {
   };
 
   if (!Number.isInteger(parsedId) || parsedId <= 0) {
-    return <div className="p-4 text-sm text-rose-600">Некорректный ID записи.</div>;
+    return <div className="p-4 text-sm text-rose-600">{t("doctorWorkspace.errors.invalidAppointmentId")}</div>;
   }
 
   return (
@@ -307,7 +309,7 @@ export const DoctorWorkspacePage: React.FC = () => {
           type="button"
           onClick={() => navigate(-1)}
           className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700"
-          aria-label="Назад"
+          aria-label={t("common.actions.back")}
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -318,39 +320,39 @@ export const DoctorWorkspacePage: React.FC = () => {
       </header>
 
       <div className="space-y-3 px-4 pb-28 pt-3 md:px-0 md:pb-0 md:pt-5">
-        {loading ? <p className="text-sm text-slate-500">Загрузка...</p> : null}
+        {loading ? <p className="text-sm text-slate-500">{t("common.states.loading")}</p> : null}
         {error ? <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
         {notice ? <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{notice}</p> : null}
 
         <section className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Диагноз</label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("doctorWorkspace.form.diagnosis")}</label>
           <textarea
             value={form.diagnosis}
             onChange={(e) => setForm((prev) => ({ ...prev, diagnosis: e.target.value }))}
             className={`${fieldClass} min-h-[120px]`}
-            placeholder="Введите диагноз"
+            placeholder={t("doctorWorkspace.form.diagnosisPlaceholder")}
             disabled={loading || submitting}
           />
         </section>
 
         <section className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Лечение</label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("doctorWorkspace.form.treatment")}</label>
           <textarea
             value={form.treatment}
             onChange={(e) => setForm((prev) => ({ ...prev, treatment: e.target.value }))}
             className={`${fieldClass} min-h-[120px]`}
-            placeholder="Опишите лечение"
+            placeholder={t("doctorWorkspace.form.treatmentPlaceholder")}
             disabled={loading || submitting}
           />
         </section>
 
         <section className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Назначение</label>
+          <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("doctorWorkspace.form.prescription")}</label>
           <textarea
             value={form.notes}
             onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
             className={`${fieldClass} min-h-[120px]`}
-            placeholder="Рекомендации и назначения"
+            placeholder={t("doctorWorkspace.form.prescriptionPlaceholder")}
             disabled={loading || submitting}
           />
         </section>
@@ -358,7 +360,7 @@ export const DoctorWorkspacePage: React.FC = () => {
         <div className="my-2 border-t border-slate-200" />
 
         <section className="space-y-2">
-          <h2 className="text-sm font-semibold text-slate-900">Действия после приёма</h2>
+          <h2 className="text-sm font-semibold text-slate-900">{t("doctorWorkspace.actions.title")}</h2>
 
           <button
             type="button"
@@ -366,11 +368,11 @@ export const DoctorWorkspacePage: React.FC = () => {
             disabled={loading || submitting || !appointment || noServicesForDoctor}
             className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700"
           >
-            Добавить услугу
+            {t("doctorWorkspace.actions.addService")}
           </button>
           {noServicesForDoctor ? (
             <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700">
-              У этого врача нет доступных услуг
+              {t("doctorWorkspace.errors.noServicesForDoctor")}
             </p>
           ) : null}
           {servicePickerOpen ? (
@@ -380,7 +382,7 @@ export const DoctorWorkspacePage: React.FC = () => {
                 onChange={(e) => setSelectedServiceId(e.target.value)}
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none"
               >
-                <option value="">Выберите услугу</option>
+                <option value="">{t("doctorWorkspace.actions.selectService")}</option>
                 {servicesCatalog.map((service) => (
                   <option key={service.id} value={service.id}>
                     {service.name}
@@ -393,7 +395,7 @@ export const DoctorWorkspacePage: React.FC = () => {
                 disabled={!selectedServiceId || submitting}
                 className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white disabled:opacity-50"
               >
-                Сохранить услугу
+                {t("doctorWorkspace.actions.saveService")}
               </button>
             </div>
           ) : null}
@@ -404,7 +406,7 @@ export const DoctorWorkspacePage: React.FC = () => {
             disabled={loading || submitting || !appointment}
             className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700"
           >
-            Создать счёт
+            {t("doctorWorkspace.actions.createInvoice")}
           </button>
 
           <button
@@ -413,7 +415,7 @@ export const DoctorWorkspacePage: React.FC = () => {
             disabled={loading || submitting || !appointment}
             className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700"
           >
-            Распечатать назначение
+            {t("doctorWorkspace.actions.printPrescription")}
           </button>
         </section>
       </div>
@@ -428,7 +430,7 @@ export const DoctorWorkspacePage: React.FC = () => {
             disabled={loading || submitting || !appointment}
             className="inline-flex min-h-[46px] flex-1 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 disabled:opacity-50"
           >
-            Сохранить
+            {t("common.actions.save")}
           </button>
           <button
             type="button"
@@ -442,7 +444,7 @@ export const DoctorWorkspacePage: React.FC = () => {
             }
             className="inline-flex min-h-[46px] flex-1 items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white disabled:opacity-50"
           >
-            Завершить приём
+            {t("doctorWorkspace.actions.completeVisit")}
           </button>
         </div>
       </footer>

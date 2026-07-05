@@ -973,15 +973,15 @@ export const CashDeskPage: React.FC = () => {
                                     isRefundRow ? "bg-rose-100 text-rose-800" : "bg-slate-100 text-slate-700"
                                   }`}
                                 >
-                                  {ENTRY_TYPE_LABEL[e.type]}
+                                  {t(ENTRY_TYPE_LABEL[e.type])}
                                 </span>
                                 {refunded ? (
-                                  <span className="text-[10px] font-medium text-[#64748b]">Возвращено</span>
+                                  <span className="text-[10px] font-medium text-[#64748b]">{t("billing.refundedText")}</span>
                                 ) : null}
                               </div>
                               <p className="truncate text-sm font-medium text-[#0f172a]">{entryPatientLabel(e)}</p>
                               <p className="text-xs text-[#64748b]">
-                                {entryInvoiceLabel(e)} · {METHOD_LABEL[e.method]}
+                                {entryInvoiceLabel(e)} · {t(METHOD_LABEL[e.method])}
                               </p>
                             </div>
                             <div
@@ -1003,7 +1003,7 @@ export const CashDeskPage: React.FC = () => {
                   <div className="sticky top-0 z-10 border-b border-[#eef2f7] bg-[#fafbfc]/95 px-5 py-3 backdrop-blur-sm">
                     <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">
                       <PanelRight className="h-4 w-4" aria-hidden />
-                      Детали операции
+                      {t("billing.operationDetails")}
                     </p>
                   </div>
 
@@ -1013,50 +1013,50 @@ export const CashDeskPage: React.FC = () => {
                         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-[0_4px_14px_rgba(15,23,42,0.08)] ring-1 ring-[#e2e8f0]">
                           <Inbox className="h-7 w-7 text-[#94a3b8]" aria-hidden />
                         </div>
-                        <p className="text-sm font-medium text-[#334155]">Выберите операцию</p>
+                        <p className="text-sm font-medium text-[#334155]">{t("billing.selectOperation")}</p>
                         <p className="max-w-[240px] text-xs leading-relaxed text-[#64748b]">
-                          Кликните по строке слева, чтобы увидеть пациента, счёт и действия.
+                          {t("billing.clickRowToSeeDetails")}
                         </p>
                       </div>
                     ) : selectedInvoiceLoading && selectedEntry.invoiceId ? (
                       <div className="flex flex-1 flex-col items-center justify-center gap-3 py-20">
                         <Loader2 className="h-8 w-8 animate-spin text-[#22c55e]" aria-hidden />
-                        <p className="text-xs text-[#64748b]">Загрузка счёта…</p>
+                        <p className="text-xs text-[#64748b]">{t("billing.loadingInvoice")}</p>
                       </div>
                     ) : (
                       <>
                         <dl className="space-y-3 text-sm">
                           <div className="flex justify-between gap-4">
-                            <dt className="text-[#64748b]">Пациент</dt>
+                            <dt className="text-[#64748b]">{t("billing.patient")}</dt>
                             <dd className="max-w-[60%] text-right font-medium text-[#0f172a]">
                               {entryPatientLabel(selectedEntry)}
                             </dd>
                           </div>
                           <div className="flex justify-between gap-4">
-                            <dt className="text-[#64748b]">Счёт</dt>
+                            <dt className="text-[#64748b]">{t("billing.invoice")}</dt>
                             <dd className="font-mono text-[#0f172a]">{entryInvoiceLabel(selectedEntry)}</dd>
                           </div>
                           <div className="flex justify-between gap-4">
-                            <dt className="text-[#64748b]">Дата</dt>
+                            <dt className="text-[#64748b]">{t("billing.date")}</dt>
                             <dd className="tabular-nums text-[#334155]">{formatDateTimeRu(selectedEntry.createdAt)}</dd>
                           </div>
                           <div className="flex justify-between gap-4">
-                            <dt className="text-[#64748b]">Метод</dt>
+                            <dt className="text-[#64748b]">{t("billing.method")}</dt>
                             <dd>
                               <span className="inline-flex rounded-full border border-[#e2e8f0] bg-white px-2.5 py-0.5 text-xs font-medium text-[#334155] shadow-sm">
-                                {METHOD_LABEL[selectedEntry.method]}
+                                {t(METHOD_LABEL[selectedEntry.method])}
                               </span>
                             </dd>
                           </div>
                           <div className="flex justify-between gap-4">
-                            <dt className="text-[#64748b]">Тип</dt>
-                            <dd className="font-medium text-[#334155]">{ENTRY_TYPE_LABEL[selectedEntry.type]}</dd>
+                            <dt className="text-[#64748b]">{t("billing.type")}</dt>
+                            <dd className="font-medium text-[#334155]">{t(ENTRY_TYPE_LABEL[selectedEntry.type])}</dd>
                           </div>
                         </dl>
 
                         {selectedInvoiceDetail && selectedInvoiceDetail.items.length > 0 ? (
                           <div className="mt-6">
-                            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">Услуги</p>
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">{t("billing.services")}</p>
                             <ul className="mt-2 space-y-2 rounded-xl border border-[#e2e8f0] bg-white p-3 shadow-sm">
                               {selectedInvoiceDetail.items.map((row) => (
                                 <li
@@ -1075,7 +1075,7 @@ export const CashDeskPage: React.FC = () => {
 
                         <div className="mt-6 rounded-2xl border border-emerald-200/80 bg-gradient-to-b from-emerald-50/90 to-white px-4 py-4 shadow-[0_8px_30px_-12px_rgba(22,163,74,0.35)]">
                           <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-800/80">
-                            Сумма операции
+                            {t("billing.operationAmount")}
                           </p>
                           <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-emerald-600">
                             {signedAmount(selectedEntry) < 0 ? "−" : ""}
@@ -1083,7 +1083,7 @@ export const CashDeskPage: React.FC = () => {
                           </p>
                           {selectedInvoiceDetail ? (
                             <p className="mt-2 text-xs text-[#64748b]">
-                              По счёту: {formatSum(selectedInvoiceDetail.total)} · оплачено{" "}
+                              {t("billing.byInvoice")}: {formatSum(selectedInvoiceDetail.total)} · {t("billing.paid")}{" "}
                               {formatSum(selectedInvoiceDetail.paidAmount)}
                             </p>
                           ) : null}
@@ -1105,7 +1105,7 @@ export const CashDeskPage: React.FC = () => {
                                 disabled={!canOperate || anyBusy || !shiftOpen}
                                 onClick={() => inv && openPayModal(inv)}
                               >
-                                Оплатить
+                                {t("billing.pay")}
                               </button>
                             ) : null;
                           })()}
@@ -1116,7 +1116,7 @@ export const CashDeskPage: React.FC = () => {
                             onClick={() => void printFromEntry(selectedEntry)}
                           >
                             <Printer className="h-4 w-4" />
-                            Печать
+                            {t("billing.print")}
                           </button>
                           {canOperate &&
                           canRefund &&
@@ -1135,7 +1135,7 @@ export const CashDeskPage: React.FC = () => {
                               }}
                             >
                               <RotateCcw className="h-4 w-4" />
-                              Возврат
+                              {t("billing.returnPayment")}
                             </button>
                           ) : null}
                         </div>
@@ -1149,9 +1149,9 @@ export const CashDeskPage: React.FC = () => {
 
           {/* Недавние смены */}
           <SectionCard className="p-4">
-            <h2 className="text-sm font-semibold text-[#0f172a]">Недавние смены</h2>
+            <h2 className="text-sm font-semibold text-[#0f172a]">{t("billing.recentShifts")}</h2>
             {shiftHistory.length === 0 ? (
-              <p className="mt-3 text-sm text-[#64748b]">Нет предыдущих смен</p>
+              <p className="mt-3 text-sm text-[#64748b]">{t("billing.noPreviousShifts")}</p>
             ) : (
               <div className="mt-3 space-y-2.5">
                 {shiftHistory.slice(0, 5).map((s) => (
@@ -1170,24 +1170,24 @@ export const CashDeskPage: React.FC = () => {
                   >
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="min-w-[170px] flex-1">
-                        <p className="font-semibold text-[#0f172a]">Смена #{s.id}</p>
+                        <p className="font-semibold text-[#0f172a]">{t("billing.shift")} #{s.id}</p>
                         <p className="mt-0.5 text-[13px] text-[#64748b]">
-                          Открыта: {formatDateTimeRu(s.openedAt)}
+                          {t("billing.opened")}: {formatDateTimeRu(s.openedAt)}
                         </p>
                       </div>
 
                       <div className="min-w-[170px] flex-1">
                         <p className="text-[13px] text-[#64748b]">
-                          Закрыта: {s.closedAt ? formatDateTimeRu(s.closedAt) : "Не закрыта"}
+                          {t("billing.closed")}: {s.closedAt ? formatDateTimeRu(s.closedAt) : t("billing.notClosed")}
                         </p>
                       </div>
 
                       <div className="min-w-[180px] flex-1 text-[13px]">
                         <p className="text-[#64748b]">
-                          Старт: <span className="font-medium text-[#334155]">{formatSum(s.openingBalance)}</span>
+                          {t("billing.start")}: <span className="font-medium text-[#334155]">{formatSum(s.openingBalance)}</span>
                         </p>
                         <p className="mt-0.5 text-[#64748b]">
-                          Итог:{" "}
+                          {t("billing.total")}:{" "}
                           <span className="font-medium text-[#334155]">
                             {s.closingBalance != null ? formatSum(s.closingBalance) : "—"}
                           </span>
@@ -1202,7 +1202,7 @@ export const CashDeskPage: React.FC = () => {
                               : "bg-[#dcfce7] text-[#166534]"
                           }`}
                         >
-                          {s.closedAt ? "Закрыта" : "Открыта"}
+                          {s.closedAt ? t("billing.shiftClosedStatus") : t("billing.shiftOpenStatus")}
                         </span>
                       </div>
                     </div>
@@ -1220,21 +1220,21 @@ export const CashDeskPage: React.FC = () => {
         onClose={() => {
           if (!openShiftSubmitting) setModalOpenShift(false);
         }}
-        title="Открыть смену"
-        subtitle="Укажите остаток наличных в кассе на начало."
+        title={t("billing.openShift")}
+        subtitle={t("billing.specifyOpeningBalance")}
         maxWidthClassName="max-w-md"
         footer={
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setModalOpenShift(false)} disabled={openShiftSubmitting}>
-              Отмена
+              {t("billing.cancel")}
             </Button>
             <Button type="button" onClick={() => void submitOpenShift()} disabled={openShiftSubmitting}>
-              {openShiftSubmitting ? "Открытие…" : "Открыть смену"}
+              {openShiftSubmitting ? t("billing.opening") : t("billing.openShift")}
             </Button>
           </div>
         }
       >
-        <FormField label="Стартовый остаток (сум)">
+        <FormField label={t("billing.startingBalance")}>
           <MoneyInput
             mode="decimal"
             min={0}
@@ -1251,16 +1251,16 @@ export const CashDeskPage: React.FC = () => {
         onClose={() => {
           if (!closeShiftSubmitting) setModalCloseShift(false);
         }}
-        title="Закрыть смену"
-        subtitle="Проверьте итоги. Остаток считается по движениям за смену."
+        title={t("billing.closeShift")}
+        subtitle={t("billing.checkTotalsBalanceCalculated")}
         maxWidthClassName="max-w-lg"
         footer={
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setModalCloseShift(false)} disabled={closeShiftSubmitting}>
-              Отмена
+              {t("billing.cancel")}
             </Button>
             <Button type="button" variant="secondary" className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100" onClick={() => void submitCloseShift()} disabled={closeShiftSubmitting}>
-              {closeShiftSubmitting ? "Закрытие…" : "Закрыть смену"}
+              {closeShiftSubmitting ? t("billing.closing") : t("billing.closeShift")}
             </Button>
           </div>
         }
@@ -1269,23 +1269,23 @@ export const CashDeskPage: React.FC = () => {
           <>
             <dl className="space-y-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-4 text-sm">
               <div className="flex justify-between">
-                <dt className="text-[#64748b]">Старт</dt>
+                <dt className="text-[#64748b]">{t("billing.start")}</dt>
                 <dd>{formatSum(cashSummary.openingBalance)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-[#64748b]">Наличные</dt>
+                <dt className="text-[#64748b]">{t("billing.cash")}</dt>
                 <dd>{formatSum(cashSummary.totalCash)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-[#64748b]">Терминал</dt>
+                <dt className="text-[#64748b]">{t("billing.terminal")}</dt>
                 <dd>{formatSum(cashSummary.totalCard)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-[#64748b]">Операций</dt>
+                <dt className="text-[#64748b]">{t("billing.operations")}</dt>
                 <dd>{cashSummary.operationsCount}</dd>
               </div>
               <div className="flex justify-between border-t border-[#e2e8f0] pt-2 font-medium">
-                <dt className="text-[#0f172a]">Прогноз остатка</dt>
+                <dt className="text-[#0f172a]">{t("billing.estimatedBalance")}</dt>
                 <dd className="text-[#16a34a]">{formatSum(cashSummary.closingBalancePreview)}</dd>
               </div>
             </dl>
@@ -1301,7 +1301,7 @@ export const CashDeskPage: React.FC = () => {
             setPayModalError(null);
           }
         }}
-        title="Оплата счёта"
+        title={t("billing.paymentInvoice")}
         subtitle={
           payModalInvoice
             ? `${patientLabel(payModalInvoice.patientId)} · ${payModalInvoice.number}`
@@ -1319,14 +1319,14 @@ export const CashDeskPage: React.FC = () => {
               }}
               disabled={paySubmitting}
             >
-              Отмена
+              {t("billing.cancel")}
             </Button>
             <Button
               type="button"
               onClick={() => void submitPayment()}
               disabled={paySubmitting || !shiftOpen || maxPayModal <= 0}
             >
-              {paySubmitting ? "Приём…" : "Принять оплату"}
+              {paySubmitting ? t("billing.accepting") : t("billing.acceptPayment")}
             </Button>
           </div>
         }
@@ -1334,7 +1334,7 @@ export const CashDeskPage: React.FC = () => {
         {payModalInvoice ? (
           <>
             <div className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-4 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#64748b]">Сумма к оплате</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-[#64748b]">{t("billing.amountDue")}</p>
               <p className="mt-1 text-2xl font-semibold tabular-nums text-[#16a34a]">
                 {formatSum(maxPayModal)}
               </p>
@@ -1342,11 +1342,11 @@ export const CashDeskPage: React.FC = () => {
 
             {!shiftOpen ? (
               <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                Откройте кассовую смену, чтобы принять оплату.
+                {t("billing.openShiftToAcceptPayment")}
               </p>
             ) : null}
 
-            <FormField label="Сумма">
+            <FormField label={t("billing.amount")}>
               <MoneyInput
                 mode="decimal"
                 min={0}
@@ -1367,7 +1367,7 @@ export const CashDeskPage: React.FC = () => {
                       setPayAmount(maxPayModal);
                     }}
                   >
-                    Оплатить полностью
+                    {t("billing.payFully")}
                   </button>
                   <button
                     type="button"
@@ -1385,15 +1385,15 @@ export const CashDeskPage: React.FC = () => {
               ) : null}
             </FormField>
 
-            <FormField label="Способ оплаты">
+            <FormField label={t("billing.paymentMethod")}>
               <select
                 className="mt-1.5 w-full rounded-xl border border-[#e2e8f0] bg-white px-3 py-2.5 text-[#111827] focus:border-[#16a34a] focus:outline-none focus:ring-1 focus:ring-[#16a34a]"
                 value={payMethod}
                 onChange={(e) => setPayMethod(e.target.value as PaymentMethod)}
                 disabled={paySubmitting}
               >
-                <option value="cash">{METHOD_LABEL.cash}</option>
-                <option value="card">{METHOD_LABEL.card}</option>
+                <option value="cash">{t(METHOD_LABEL.cash)}</option>
+                <option value="card">{t(METHOD_LABEL.card)}</option>
               </select>
             </FormField>
 

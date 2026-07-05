@@ -1,36 +1,38 @@
-const FALLBACK = [
-  "Открыть отчёты",
-  "Открыть счета",
-  "Показать записи",
-  "Открыть пациентов",
+// Translation keys for fallback suggestions
+const FALLBACK_KEYS = [
+  "aiSuggestions.fallbackReports",
+  "aiSuggestions.fallbackInvoices",
+  "aiSuggestions.fallbackAppointments",
+  "aiSuggestions.fallbackPatients",
 ];
 
-const CONTEXTUAL: { test: RegExp; labels: string[] }[] = [
+// Translation keys for contextual suggestions (organized by pattern)
+const CONTEXTUAL_KEYS: { test: RegExp; keys: string[] }[] = [
   {
     test: /долг|неоплач|счёт|счет|дебитор|invoice|оплат/i,
-    labels: ["Открыть счета", "Принять оплату в кассе", "Показать пациентов с долгами"],
+    keys: ["aiSuggestions.contextInvoices", "aiSuggestions.contextPayment", "aiSuggestions.contextDebtPatients"],
   },
   {
     test: /загрузк|низк|слот|окн|расписан|запис(и|ей|ь)/i,
-    labels: ["Открыть записи", "Показать врачей", "Добавить пациента"],
+    keys: ["aiSuggestions.contextAppointments", "aiSuggestions.contextDoctors", "aiSuggestions.contextAddPatient"],
   },
   {
     test: /врач|топ|перегруж|нагрузк/i,
-    labels: ["Открыть врачей", "Показать записи", "Открыть отчёты"],
+    keys: ["aiActions.openDoctors", "aiSuggestions.contextAppointments", "aiSuggestions.contextReports"],
   },
   {
     test: /выручк|доход|оборот|аналитик|отчёт|отчет/i,
-    labels: ["Открыть отчёты", "Выручка за неделю", "Кто топ врач?"],
+    keys: ["aiSuggestions.contextReports", "aiRoleChips.exec.chip1", "aiRoleChips.exec.chip2"],
   },
   {
     test: /пациент|карт/i,
-    labels: ["Открыть пациентов", "Записи на сегодня", "Добавить пациента"],
+    keys: ["aiActions.openPatients", "aiRoleChips.front.chip1", "aiSuggestions.contextAddPatient"],
   },
-  { test: /касс|смен/i, labels: ["Открыть кассу", "Открыть счета", "Последние платежи"] },
-  { test: /no-?show|отмен|пропуск/i, labels: ["Открыть записи", "Что такое no-show?", "Записи на сегодня"] },
+  { test: /касс|смен/i, keys: ["aiActions.openCashDesk", "aiSuggestions.contextInvoices", "aiRoleChips.finance.chip3"] },
+  { test: /no-?show|отмен|пропуск/i, keys: ["aiSuggestions.contextNoShow", "aiRoleChips.clinical.chip3", "aiRoleChips.front.chip1"] },
   {
     test: /риск|теря|потер/i,
-    labels: ["Открыть отчёты", "Где мы теряем деньги", "Открыть записи"],
+    keys: ["aiSuggestions.contextReports", "aiRoleChips.exec.chip4", "aiSuggestions.contextAppointments"],
   },
 ];
 
@@ -38,6 +40,7 @@ const MAX = 4;
 
 /**
  * До 4 релевантных follow-up: API, затем по тексту ответа, затем запасной пул.
+ * Translation happens at component render time via t().
  */
 export function mergeSmartSuggestions(apiSuggestions: string[] | undefined, answerText: string): string[] {
   const fromApi = (apiSuggestions ?? []).map((s) => s.trim()).filter(Boolean);
@@ -52,23 +55,23 @@ export function mergeSmartSuggestions(apiSuggestions: string[] | undefined, answ
   }
 
   const lower = answerText.toLowerCase();
-  for (const { test, labels } of CONTEXTUAL) {
+  for (const { test, keys } of CONTEXTUAL_KEYS) {
     if (out.length >= MAX) break;
     if (!test.test(lower)) continue;
-    for (const label of labels) {
+    for (const key of keys) {
       if (out.length >= MAX) break;
-      if (!seen.has(label)) {
-        seen.add(label);
-        out.push(label);
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(key);
       }
     }
   }
 
-  for (const f of FALLBACK) {
+  for (const key of FALLBACK_KEYS) {
     if (out.length >= MAX) break;
-    if (!seen.has(f)) {
-      seen.add(f);
-      out.push(f);
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(key);
     }
   }
 

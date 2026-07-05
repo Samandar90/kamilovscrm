@@ -7,8 +7,8 @@ export const LanguageSwitcher: React.FC = () => {
   const [open, setOpen] = React.useState(false);
 
   const languages = [
-    { code: "ru", name: "Русский" },
-    { code: "uz", name: "O'zbek" },
+    { code: "ru", name: t("components.russian") },
+    { code: "uz", name: t("components.uzbek") },
   ];
 
   const current = languages.find((l) => l.code === i18n.language) || languages[0];
@@ -18,7 +18,7 @@ export const LanguageSwitcher: React.FC = () => {
       <button
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 max-md:h-8 max-md:py-0 md:px-3"
-        title="Выбрать язык / Tilni tanlash"
+        title={i18n.t("components.selectLanguage")}
       >
         <Globe size={14} />
         <span className="hidden sm:inline">{current.name}</span>

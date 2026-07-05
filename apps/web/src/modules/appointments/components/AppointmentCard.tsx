@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Phone } from "lucide-react";
 import type { Appointment, InvoiceSummary, Service } from "../api/appointmentsFlowApi";
 import { coercePriceToNumber } from "../../../shared/lib/money";
@@ -14,15 +15,6 @@ type WorkflowStage =
   | "completed"
   | "invoiced"
   | "paid";
-
-const workflowLabelMap: Record<WorkflowStage, string> = {
-  scheduled: "Запланирован",
-  arrived: "Пришел",
-  in_consultation: "На приеме",
-  completed: "Завершен прием",
-  invoiced: "Счет создан",
-  paid: "Оплачено",
-};
 
 function getWorkflowStage(appointment: Appointment, invoice: InvoiceSummary | null): WorkflowStage {
   if (appointment.status === "scheduled" || appointment.status === "confirmed") return "scheduled";
@@ -89,6 +81,17 @@ export const AppointmentCard: React.FC<Props> = ({
   onOpenDoctorWorkspace,
   onCardClick,
 }) => {
+  const { t } = useTranslation();
+
+  const workflowLabelMap: Record<WorkflowStage, string> = {
+    scheduled: t("appointments.workflowLabels.scheduled"),
+    arrived: t("appointments.workflowLabels.arrived"),
+    in_consultation: t("appointments.workflowLabels.in_consultation"),
+    completed: t("appointments.workflowLabels.completed"),
+    invoiced: t("appointments.workflowLabels.invoiced"),
+    paid: t("appointments.workflowLabels.paid"),
+  };
+
   const statusTone =
     appointment.status === "completed"
       ? "success"
@@ -101,12 +104,12 @@ export const AppointmentCard: React.FC<Props> = ({
             : "neutral";
   const statusLabel =
     appointment.status === "in_consultation"
-      ? "На приёме"
+      ? t("appointment.status.in_consultation")
       : appointment.status === "completed"
-        ? "Завершено"
+        ? t("appointment.status.completed")
         : appointment.status === "cancelled"
-          ? "Отменено"
-          : "Ожидание";
+          ? t("appointment.status.cancelled")
+          : t("appointment.status.scheduled");
   const isCancelled = appointment.status === "cancelled";
   const isCompleted = appointment.status === "completed";
   const actionsDisabled = isSubmitting || isCancelled;
@@ -183,8 +186,8 @@ export const AppointmentCard: React.FC<Props> = ({
               {patientPhone?.trim() && onCopyPatientPhone ? (
                 <button
                   type="button"
-                  title="Скопировать телефон"
-                  aria-label="Скопировать телефон"
+                  title={t("appointments.copyPhone")}
+                  aria-label={t("appointments.copyPhone")}
                   disabled={isSubmitting}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -197,10 +200,10 @@ export const AppointmentCard: React.FC<Props> = ({
               ) : null}
             </div>
             <p className="text-[#334155]">
-              <span className="text-[#64748b]">Врач:</span> {doctorName}
+              <span className="text-[#64748b]">{t("appointments.doctorPrefix")}</span> {doctorName}
             </p>
             <div className="text-[#334155]">
-              <span className="text-[#64748b]">Услуги:</span>
+              <span className="text-[#64748b]">{t("appointments.servicesPrefix")}</span>
               {allServices.length > 0 ? (
                 <div className="mt-1 space-y-0.5">
                   {allServices.map((item) => (
@@ -216,21 +219,21 @@ export const AppointmentCard: React.FC<Props> = ({
             </div>
             {isPriceManuallyChanged ? (
               <p className="text-xs text-amber-700">
-                <span className="rounded-md bg-amber-100 px-1.5 py-0.5">изменено вручную</span>
+                <span className="rounded-md bg-amber-100 px-1.5 py-0.5">{t("appointments.priceChanged")}</span>
               </p>
             ) : null}
             {showFinancialDetails ? (
               invoice ? (
                 <p className="text-xs text-[#64748b]">
-                  Счёт создан{invoice.number ? ` · ${invoice.number}` : ""}
+                  {t("appointments.invoiceCreated")}{invoice.number ? t("appointments.invoiceNumber", { number: invoice.number }) : ""}
                 </p>
               ) : (
-                <p className="text-xs text-[#94a3b8]">Счёт ещё не выставлен</p>
+                <p className="text-xs text-[#94a3b8]">{t("appointments.invoiceNotCreated")}</p>
               )
             ) : null}
             {isCancelled && appointment.cancelReason ? (
               <p className="text-xs text-rose-600">
-                <span className="font-medium">Причина отмены:</span> {appointment.cancelReason}
+                <span className="font-medium">{t("appointments.cancelReason")}</span> {appointment.cancelReason}
               </p>
             ) : null}
           </div>
@@ -261,7 +264,7 @@ export const AppointmentCard: React.FC<Props> = ({
                   disabled={isSubmitting}
                   onClick={onCancelAppointment}
                 >
-                  Отменить запись
+                  {t("appointments.cancelAppointment")}
                 </button>
               ) : null}
               {canManageAppointmentFlow && canEditAppointmentPrice && !isCompleted && !isCancelled ? (
@@ -271,7 +274,7 @@ export const AppointmentCard: React.FC<Props> = ({
                   disabled={isSubmitting}
                   onClick={onEditPrice}
                 >
-                  Изменить цену
+                  {t("appointments.editPrice")}
                 </button>
               ) : null}
               {canHardDeleteAppointment ? (
@@ -281,7 +284,7 @@ export const AppointmentCard: React.FC<Props> = ({
                   disabled={isSubmitting}
                   onClick={onDeleteAppointment}
                 >
-                  Удалить
+                  {t("appointments.deleteAppointmentBtn")}
                 </button>
               ) : null}
             </ActionButtons>

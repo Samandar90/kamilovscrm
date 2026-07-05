@@ -146,7 +146,7 @@ export const LoginPage: React.FC = () => {
                 onChange={(e) => setRememberMe(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 text-[#2563EB] focus:ring-[#2563EB]/20"
               />
-              {t("auth.login")}
+              {t("auth.rememberMe")}
             </label>
 
             {displayError ? (
@@ -182,7 +182,7 @@ export const LoginPage: React.FC = () => {
 
               {isAllowed ? (
                 <p className="text-center text-sm text-slate-500">
-                  No account?{" "}
+                  {t("auth.noAccount")}{" "}
                   <Link
                     to="/register"
                     className="font-medium text-[#2563EB] transition-colors hover:text-[#1D4ED8]"

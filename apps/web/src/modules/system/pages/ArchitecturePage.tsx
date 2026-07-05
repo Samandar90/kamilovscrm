@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -14,6 +15,7 @@ import {
 import { SystemFlowDiagram } from "../components/SystemFlowDiagram";
 
 export const ArchitecturePage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const zones: Array<{
@@ -24,22 +26,22 @@ export const ArchitecturePage: React.FC = () => {
     tone: "blue" | "green";
   }> = [
     {
-      title: "Front Office",
-      description: "Регистратура, пациенты, запись и расписание",
+      title: t("architecture.zones.frontOffice.title"),
+      description: t("architecture.zones.frontOffice.description"),
       icon: Users,
       to: "/patients",
       tone: "blue",
     },
     {
-      title: "Clinical Core",
-      description: "Приемы, осмотры, клинические данные",
+      title: t("architecture.zones.clinicalCore.title"),
+      description: t("architecture.zones.clinicalCore.description"),
       icon: Stethoscope,
       to: "/appointments",
       tone: "blue",
     },
     {
-      title: "Financial Core",
-      description: "Счета, касса, оплаты и отчеты",
+      title: t("architecture.zones.financialCore.title"),
+      description: t("architecture.zones.financialCore.description"),
       icon: CreditCard,
       to: "/billing/invoices",
       tone: "green",
@@ -47,32 +49,32 @@ export const ArchitecturePage: React.FC = () => {
   ];
 
   const opsTimeline = [
-    "Регистрация пациента",
-    "Создание записи",
-    "Клинический прием",
-    "Формирование счета",
-    "Оплата в кассе",
-    "Аналитика в отчетах",
+    t("architecture.timeline.patientRegistration"),
+    t("architecture.timeline.appointmentCreation"),
+    t("architecture.timeline.clinicalVisit"),
+    t("architecture.timeline.invoiceCreation"),
+    t("architecture.timeline.cashPayment"),
+    t("architecture.timeline.analyticsReports"),
   ];
 
   const moneyFlow = [
-    { label: "Услуга добавлена в счет", icon: FileText },
-    { label: "Оплата проведена в кассе", icon: CreditCard },
-    { label: "Выручка попадает в отчеты", icon: BarChart3 },
+    { label: t("architecture.moneyFlow.serviceAdded"), icon: FileText },
+    { label: t("architecture.moneyFlow.paymentProcessed"), icon: CreditCard },
+    { label: t("architecture.moneyFlow.revenueReported"), icon: BarChart3 },
   ];
 
   return (
     <div className="space-y-6 bg-[#f8fafc] p-6">
       <header>
-        <h2 className="text-2xl font-semibold text-[#0f172a]">Архитектура системы</h2>
+        <h2 className="text-2xl font-semibold text-[#0f172a]">{t("architecture.title")}</h2>
         <p className="text-sm text-[#64748b]">
-          Как работает система CRM (end-to-end)
+          {t("architecture.subtitle")}
         </p>
       </header>
 
       <section className="space-y-2">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-[#64748b]">
-          Доменные зоны
+          {t("architecture.zones.title")}
         </h3>
         <div className="grid gap-3 lg:grid-cols-3">
           {zones.map((zone, index) => {
@@ -111,7 +113,7 @@ export const ArchitecturePage: React.FC = () => {
 
       <section className="space-y-2">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-[#64748b]">
-          Визуальный Flow
+          {t("architecture.visualFlow.title")}
         </h3>
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <SystemFlowDiagram onNodeClick={(to) => navigate(to)} />
@@ -120,7 +122,7 @@ export const ArchitecturePage: React.FC = () => {
 
       <section className="space-y-2">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-[#64748b]">
-          Операционный поток
+          {t("architecture.operationalFlow.title")}
         </h3>
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="relative ml-2 space-y-3">
@@ -145,7 +147,7 @@ export const ArchitecturePage: React.FC = () => {
 
       <section className="space-y-2">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-[#64748b]">
-          Финансовый поток
+          {t("architecture.financialFlow.title")}
         </h3>
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -155,7 +157,7 @@ export const ArchitecturePage: React.FC = () => {
         >
           <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
             <Activity className="h-3.5 w-3.5" />
-            Financial Core Pipeline
+            {t("architecture.financialFlow.pipelineLabel")}
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             {moneyFlow.map((step, idx) => {

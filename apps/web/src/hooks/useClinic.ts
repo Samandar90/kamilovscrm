@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { requestJson } from "../api/http";
 import { BRANDING } from "../shared/config/branding";
 
@@ -42,6 +43,7 @@ export const useClinic = (): {
   isLoading: boolean;
   error: string | null;
 } => {
+  const { t } = useTranslation();
   const [clinic, setClinic] = React.useState<ClinicBranding>(DEFAULT_CLINIC);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -76,7 +78,7 @@ export const useClinic = (): {
       } catch (e) {
         if (!mounted) return;
         setClinic(DEFAULT_CLINIC);
-        setError(e instanceof Error ? e.message : "Не удалось загрузить клинику");
+        setError(e instanceof Error ? e.message : t("clinic.loadError"));
       } finally {
         if (mounted) {
           setIsLoading(false);

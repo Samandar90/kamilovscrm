@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 export type ChatUiMessage = {
   role: "user" | "ai";
@@ -13,28 +14,31 @@ type ChatMessageListProps = {
   messagesEndRef?: React.RefObject<HTMLDivElement | null>;
 };
 
-const EMPTY_HINTS = [
-  "Какая выручка сегодня?",
-  "Сколько пациентов?",
-  "Какая текущая нагрузка?",
-];
-
 export const ChatMessageList: React.FC<ChatMessageListProps> = ({
   messages,
   loadingHistory = false,
   sending = false,
   onHintClick,
   messagesEndRef,
-}) => (
+}) => {
+  const { t } = useTranslation("ai");
+
+  const EMPTY_HINTS = [
+    t("hint1Text"),
+    t("hint2Text"),
+    t("hint3Text"),
+  ];
+
+  return (
   <div className="flex h-full min-h-0 flex-1 flex-col p-3 pb-6 lg:pb-3">
     <div className="flex min-h-full flex-col gap-[10px]">
       {loadingHistory ? (
-        <p className="py-10 text-center text-sm text-slate-500">Загрузка чата…</p>
+        <p className="py-10 text-center text-sm text-slate-500">{t("aiAssistant.loadingChat", { ns: "" })}</p>
       ) : null}
 
       {!loadingHistory && messages.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center shadow-sm">
-          <p className="text-base font-semibold text-slate-900">Ассистент готов помочь</p>
+          <p className="text-base font-semibold text-slate-900">{t("aiAssistant.readyToHelp", { ns: "" })}</p>
           <div className="mt-4 flex w-full max-w-sm flex-wrap items-center justify-center gap-2">
             {EMPTY_HINTS.map((hint) => (
               <button
@@ -71,11 +75,12 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
       {sending ? (
         <div className="flex justify-start">
           <div className="max-w-[75%] rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-500 shadow-sm">
-            AI печатает...
+            {t("typing")}
           </div>
         </div>
       ) : null}
       <div ref={messagesEndRef} className="h-[140px]" />
     </div>
   </div>
-);
+  );
+};

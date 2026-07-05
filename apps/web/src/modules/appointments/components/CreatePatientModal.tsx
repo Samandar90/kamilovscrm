@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Modal } from "../../../components/ui/Modal";
 import { PhoneInput } from "../../../shared/ui/PhoneInput";
 import { phoneToApiValue } from "../../../utils/phoneInput";
@@ -24,6 +25,7 @@ export const CreatePatientModal: React.FC<Props> = ({
   onCreated,
   onError,
 }) => {
+  const { t } = useTranslation("appointments");
   const [fullName, setFullName] = React.useState(initialName);
   const [phone, setPhone] = React.useState("");
   const [birthDate, setBirthDate] = React.useState("");
@@ -42,13 +44,13 @@ export const CreatePatientModal: React.FC<Props> = ({
     if (!token || submitting || saving) return;
     const name = fullName.trim();
     if (name.length < 5) {
-      onError("Имя пациента должно быть не короче 5 символов");
+      onError(t("patientNameTooShort"));
       return;
     }
     const apiPhone = phoneToApiValue(phone);
     const digits = apiPhone.replace(/\D/g, "");
     if (digits.length < 10 || digits.length > 15) {
-      onError("Укажите корректный телефон");
+      onError(t("invalidPhone"));
       return;
     }
     const payload: PatientCreateInput = {
@@ -63,7 +65,7 @@ export const CreatePatientModal: React.FC<Props> = ({
       const created = await appointmentsFlowApi.createPatient(token, payload);
       onCreated(created);
     } catch (error) {
-      onError(error instanceof Error ? error.message : "Не удалось создать пациента");
+      onError(error instanceof Error ? error.message : t("failedToCreatePatient"));
     } finally {
       setSaving(false);
     }
@@ -75,10 +77,10 @@ export const CreatePatientModal: React.FC<Props> = ({
       onClose={onClose}
       className="w-[min(480px,calc(100vw-2rem))] rounded-[20px] border border-[#e5e7eb] bg-white p-6 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.2)]"
     >
-      <h3 className="text-lg font-semibold text-[#111827]">Создать пациента</h3>
+      <h3 className="text-lg font-semibold text-[#111827]">{t("createPatientHeader")}</h3>
       <div className="mt-4 space-y-3">
         <label className="block text-sm text-[#374151]">
-          ФИО
+          {t("fullName")}
           <input
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
@@ -86,7 +88,7 @@ export const CreatePatientModal: React.FC<Props> = ({
           />
         </label>
         <label className="block text-sm text-[#374151]">
-          Телефон
+          {t("phone")}
           <PhoneInput
             value={phone}
             onChange={setPhone}
@@ -95,7 +97,7 @@ export const CreatePatientModal: React.FC<Props> = ({
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block text-sm text-[#374151]">
-            Дата рождения
+            {t("birthDate")}
             <input
               type="date"
               value={birthDate}
@@ -104,14 +106,14 @@ export const CreatePatientModal: React.FC<Props> = ({
             />
           </label>
           <label className="block text-sm text-[#374151]">
-            Пол
+            {t("gender")}
             <select
               value={gender}
               onChange={(e) => setGender(e.target.value as "male" | "female")}
               className="mt-1 h-11 w-full rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] px-3 text-sm text-[#111827] outline-none transition focus:border-[#22c55e] focus:bg-white focus:ring-1 focus:ring-[#22c55e]/25"
             >
-              <option value="male">Мужской</option>
-              <option value="female">Женский</option>
+              <option value="male">{t("male")}</option>
+              <option value="female">{t("female")}</option>
             </select>
           </label>
         </div>
@@ -123,7 +125,7 @@ export const CreatePatientModal: React.FC<Props> = ({
           disabled={submitting || saving}
           className="rounded-xl border border-[#e5e7eb] bg-white px-4 py-2 text-sm font-medium text-[#111827] transition hover:bg-[#f3f4f6] disabled:opacity-60"
         >
-          Отмена
+          {t("cancel", { defaultValue: "Отмена" })}
         </button>
         <button
           type="button"
@@ -131,7 +133,7 @@ export const CreatePatientModal: React.FC<Props> = ({
           disabled={submitting || saving}
           className="rounded-xl bg-[#22c55e] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#16a34a] disabled:opacity-60"
         >
-          {saving ? "Создаём..." : "Создать"}
+          {saving ? t("creating") : t("create")}
         </button>
       </div>
     </Modal>

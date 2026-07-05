@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import type { Patient } from "../api/appointmentsFlowApi";
 import { quickModalComboboxInputClass } from "../utils/modalFieldClasses";
 import { usePatientSearch } from "../hooks/usePatientSearch";
@@ -26,6 +27,7 @@ export const PatientAutocomplete: React.FC<Props> = ({
   onCreatePatient,
   errorMessage,
 }) => {
+  const { t } = useTranslation("appointments");
   const [open, setOpen] = React.useState(false);
   const { suggestions, loading, error } = usePatientSearch(token, query);
 
@@ -42,7 +44,7 @@ export const PatientAutocomplete: React.FC<Props> = ({
               onQueryChange("");
               setOpen(true);
             }}
-            aria-label="Удалить выбранного пациента"
+            aria-label={t("removePatientAriaLabel")}
           >
             ✕
           </button>
@@ -64,14 +66,14 @@ export const PatientAutocomplete: React.FC<Props> = ({
           onSelectPatient(null);
           setOpen(true);
         }}
-        placeholder="Введите имя пациента..."
+        placeholder={t("enterPatientName")}
         className={`${quickModalComboboxInputClass} w-full`}
         disabled={disabled}
       />
 
       {open && query.trim() ? (
         <div className="absolute z-50 mt-2 max-h-60 w-full overflow-auto rounded-xl border border-[#e5e7eb] bg-white shadow-lg">
-          {loading ? <div className="px-4 py-2 text-sm text-slate-500">Поиск пациентов...</div> : null}
+          {loading ? <div className="px-4 py-2 text-sm text-slate-500">{t("searchingPatients")}</div> : null}
 
           {!loading
             ? suggestions.map((p) => (
@@ -87,7 +89,7 @@ export const PatientAutocomplete: React.FC<Props> = ({
                   }}
                 >
                   <div className="font-medium text-[#111827]">{p.fullName}</div>
-                  <div className="text-sm text-slate-500">{p.phone || "Телефон не указан"}</div>
+                  <div className="text-sm text-slate-500">{p.phone || t("noPhoneSpecified")}</div>
                 </button>
               ))
             : null}
@@ -102,7 +104,7 @@ export const PatientAutocomplete: React.FC<Props> = ({
                 setOpen(false);
               }}
             >
-              ➕ Создать "{query.trim()}"
+              ➕ {t("createPatientX", { name: query.trim() })}
             </button>
           ) : null}
         </div>

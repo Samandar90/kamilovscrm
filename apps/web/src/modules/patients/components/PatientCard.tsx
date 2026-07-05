@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { MoreVertical } from "lucide-react";
 
 export type PatientCardModel = {
@@ -38,6 +39,7 @@ export function PatientCard({
   archivePending,
   savePending,
 }: PatientCardProps) {
+  const { t } = useTranslation("patients");
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement>(null);
 
@@ -51,7 +53,7 @@ export function PatientCard({
   }, [menuOpen]);
 
   const menuDisabled = Boolean(savePending || archivePending);
-  const metaLine = birthLabel ? `Д.р. ${birthLabel}` : "Пациент";
+  const metaLine = birthLabel ? `Д.р. ${birthLabel}` : t("patient");
 
   return (
     <div
@@ -80,7 +82,7 @@ export function PatientCard({
               className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
               aria-expanded={menuOpen}
               aria-haspopup="true"
-              aria-label="Меню"
+              aria-label={t("menu")}
             >
               <MoreVertical className="h-5 w-5" strokeWidth={1.75} />
             </button>
@@ -100,7 +102,7 @@ export function PatientCard({
                       onEdit();
                     }}
                   >
-                    Изменить
+                    {t("edit")}
                   </button>
                 ) : null}
                 {canArchive && onArchive ? (
@@ -114,7 +116,7 @@ export function PatientCard({
                       onArchive(e);
                     }}
                   >
-                    Архивировать
+                    {t("archive")}
                   </button>
                 ) : null}
               </div>
@@ -131,7 +133,7 @@ export function PatientCard({
           }}
           className="inline-flex min-h-[38px] flex-1 items-center justify-center rounded-lg border border-slate-200/90 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
         >
-          Открыть
+          {t("open")}
         </button>
         {canBookAppointment ? (
           <Link
@@ -139,11 +141,11 @@ export function PatientCard({
             onClick={stop}
             className="inline-flex min-h-[38px] flex-1 items-center justify-center rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
           >
-            Запись
+            {t("bookAppointment")}
           </Link>
         ) : (
           <span className="inline-flex min-h-[38px] flex-1 items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50/80 px-2 text-center text-[11px] font-medium text-slate-400">
-            Нет записи
+            {t("noBooking")}
           </span>
         )}
       </div>

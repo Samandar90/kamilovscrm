@@ -1,43 +1,44 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Lightbulb } from "lucide-react";
 import type { AppointmentListSummary } from "../utils/appointmentSummary";
 import { SectionCard } from "../../../shared/ui";
 
 type Props = {
-  /** Метрики по текущему отфильтрованному списку (дата + поиск) */
   filterSummary: AppointmentListSummary;
   isLoading: boolean;
 };
-
-const hintRows = [
-  { label: "Сегодня", text: "текущие приёмы" },
-  { label: "Завтра", text: "план следующего дня" },
-  { label: "Неделя", text: "обзор нагрузки" },
-] as const;
 
 export const AppointmentActionPanel: React.FC<Props> = ({
   filterSummary,
   isLoading,
 }) => {
+  const { t } = useTranslation();
   const { total, awaitingReception, inConsultation, completed } = filterSummary;
+
+  const hintRows = [
+    { label: t("appointments.todayLabel"), text: t("appointments.hintToday") },
+    { label: t("appointments.tomorrowLabel"), text: t("appointments.hintTomorrow") },
+    { label: t("appointments.weekLabel"), text: t("appointments.hintWeek") },
+  ] as const;
 
   return (
     <aside className="w-full lg:sticky lg:top-4">
       <div className="space-y-3">
         <SectionCard className="p-4">
-          <h3 className="mb-3 text-sm font-medium text-[#111827]">Статистика дня</h3>
+          <h3 className="mb-3 text-sm font-medium text-[#111827]">{t("appointments.statisticsTitle")}</h3>
           <dl className="grid grid-cols-2 gap-2">
-            <Metric label="Всего" value={total} loading={isLoading} />
-            <Metric label="Ожидают" value={awaitingReception} loading={isLoading} />
-            <Metric label="На приёме" value={inConsultation} loading={isLoading} />
-            <Metric label="Завершено" value={completed} loading={isLoading} />
+            <Metric label={t("appointments.allAppointments")} value={total} loading={isLoading} />
+            <Metric label={t("appointments.awaitingReception")} value={awaitingReception} loading={isLoading} />
+            <Metric label={t("appointments.inConsultation")} value={inConsultation} loading={isLoading} />
+            <Metric label={t("appointments.statisticsCompleted")} value={completed} loading={isLoading} />
           </dl>
         </SectionCard>
 
         <SectionCard className="p-4">
           <div className="mb-3 flex items-center gap-2">
             <Lightbulb className="h-4 w-4 text-[#64748b]" />
-            <h3 className="text-sm font-medium text-[#111827]">Подсказки</h3>
+            <h3 className="text-sm font-medium text-[#111827]">{t("appointments.hintsTitle")}</h3>
           </div>
           <ul className="space-y-2 text-xs text-[#6b7280]">
             {hintRows.map((row) => (

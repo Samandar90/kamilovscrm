@@ -1,17 +1,7 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import type { AppointmentStatus } from "../api/appointmentsFlowApi";
 
-const labelRu: Record<AppointmentStatus, string> = {
-  scheduled: "Запланировано",
-  confirmed: "Подтверждено",
-  arrived: "Пришёл",
-  in_consultation: "На приёме",
-  completed: "Завершено",
-  cancelled: "Отменено",
-  no_show: "Неявка",
-};
-
-/** Нейтральные светлые бейджи; акцент только у завершено / отмена */
 const variantClass: Record<AppointmentStatus, string> = {
   scheduled: "border-[#e5e7eb] bg-[#f9fafb] text-[#111827]",
   confirmed: "border-[#e5e7eb] bg-[#f9fafb] text-[#111827]",
@@ -29,6 +19,18 @@ type AppointmentStatusBadgeProps = {
 export const AppointmentStatusBadge: React.FC<AppointmentStatusBadgeProps> = ({
   status,
 }) => {
+  const { t } = useTranslation("appointments");
+
+  const labelRu: Record<AppointmentStatus, string> = {
+    scheduled: t("scheduled"),
+    confirmed: t("confirmed"),
+    arrived: t("arrived"),
+    in_consultation: t("in_consultation"),
+    completed: t("completed"),
+    cancelled: t("cancelled"),
+    no_show: t("noshow"),
+  };
+
   return (
     <span
       className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium shadow-sm transition-transform duration-200 ${variantClass[status]}`}

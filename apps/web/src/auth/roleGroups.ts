@@ -10,12 +10,12 @@ export { USER_ROLES, hasPermission, rolesWithPermission };
 
 export const CLINIC_STAFF: UserRole[] = [...USER_ROLES];
 
-/** Пункт «Панель управления» — без медсестры и кассира (узкий рабочий стол / только финансы). */
+/** "Dashboard" menu item — excludes nurse and cashier (narrow workspace / finance-only). */
 export const DASHBOARD_NAV_ROLES: UserRole[] = CLINIC_STAFF.filter(
   (r) => r !== "nurse" && r !== "cashier"
 );
 
-/** Навигация и роуты биллинга: есть доступ к счетам, платежам или кассе */
+/** Billing navigation and routes: have access to invoices, payments, or cash */
 export const BILLING_ROLES = USER_ROLES.filter(
   (r) =>
     hasPermission(r, "invoices", "read") ||
@@ -28,17 +28,17 @@ export const EXPENSES_READ_ROLES = rolesWithPermission("expenses", "read");
 
 export const PATIENTS_ROLES = rolesWithPermission("patients", "read");
 
-/** Страница «Пациенты» и пункт меню — только операционные роли (read в API у кассира/буха/директора — без списка карточек). */
+/** "Patients" page and menu item — operational roles only (API read available for cashier/accountant/director — no card list UI). */
 export const PATIENTS_PAGE_ROUTE_ROLES = PATIENTS_ROLES.filter(
   (r) => r !== "cashier" && r !== "accountant" && r !== "director"
 );
 
-/** Роут «Платежи» (только просмотр журнала). */
+/** "Payments" route (read-only journal view). */
 export const PAYMENTS_READ_PAGE_ROLES = rolesWithPermission("payments", "read");
 
 export const APPOINTMENTS_ROLES = rolesWithPermission("appointments", "read");
 
-/** Раздел «Записи» в меню и SPA-роут — без бухгалтера и директора (read в API для связки со счётом). */
+/** "Appointments" section in menu and SPA route — excludes accountant and director (API read available for invoice linking). */
 export const APPOINTMENTS_PAGE_ROUTE_ROLES = APPOINTMENTS_ROLES.filter(
   (r) => r !== "accountant" && r !== "director"
 );
@@ -47,7 +47,7 @@ export const DOCTORS_PAGE_ROLES = rolesWithPermission("doctors", "read");
 
 export const SERVICES_PAGE_ROLES = rolesWithPermission("services", "read");
 
-/** Страницы справочников «Врачи» / «Услуги» — врач видит только себя и свои услуги через API, UI скрыт. */
+/** "Doctors" / "Services" reference pages — doctor sees only self and own services via API, UI hidden. */
 export const DOCTORS_DIRECTORY_ROLES = DOCTORS_PAGE_ROLES.filter((r) => r !== "doctor");
 export const SERVICES_DIRECTORY_ROLES = SERVICES_PAGE_ROLES.filter((r) => r !== "doctor");
 
@@ -83,7 +83,7 @@ export const canDeleteAppointments = (role: UserRole | undefined | null): boolea
 
 export { canSetAppointmentCommercialPrice };
 
-/** Создание записи с выбором пациента из справочника (модалки с автодополнением). */
+/** Creating appointment with patient picker from directory (modals with autocomplete). */
 export const canCreateAppointmentWithPatientPicker = (
   role: UserRole | undefined | null
 ): boolean => canCreateAppointments(role) && canReadPatients(role);
@@ -98,8 +98,8 @@ export const canCreatePatients = (role: UserRole | undefined | null): boolean =>
   !!role && hasPermission(role, "patients", "create");
 
 /**
- * Кнопка «Быстрая запись пациента» на дашборде: только административные и регистратура роли
- * (не врач, не оператор звонков и т.д.).
+ * "Quick patient booking" button on dashboard: admin and reception roles only
+ * (excludes doctor, call operator, etc.).
  */
 export const canUseDashboardQuickPatientBooking = (role: UserRole | undefined | null): boolean =>
   role === "superadmin" || role === "manager" || role === "reception";
@@ -114,11 +114,11 @@ export const canWriteBilling = (role: UserRole | undefined | null): boolean =>
     hasPermission(role, "invoices", "update") ||
     hasPermission(role, "cash", "update"));
 
-/** Возврат оплаты (POST /payments/:id/refund). */
+/** Payment refund (POST /payments/:id/refund). */
 export const canRefundPayments = (role: UserRole | undefined | null): boolean =>
   !!role && hasPermission(role, "payments", "update");
 
-/** Клинические поля в истории визитов (согласовано с API redaction). */
+/** Clinical fields in visit history (aligned with API redaction). */
 export const PATIENT_VISIT_CLINICAL_ROLES: UserRole[] = [
   "superadmin",
   "manager",

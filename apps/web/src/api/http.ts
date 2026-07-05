@@ -18,16 +18,23 @@ type ErrorBody = {
   message?: string;
 };
 
-const readErrorMessage = (payload: unknown, status: number): string => {
+const readErrorMessage = (payload: unknown, status: number, t?: (key: string) => string): string => {
   if (payload && typeof payload === "object") {
     const p = payload as ErrorBody;
     if (typeof p.error === "string" && p.error.trim()) return p.error;
     if (typeof p.message === "string" && p.message.trim()) return p.message;
   }
-  if (status === 403) return "Недостаточно прав";
-  if (status === 404) return "Не найдено";
-  if (status >= 500) return "Ошибка сервера";
-  return "Ошибка запроса";
+  // Fallback to translation keys if t is not provided (during module initialization)
+  if (!t) {
+    if (status === 403) return "http.forbidden";
+    if (status === 404) return "http.notFound";
+    if (status >= 500) return "http.serverError";
+    return "http.requestError";
+  }
+  if (status === 403) return t("http.forbidden");
+  if (status === 404) return t("http.notFound");
+  if (status >= 500) return t("http.serverError");
+  return t("http.requestError");
 };
 
 export const requestJson = async <T>(
@@ -75,7 +82,7 @@ export const requestJson = async <T>(
     throw new Error(readErrorMessage(payload, response.status));
   }
 
-  // 402 = подписка клиники истекла/приостановлена: SubscriptionNotice показывает блокирующий экран.
+  // 402 = subscription expired/suspended: SubscriptionNotice shows blocking screen.
   if (response.status === 402 && typeof window !== "undefined") {
     window.dispatchEvent(
       new CustomEvent("sazion:payment-required", {

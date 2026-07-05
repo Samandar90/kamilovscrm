@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 export type AiInsightsMetrics = {
   revenueToday: number;
@@ -19,52 +20,53 @@ export type AiInsightsModel = {
   recommendations: string[];
 };
 
-const buildInsights = (m: AiInsightsMetrics): AiInsightsModel => {
+const buildInsights = (m: AiInsightsMetrics, t: (key: string) => string): AiInsightsModel => {
   const expectedRevenueToday = m.avgCheck7d * Math.max(m.appointmentsToday, 1);
-  let summary = "Выручка стабильна относительно текущей загрузки.";
+  let summary = t("aiInsights.revenueStable");
   if (m.appointmentsToday === 0) {
-    summary = "Сегодня низкая загрузка: записи почти отсутствуют.";
+    summary = t("aiInsights.lowLoad");
   } else if (m.revenueToday < expectedRevenueToday * 0.75) {
-    summary = "Выручка ниже ожидаемого уровня при текущем потоке записей.";
+    summary = t("aiInsights.revenueLow");
   } else if (m.revenueToday > expectedRevenueToday * 1.15) {
-    summary = "Выручка выше среднего уровня — текущая модель работает эффективно.";
+    summary = t("aiInsights.revenueHigh");
   }
 
   const issues: string[] = [];
   if (m.unpaidInvoicesCount > 0) {
-    issues.push(`${m.unpaidInvoicesCount} неоплаченных счетов на ${Math.round(m.unpaidInvoicesAmount).toLocaleString("ru-RU")} сум.`);
+    const amount = Math.round(m.unpaidInvoicesAmount).toLocaleString("ru-RU");
+    issues.push(t("aiInsights.unpaidInvoices").replace("{{count}}", String(m.unpaidInvoicesCount)).replace("{{amount}}", amount));
   }
   if (m.appointmentsToday < 3) {
-    issues.push("Низкая загрузка врачей сегодня.");
+    issues.push(t("aiInsights.lowDoctorLoad"));
   }
   if (m.noShow30d > 0) {
-    issues.push(`Есть отмены и no-show: ${m.noShow30d} за 30 дней.`);
+    issues.push(t("aiInsights.cancellations").replace("{{count}}", String(m.noShow30d)));
   }
   if (m.avgCheck7d > 0 && m.avgCheckToday > 0 && m.avgCheckToday < m.avgCheck7d * 0.85) {
-    issues.push("Средний чек сегодня ниже среднего за 7 дней.");
+    issues.push(t("aiInsights.lowAverageCheck"));
   }
   if (issues.length === 0) {
-    issues.push("Критичных отклонений не зафиксировано.");
+    issues.push(t("aiInsights.noCritical"));
   }
 
   const recommendations: string[] = [];
   if (m.unpaidInvoicesCount > 0) {
-    recommendations.push("Свяжитесь с пациентами с задолженностью и закройте долги.");
+    recommendations.push(t("aiInsights.contactPatients"));
   }
   if (m.appointmentsToday < 3) {
-    recommendations.push("Усильте запись после 15:00 через напоминания и колл-скрипт.");
+    recommendations.push(t("aiInsights.increaseBooking"));
   }
   if (m.noShow30d > 0) {
-    recommendations.push("Включите двойное подтверждение визита за 24 и 2 часа.");
+    recommendations.push(t("aiInsights.doubleConfirm"));
   }
   if (m.avgCheck7d > 0 && m.avgCheckToday > 0 && m.avgCheckToday < m.avgCheck7d * 0.85) {
-    recommendations.push("Добавьте пакетные предложения и сопутствующие услуги.");
+    recommendations.push(t("aiInsights.addPackages"));
   }
   if (recommendations.length === 0 && m.topDoctor) {
-    recommendations.push(`Тиражируйте практики топ-врача: ${m.topDoctor}.`);
+    recommendations.push(t("aiInsights.copyTopDoctor").replace("{{doctor}}", m.topDoctor));
   }
   if (recommendations.length === 0) {
-    recommendations.push("Сохраняйте текущий темп и контролируйте качество расписания.");
+    recommendations.push(t("aiInsights.maintain"));
   }
 
   return {
@@ -75,10 +77,11 @@ const buildInsights = (m: AiInsightsMetrics): AiInsightsModel => {
 };
 
 export const useAiInsights = (metrics: AiInsightsMetrics) => {
+  const { t } = useTranslation();
   const [refreshTick, setRefreshTick] = React.useState(0);
   const [loading, setLoading] = React.useState(false);
 
-  const data = React.useMemo(() => buildInsights(metrics), [metrics, refreshTick]);
+  const data = React.useMemo(() => buildInsights(metrics, t), [metrics, refreshTick, t]);
 
   const refresh = React.useCallback(() => {
     setLoading(true);

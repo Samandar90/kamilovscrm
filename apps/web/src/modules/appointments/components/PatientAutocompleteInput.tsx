@@ -1,6 +1,7 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { Patient } from "../api/appointmentsFlowApi";
 import { appointmentsFlowApi } from "../api/appointmentsFlowApi";
 import { modalComboboxInputClass, modalComboboxWrapperClass } from "../utils/modalFieldClasses";
@@ -17,10 +18,10 @@ function phoneLine(phone: string | null | undefined): string | null {
   return phone;
 }
 
-function secondaryLine(p: Patient): string {
+function secondaryLine(p: Patient, t: any): string {
   const tel = phoneLine(p.phone);
   if (tel) return tel;
-  if (p.birthDate) return `Дата рождения: ${p.birthDate}`;
+  if (p.birthDate) return `${t("appointments:birthDate", { defaultValue: "Birth date" })}: ${p.birthDate}`;
   return `ID · #${p.id}`;
 }
 
@@ -57,6 +58,7 @@ export const PatientAutocompleteInput: React.FC<PatientAutocompleteInputProps> =
   inputClassName,
   wrapperClassName,
 }) => {
+  const { t } = useTranslation("appointments");
   const [listOpen, setListOpen] = React.useState(false);
   /** Chrome/Edge часто игнорируют autoComplete="off" внутри <form>; readOnly до первого фокуса отключает подсказки браузера. */
   const [browserFillUnlocked, setBrowserFillUnlocked] = React.useState(false);
@@ -184,6 +186,8 @@ export const PatientAutocompleteInput: React.FC<PatientAutocompleteInputProps> =
     setListOpen(false);
   };
 
+  const getSecondaryLine = (p: Patient) => secondaryLine(p, t);
+
   const pickCreateNew = () => {
     lastPickedRef.current = null;
     onSelectPatient(null);
@@ -217,13 +221,13 @@ export const PatientAutocompleteInput: React.FC<PatientAutocompleteInputProps> =
                 role="status"
               >
                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-emerald-600" aria-hidden />
-                Поиск…
+                {t("searching")}
               </li>
             ) : null}
 
             {!searchLoading &&
               suggestions.map((p) => {
-                const secondary = secondaryLine(p);
+                const secondary = getSecondaryLine(p);
                 const isActive = selectedPatient?.id === p.id;
                 return (
                   <li key={p.id} role="presentation">
@@ -249,7 +253,7 @@ export const PatientAutocompleteInput: React.FC<PatientAutocompleteInputProps> =
             {!searchLoading && suggestions.length === 0 && queryTrim ? (
               <li role="presentation" className="pt-0.5">
                 <div className="mx-1 px-3 py-1.5 text-xs text-[#6b7280]" role="status">
-                  Пациенты не найдены
+                  {t("noPatientsFound")}
                 </div>
                 {onCreateRequested ? (
                   <button
@@ -260,7 +264,7 @@ export const PatientAutocompleteInput: React.FC<PatientAutocompleteInputProps> =
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={pickCreateNew}
                   >
-                    <span className="font-semibold text-emerald-800">Создать пациента</span>
+                    <span className="font-semibold text-emerald-800">{t("createPatient")}</span>
                     <span className="text-xs font-normal text-[#6b7280]">«{queryTrim}»</span>
                   </button>
                 ) : null}

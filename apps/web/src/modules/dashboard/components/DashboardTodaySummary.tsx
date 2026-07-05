@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Activity, CalendarClock, CreditCard, UserPlus } from "lucide-react";
 
 type DashboardTodaySummaryProps = {
@@ -9,11 +10,11 @@ type DashboardTodaySummaryProps = {
   loading?: boolean;
 };
 
-const rowMeta = [
-  { label: "Записей", icon: CalendarClock, tone: "indigo" as const },
-  { label: "Оплат", icon: CreditCard, tone: "emerald" as const },
-  { label: "Новых пациентов", icon: UserPlus, tone: "violet" as const },
-  { label: "Завершено, %", icon: Activity, tone: "sky" as const },
+const getRowMeta = (t: any) => [
+  { label: t("dashboard.appointments"), icon: CalendarClock, tone: "indigo" as const },
+  { label: t("dashboard.payments"), icon: CreditCard, tone: "emerald" as const },
+  { label: t("dashboard.newPatients"), icon: UserPlus, tone: "violet" as const },
+  { label: t("dashboard.completedPercent"), icon: Activity, tone: "sky" as const },
 ];
 
 const toneClass: Record<(typeof rowMeta)[number]["tone"], string> = {
@@ -30,6 +31,8 @@ export const DashboardTodaySummary: React.FC<DashboardTodaySummaryProps> = ({
   completionRate,
   loading,
 }) => {
+  const { t } = useTranslation();
+  const rowMeta = getRowMeta(t);
   const values = [
     loading ? "…" : String(appointmentsCount),
     loading ? "…" : String(paymentsCount),
@@ -40,8 +43,8 @@ export const DashboardTodaySummary: React.FC<DashboardTodaySummaryProps> = ({
   return (
     <div className="rounded-[20px] border border-slate-100/90 bg-white p-4 shadow-sm md:p-6 md:transition-all md:duration-200 md:ease-[cubic-bezier(0.22,1,0.36,1)] md:hover:shadow-md">
       <div className="flex items-center justify-between">
-        <p className="text-[12px] font-semibold uppercase tracking-wider text-[#64748b] md:text-[13px]">Сегодня</p>
-        <p className="hidden text-xs text-[#94a3b8] sm:block">Сводка смены</p>
+        <p className="text-[12px] font-semibold uppercase tracking-wider text-[#64748b] md:text-[13px]">{t("dashboard.today")}</p>
+        <p className="hidden text-xs text-[#94a3b8] sm:block">{t("dashboard.shiftSummary")}</p>
       </div>
       <ul className="mt-3 flex flex-col gap-2 md:mt-5 md:gap-3">
         {rowMeta.map((row, i) => {

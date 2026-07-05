@@ -1,5 +1,5 @@
 /**
- * Дублирует services/api/src/auth/permissions.ts — при смене матрицы обновлять оба файла.
+ * Mirrors services/api/src/auth/permissions.ts — update both files when changing the matrix.
  */
 export const USER_ROLES = [
   "superadmin",
@@ -137,7 +137,7 @@ const uniqRoles = (roles: UserRole[]): readonly UserRole[] => [...new Set(roles)
 const roleList = (module: PermissionModule, action: PermissionAction): readonly UserRole[] =>
   rolesWithPermission(module, action);
 
-/** Именованные возможности — зеркало `services/api/src/auth/permissions.ts` → `PERMISSIONS`. */
+/** Named permissions — mirror of `services/api/src/auth/permissions.ts` → `PERMISSIONS`. */
 export const PERMISSIONS = {
   PATIENT_READ: roleList("patients", "read"),
   PATIENT_CREATE: roleList("patients", "create"),
@@ -177,7 +177,7 @@ export function roleHasPermissionKey(role: UserRole, key: PermissionKey): boolea
   return allowed.includes(role);
 }
 
-/** @deprecated Используйте `PERMISSIONS.APPOINTMENT_COMMERCIAL_PRICE`. */
+/** @deprecated Use `PERMISSIONS.APPOINTMENT_COMMERCIAL_PRICE` instead. */
 export const APPOINTMENT_COMMERCIAL_PRICE_ROLES: readonly UserRole[] = PERMISSIONS.APPOINTMENT_COMMERCIAL_PRICE;
 
 export function canSetAppointmentCommercialPrice(role: UserRole | undefined | null): boolean {

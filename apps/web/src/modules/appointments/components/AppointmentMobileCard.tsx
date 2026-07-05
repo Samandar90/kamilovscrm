@@ -1,16 +1,20 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Phone } from "lucide-react";
 import type { Appointment, AppointmentStatus, Service } from "../api/appointmentsFlowApi";
 import { buildUnifiedAppointmentActions } from "./appointmentActions";
 
-const statusLabel: Record<AppointmentStatus, string> = {
-  scheduled: "Запланировано",
-  confirmed: "Подтверждено",
-  arrived: "Пришёл",
-  in_consultation: "На приёме",
-  completed: "Завершено",
-  cancelled: "Отменено",
-  no_show: "Неявка",
+const getStatusLabel = (status: AppointmentStatus, t: any): string => {
+  const labels: Record<AppointmentStatus, string> = {
+    scheduled: t("appointments.statusScheduled"),
+    confirmed: t("appointments.statusConfirmed"),
+    arrived: t("appointments.statusArrived"),
+    in_consultation: t("appointments.statusInConsultation"),
+    completed: t("appointments.statusCompleted"),
+    cancelled: t("appointments.statusCancelled"),
+    no_show: t("appointments.statusNoShow"),
+  };
+  return labels[status];
 };
 
 const statusTone: Record<AppointmentStatus, string> = {
@@ -62,6 +66,7 @@ export const AppointmentMobileCard: React.FC<Props> = ({
   onCancelAppointment,
   onCopyPatientPhone,
 }) => {
+  const { t } = useTranslation();
   const actions = buildUnifiedAppointmentActions({
     appointment,
     canCreateInvoice,
@@ -97,8 +102,8 @@ export const AppointmentMobileCard: React.FC<Props> = ({
               {patientPhone?.trim() && onCopyPatientPhone ? (
                 <button
                   type="button"
-                  title="Скопировать телефон"
-                  aria-label="Скопировать телефон"
+                  title={t("appointments.copyPhone")}
+                  aria-label={t("appointments.copyPhone")}
                   disabled={isSubmitting}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -114,12 +119,12 @@ export const AppointmentMobileCard: React.FC<Props> = ({
           <span
             className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusTone[appointment.status]}`}
           >
-            {statusLabel[appointment.status]}
+            {getStatusLabel(appointment.status, t)}
           </span>
         </div>
         <div className="mt-2 text-xs text-slate-500">
-          <p className="truncate">{service?.name ?? `Услуга #${appointment.serviceId}`}</p>
-          <p className="mt-0.5 truncate text-slate-400">{patientPhone?.trim() || "Телефон не указан"}</p>
+          <p className="truncate">{service?.name ?? `${t("appointments.service")} #${appointment.serviceId}`}</p>
+          <p className="mt-0.5 truncate text-slate-400">{patientPhone?.trim() || t("appointments.phoneNotProvided")}</p>
         </div>
         <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-2.5" onClick={(e) => e.stopPropagation()}>
           {actions.map((action) => (
@@ -144,7 +149,7 @@ export const AppointmentMobileCard: React.FC<Props> = ({
               disabled={isSubmitting}
               className="inline-flex min-h-[40px] w-full items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-3 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-100 disabled:opacity-50"
             >
-              Отменить запись
+              {t("appointments.cancelAppointment")}
             </button>
           ) : null}
         </div>

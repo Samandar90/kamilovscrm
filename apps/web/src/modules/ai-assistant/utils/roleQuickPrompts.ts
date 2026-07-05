@@ -10,74 +10,74 @@ const crown = "crown" as AiChipVisual;
 const team = "team" as AiChipVisual;
 const health = "health" as AiChipVisual;
 
-const EXEC_CHIPS: Chip[] = [
-  { text: "Покажи выручку за неделю", icon: chart, domain: "Аналитика" },
-  { text: "Кто перегружен сегодня", icon: crown, domain: "Нагрузка" },
-  { text: "Какие пациенты с долгами", icon: invoice, domain: "Деньги" },
-  { text: "Где мы теряем деньги", icon: chart, domain: "Риски" },
-  { text: "Что важно сегодня", icon: health, domain: "Фокус" },
-];
+export function getQuickPromptChipsForRole(role: UserRole, t: (key: string) => string): SmartQuickChip[] {
+  const EXEC_CHIPS: Chip[] = [
+    { text: t("roleQuickPrompts.execChip1"), icon: chart, domain: t("roleQuickPrompts.analyticsDomain") },
+    { text: t("roleQuickPrompts.execChip2"), icon: crown, domain: t("roleQuickPrompts.loadDomain") },
+    { text: t("roleQuickPrompts.execChip3"), icon: invoice, domain: t("roleQuickPrompts.moneyDomain") },
+    { text: t("roleQuickPrompts.execChip4"), icon: chart, domain: t("roleQuickPrompts.risksDomain") },
+    { text: t("roleQuickPrompts.execChip5"), icon: health, domain: t("roleQuickPrompts.focusDomain") },
+  ];
 
-const EXEC_HERO: Hero[] = [
-  { prompt: "Покажи выручку за неделю", subtitle: "Динамика и сравнение периодов", icon: chart },
-  { prompt: "Кто перегружен сегодня", subtitle: "Распределение записей по врачам", icon: crown },
-  { prompt: "Какие пациенты с долгами", subtitle: "Дебиторка и неоплаченные счета", icon: invoice },
-  { prompt: "Где мы теряем деньги", subtitle: "Сигналы отмен, no-show, простоя", icon: chart },
-];
+  const FINANCE_CHIPS: Chip[] = [
+    { text: t("roleQuickPrompts.financeChip1"), icon: invoice, domain: t("roleQuickPrompts.invoicesDomain") },
+    { text: t("roleQuickPrompts.financeChip2"), icon: chart, domain: t("roleQuickPrompts.cashDomain") },
+    { text: t("roleQuickPrompts.financeChip3"), icon: invoice, domain: t("roleQuickPrompts.paymentsDomain") },
+    { text: t("roleQuickPrompts.financeChip4"), icon: invoice, domain: t("roleQuickPrompts.moneyDomain") },
+    { text: t("roleQuickPrompts.financeChip5"), icon: chart, domain: t("roleQuickPrompts.focusDomain") },
+  ];
 
-const FINANCE_CHIPS: Chip[] = [
-  { text: "Сколько неоплаченных счетов", icon: invoice, domain: "Счета" },
-  { text: "Статус кассы и смены", icon: chart, domain: "Касса" },
-  { text: "Покажи последние платежи", icon: invoice, domain: "Оплаты" },
-  { text: "Счета к оплате сегодня", icon: invoice, domain: "Деньги" },
-  { text: "Что важно по финансам", icon: chart, domain: "Фокус" },
-];
+  const FRONT_CHIPS: Chip[] = [
+    { text: t("roleQuickPrompts.frontChip1"), icon: team, domain: t("roleQuickPrompts.scheduleDomain") },
+    { text: t("roleQuickPrompts.frontChip2"), icon: team, domain: t("roleQuickPrompts.slotsDomain") },
+    { text: t("roleQuickPrompts.frontChip3"), icon: team, domain: t("roleQuickPrompts.patientsDomain") },
+    { text: t("roleQuickPrompts.frontChip4"), icon: health, domain: t("roleQuickPrompts.focusDomain") },
+    { text: t("roleQuickPrompts.frontChip5"), icon: team, domain: t("roleQuickPrompts.dayDomain") },
+  ];
 
-const FINANCE_HERO: Hero[] = [
-  { prompt: "Сколько неоплаченных счетов", subtitle: "Суммы и статусы", icon: invoice },
-  { prompt: "Статус кассы и смены", subtitle: "Открыта ли смена", icon: chart },
-  { prompt: "Покажи последние платежи", subtitle: "Лента оплат", icon: invoice },
-  { prompt: "Счета к оплате сегодня", subtitle: "Приоритет взыскания", icon: invoice },
-];
+  const CLINICAL_CHIPS: Chip[] = [
+    { text: t("roleQuickPrompts.clinicalChip1"), icon: team, domain: t("roleQuickPrompts.scheduleDomain") },
+    { text: t("roleQuickPrompts.clinicalChip2"), icon: health, domain: t("roleQuickPrompts.noshowDomain") },
+    { text: t("roleQuickPrompts.clinicalChip3"), icon: health, domain: t("roleQuickPrompts.processDomain") },
+    { text: t("roleQuickPrompts.clinicalChip4"), icon: team, domain: t("roleQuickPrompts.systemDomain") },
+    { text: t("roleQuickPrompts.clinicalChip5"), icon: health, domain: t("roleQuickPrompts.focusDomain") },
+  ];
 
-const FRONT_CHIPS: Chip[] = [
-  { text: "Записи на сегодня", icon: team, domain: "Расписание" },
-  { text: "Свободные окна у врачей", icon: team, domain: "Слоты" },
-  { text: "Как найти пациента", icon: team, domain: "Пациенты" },
-  { text: "Что важно сегодня по записи", icon: health, domain: "Фокус" },
-  { text: "Сколько приёмов на сегодня", icon: team, domain: "День" },
-];
-
-const FRONT_HERO: Hero[] = [
-  { prompt: "Записи на сегодня", subtitle: "Календарь и статусы", icon: team },
-  { prompt: "Свободные окна у врачей", subtitle: "Куда записать пациента", icon: team },
-  { prompt: "Как найти пациента", subtitle: "Поиск карточки", icon: team },
-  { prompt: "Сколько приёмов на сегодня", subtitle: "Объём дня", icon: team },
-];
-
-const CLINICAL_CHIPS: Chip[] = [
-  { text: "Мои записи на сегодня", icon: team, domain: "Расписание" },
-  { text: "Сколько отмен за месяц", icon: health, domain: "No-show" },
-  { text: "Напомни правила no-show", icon: health, domain: "Процесс" },
-  { text: "Как отметить приём в CRM", icon: team, domain: "Система" },
-  { text: "Что важно перед приёмами", icon: health, domain: "Фокус" },
-];
-
-const CLINICAL_HERO: Hero[] = [
-  { prompt: "Мои записи на сегодня", subtitle: "Ваш день в календаре", icon: team },
-  { prompt: "Сколько отмен за месяц", subtitle: "Контроль no-show", icon: health },
-  { prompt: "Напомни правила no-show", subtitle: "Кратко по процессу", icon: health },
-  { prompt: "Как отметить приём в CRM", subtitle: "Статусы визита", icon: team },
-];
-
-export function getQuickPromptChipsForRole(role: UserRole): SmartQuickChip[] {
   if (role === "superadmin" || role === "manager" || role === "director") return EXEC_CHIPS;
   if (role === "cashier" || role === "accountant") return FINANCE_CHIPS;
   if (role === "doctor" || role === "nurse") return CLINICAL_CHIPS;
   return FRONT_CHIPS;
 }
 
-export function getEmptyHeroActionsForRole(role: UserRole): EmptyHeroAction[] {
+export function getEmptyHeroActionsForRole(role: UserRole, t: (key: string) => string): EmptyHeroAction[] {
+  const EXEC_HERO: Hero[] = [
+    { prompt: t("roleQuickPrompts.execHero1"), subtitle: t("roleQuickPrompts.execHeroSub1"), icon: chart },
+    { prompt: t("roleQuickPrompts.execHero2"), subtitle: t("roleQuickPrompts.execHeroSub2"), icon: crown },
+    { prompt: t("roleQuickPrompts.execHero3"), subtitle: t("roleQuickPrompts.execHeroSub3"), icon: invoice },
+    { prompt: t("roleQuickPrompts.execHero4"), subtitle: t("roleQuickPrompts.execHeroSub4"), icon: chart },
+  ];
+
+  const FINANCE_HERO: Hero[] = [
+    { prompt: t("roleQuickPrompts.financeHero1"), subtitle: t("roleQuickPrompts.financeHeroSub1"), icon: invoice },
+    { prompt: t("roleQuickPrompts.financeHero2"), subtitle: t("roleQuickPrompts.financeHeroSub2"), icon: chart },
+    { prompt: t("roleQuickPrompts.financeHero3"), subtitle: t("roleQuickPrompts.financeHeroSub3"), icon: invoice },
+    { prompt: t("roleQuickPrompts.financeHero4"), subtitle: t("roleQuickPrompts.financeHeroSub4"), icon: invoice },
+  ];
+
+  const FRONT_HERO: Hero[] = [
+    { prompt: t("roleQuickPrompts.frontHero1"), subtitle: t("roleQuickPrompts.frontHeroSub1"), icon: team },
+    { prompt: t("roleQuickPrompts.frontHero2"), subtitle: t("roleQuickPrompts.frontHeroSub2"), icon: team },
+    { prompt: t("roleQuickPrompts.frontHero3"), subtitle: t("roleQuickPrompts.frontHeroSub3"), icon: team },
+    { prompt: t("roleQuickPrompts.frontHero4"), subtitle: t("roleQuickPrompts.frontHeroSub4"), icon: team },
+  ];
+
+  const CLINICAL_HERO: Hero[] = [
+    { prompt: t("roleQuickPrompts.clinicalHero1"), subtitle: t("roleQuickPrompts.clinicalHeroSub1"), icon: team },
+    { prompt: t("roleQuickPrompts.clinicalHero2"), subtitle: t("roleQuickPrompts.clinicalHeroSub2"), icon: health },
+    { prompt: t("roleQuickPrompts.clinicalHero3"), subtitle: t("roleQuickPrompts.clinicalHeroSub3"), icon: health },
+    { prompt: t("roleQuickPrompts.clinicalHero4"), subtitle: t("roleQuickPrompts.clinicalHeroSub4"), icon: team },
+  ];
+
   if (role === "superadmin" || role === "manager" || role === "director") return EXEC_HERO;
   if (role === "cashier" || role === "accountant") return FINANCE_HERO;
   if (role === "doctor" || role === "nurse") return CLINICAL_HERO;

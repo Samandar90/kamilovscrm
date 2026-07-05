@@ -71,4 +71,5 @@ export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ mode = "thinki
       </div>
     </div>
   </motion.div>
-);
+  );
+};

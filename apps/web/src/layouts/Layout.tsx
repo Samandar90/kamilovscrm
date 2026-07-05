@@ -1,14 +1,15 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { BRANDING } from "../shared/config/branding";
 import { useClinic } from "../hooks/useClinic";
 
-const navItems = [
+const getNavItems = (t: (key: string) => string) => [
   { to: "/dashboard", label: "Dashboard" },
-  { to: "/patients", label: "Пациенты" },
-  { to: "/appointments", label: "Записи" },
-  { to: "/cash", label: "Касса" },
-  { to: "/reports", label: "Отчеты" },
-  { to: "/ai", label: "AI Ассистент" },
+  { to: "/patients", label: t("layout.patient") },
+  { to: "/appointments", label: t("layout.appointment") },
+  { to: "/cash", label: t("layout.cash") },
+  { to: "/reports", label: t("layout.reports") },
+  { to: "/ai", label: t("layout.aiAssistant") },
 ];
 
 const navClass = (isActive: boolean): string =>
@@ -17,8 +18,10 @@ const navClass = (isActive: boolean): string =>
     : "block rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100";
 
 export const Layout = () => {
+  const { t } = useTranslation();
   const { clinic } = useClinic();
   const brandName = clinic.name || BRANDING.productName;
+  const navItems = getNavItems(t);
 
   return (
     <div className="min-h-screen bg-gray-50">

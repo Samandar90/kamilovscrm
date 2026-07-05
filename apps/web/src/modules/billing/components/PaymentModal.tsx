@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Modal } from "../../../components/ui/Modal";
 import {
   cashDeskApi,
@@ -9,9 +10,9 @@ import {
 import { formatSum } from "../../../utils/formatMoney";
 import { MoneyInput } from "../../../shared/ui/MoneyInput";
 
-const METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
-  { value: "cash", label: "Наличные" },
-  { value: "card", label: "Терминал" },
+const getMethodOptions = (t: any): { value: PaymentMethod; label: string }[] => [
+  { value: "cash", label: t("billing.cash") },
+  { value: "card", label: t("billing.terminal") },
 ];
 
 type Props = {
@@ -39,6 +40,7 @@ export const PaymentModal: React.FC<Props> = ({
   initialMethod = "cash",
   onPaid,
 }) => {
+  const { t } = useTranslation();
   const [amount, setAmount] = useState(0);
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [submitting, setSubmitting] = useState(false);
@@ -66,20 +68,20 @@ export const PaymentModal: React.FC<Props> = ({
     e.preventDefault();
     setError(null);
     if (!token) {
-      setError("Нет авторизации");
+      setError(t("billing.noAuthorization"));
       return;
     }
     const value = Math.round(amount * 100) / 100;
     if (!Number.isFinite(value) || value <= 0) {
-      setError("Введите сумму больше 0");
+      setError(t("billing.enterAmountGreaterThanZero"));
       return;
     }
     if (!shiftOpen) {
-      setError("Сначала откройте кассовую смену");
+      setError(t("billing.openCashShiftFirst"));
       return;
     }
     if (value > maxAmount + 0.0001) {
-      setError(`Сумма не может превышать остаток (${formatSum(maxAmount)})`);
+      setError(t("billing.amountCannotExceedBalance", { balance: formatSum(maxAmount) }));
       return;
     }
 
@@ -93,7 +95,7 @@ export const PaymentModal: React.FC<Props> = ({
       await onPaid(createdPayment);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось провести оплату");
+      setError(err instanceof Error ? err.message : t("billing.failedToProcessPayment"));
     } finally {
       setSubmitting(false);
     }
@@ -112,31 +114,31 @@ export const PaymentModal: React.FC<Props> = ({
       }}
       className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl"
     >
-      <h2 className="text-lg font-semibold text-slate-50">Оплата счёта</h2>
+      <h2 className="text-lg font-semibold text-slate-50">{t("billing.paymentTitle")}</h2>
       <p className="mt-1 text-sm text-slate-400">
-        Доступно к оплате: <span className="font-medium text-amber-200">{formatSum(maxAmount)}</span>
+        {t("billing.availableForPayment")} <span className="font-medium text-amber-200">{formatSum(maxAmount)}</span>
       </p>
 
       {checkingShift ? (
-        <p className="mt-4 text-sm text-slate-400">Проверка кассовой смены…</p>
+        <p className="mt-4 text-sm text-slate-400">{t("billing.checkingShift")}</p>
       ) : null}
 
       {draftBlocked ? (
         <p className="mt-4 rounded-md border border-amber-800 bg-amber-950/40 px-3 py-2 text-sm text-amber-100">
-          Черновик нельзя оплатить — сначала выставьте счёт (статус «Выставлен»).
+          {t("billing.draftCannotBePaid")}
         </p>
       ) : null}
 
       {!draftBlocked && !checkingShift && noShiftBlocked ? (
         <p className="mt-4 rounded-md border border-rose-900 bg-rose-950/50 px-3 py-2 text-sm text-rose-200">
-          Сначала откройте кассовую смену на странице «Касса».
+          {t("billing.openCashShiftMessage")}
         </p>
       ) : null}
 
       <form onSubmit={(e) => void handleSubmit(e)} className="mt-4 space-y-4">
         <div>
           <label htmlFor="payment-amount" className="text-sm font-medium text-slate-300">
-            Сумма
+            {t("billing.amount")}
           </label>
           <MoneyInput
             id="payment-amount"
@@ -159,7 +161,7 @@ export const PaymentModal: React.FC<Props> = ({
                   setAmount(Math.round(maxAmount * 100) / 100);
                 }}
               >
-                Оплатить полностью
+                {t("billing.payFully")}
               </button>
               <button
                 type="button"
@@ -178,7 +180,7 @@ export const PaymentModal: React.FC<Props> = ({
         </div>
         <div>
           <label htmlFor="payment-method" className="text-sm font-medium text-slate-300">
-            Метод оплаты
+            {t("billing.paymentMethod")}
           </label>
           <select
             id="payment-method"
@@ -187,7 +189,7 @@ export const PaymentModal: React.FC<Props> = ({
             onChange={(e) => setMethod(e.target.value as PaymentMethod)}
             disabled={submitting || draftBlocked || noShiftBlocked || checkingShift}
           >
-            {METHOD_OPTIONS.map((o) => (
+            {getMethodOptions(t).map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
@@ -208,14 +210,14 @@ export const PaymentModal: React.FC<Props> = ({
             onClick={onClose}
             disabled={submitting}
           >
-            Отмена
+            {t("common.cancel")}
           </button>
           <button
             type="submit"
             className="rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!canSubmit}
           >
-            {submitting ? "Проводим…" : "Оплатить"}
+            {submitting ? t("billing.processing") : t("billing.pay")}
           </button>
         </div>
       </form>

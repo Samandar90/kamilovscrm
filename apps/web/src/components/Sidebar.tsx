@@ -17,12 +17,12 @@ const getRoleLabel = (role: UserRole, t: (key: string) => string): string => {
     superadmin: t("users.admin"),
     reception: t("users.receptionist"),
     doctor: t("users.doctor"),
-    nurse: "Медсестра",
+    nurse: t("users.nurse"),
     cashier: t("users.cashier"),
-    operator: "Оператор",
-    accountant: "Бухгалтер",
-    manager: "Менеджер",
-    director: "Директор",
+    operator: t("users.operator"),
+    accountant: t("users.accountant"),
+    manager: t("users.manager"),
+    director: t("users.director"),
   };
   return roleMap[role] || role;
 };

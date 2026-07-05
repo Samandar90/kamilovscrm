@@ -40,7 +40,7 @@ export const SubscriptionNotice: React.FC = () => {
           <h2 className="text-lg font-bold text-slate-900">{t("subscription.accessBlocked")}</h2>
           <p className="mt-2 text-sm text-slate-600">{blockedMessage}</p>
           <div className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
-            <div className="font-medium text-slate-900">Для продления свяжитесь с нами:</div>
+            <div className="font-medium text-slate-900">{t("subscription.contactUs")}</div>
             <div className="mt-2 flex flex-col gap-1">
               <a href={SALES_CONTACTS.phoneHref} className="font-semibold text-[#2563EB] hover:underline">
                 {SALES_CONTACTS.phone}
@@ -51,7 +51,7 @@ export const SubscriptionNotice: React.FC = () => {
                 rel="noreferrer"
                 className="font-semibold text-[#2563EB] hover:underline"
               >
-                Telegram: {SALES_CONTACTS.telegram}
+                {t("subscription.telegram")}: {SALES_CONTACTS.telegram}
               </a>
             </div>
           </div>
@@ -77,9 +77,13 @@ export const SubscriptionNotice: React.FC = () => {
   const urgent = daysLeft != null && daysLeft <= 3;
   const text = isTrial
     ? daysLeft != null
-      ? `Пробный период: ${daysLeft === 0 ? "заканчивается сегодня" : `осталось ${daysLeft} дн.`}`
-      : "Пробный период"
-    : `Подписка истекает через ${daysLeft} дн.`;
+      ? t("subscription.trialStatus", {
+          status: daysLeft === 0
+            ? t("subscription.trialEndsToday")
+            : t("subscription.trialDaysLeft", { days: daysLeft })
+        })
+      : t("subscription.trial")
+    : t("subscription.expiresIn", { days: daysLeft });
 
   return (
     <div
@@ -95,7 +99,7 @@ export const SubscriptionNotice: React.FC = () => {
         rel="noreferrer"
         className="hidden font-semibold underline-offset-2 hover:underline sm:inline"
       >
-        Продлить: {SALES_CONTACTS.telegram}
+        {t("subscription.extend")}: {SALES_CONTACTS.telegram}
       </a>
     </div>
   );

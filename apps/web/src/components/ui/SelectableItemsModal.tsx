@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Search, X } from "lucide-react";
 import { Modal } from "./Modal";
 
@@ -27,9 +28,11 @@ export const SelectableItemsModal: React.FC<SelectableItemsModalProps> = ({
   selectedIds,
   onClose,
   onSave,
-  searchPlaceholder = "Поиск...",
+  searchPlaceholder,
   disabled = false,
 }) => {
+  const { t } = useTranslation();
+  const defaultSearchPlaceholder = searchPlaceholder || t("components.selectableModalSearch");
   const [draftSelectedIds, setDraftSelectedIds] = React.useState<number[]>(selectedIds);
   const [search, setSearch] = React.useState("");
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
@@ -85,7 +88,7 @@ export const SelectableItemsModal: React.FC<SelectableItemsModalProps> = ({
 
       <div className="mt-4">
         <p className="text-xs font-medium uppercase tracking-wide text-[#64748b]">
-          Выбрано: {draftSelectedIds.length}
+          {t("components.selectableModalSelected", { count: draftSelectedIds.length })}
         </p>
         {selectedChips.length > 0 ? (
           <div className="mt-2 flex max-h-[64px] flex-wrap items-center gap-1.5 overflow-y-auto">
@@ -99,7 +102,7 @@ export const SelectableItemsModal: React.FC<SelectableItemsModalProps> = ({
                   type="button"
                   onClick={() => removeId(item.id)}
                   className="inline-flex h-4 w-4 items-center justify-center rounded-full transition hover:bg-[#dcfce7]"
-                  aria-label={`Удалить ${item.name}`}
+                  aria-label={t("components.remove", { label: item.name })}
                   disabled={disabled}
                 >
                   <X className="h-3 w-3" />
@@ -108,7 +111,7 @@ export const SelectableItemsModal: React.FC<SelectableItemsModalProps> = ({
             ))}
           </div>
         ) : (
-          <p className="mt-2 text-xs text-[#94a3b8]">Ничего не выбрано</p>
+          <p className="mt-2 text-xs text-[#94a3b8]">{t("components.selectableModalNoSelection")}</p>
         )}
       </div>
 
@@ -118,7 +121,7 @@ export const SelectableItemsModal: React.FC<SelectableItemsModalProps> = ({
           type="text"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder={searchPlaceholder}
+          placeholder={defaultSearchPlaceholder}
           className="h-11 w-full rounded-xl border border-[#e2e8f0] bg-white pl-10 pr-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:ring-2 focus:ring-[#16a34a]/20"
           disabled={disabled}
         />
@@ -126,7 +129,7 @@ export const SelectableItemsModal: React.FC<SelectableItemsModalProps> = ({
 
       <div className="mt-3 max-h-[320px] overflow-y-auto rounded-xl border border-[#e2e8f0] bg-white p-2">
         {filtered.length === 0 ? (
-          <p className="px-3 py-2 text-sm text-[#64748b]">Ничего не найдено</p>
+          <p className="px-3 py-2 text-sm text-[#64748b]">{t("components.notFound")}</p>
         ) : (
           filtered.map((option) => {
             const checked = draftSelectedIds.includes(option.id);
@@ -156,7 +159,7 @@ export const SelectableItemsModal: React.FC<SelectableItemsModalProps> = ({
           onClick={onClose}
           disabled={disabled}
         >
-          Отмена
+          {t("components.selectableModalCancel")}
         </button>
         <button
           type="button"
@@ -164,7 +167,7 @@ export const SelectableItemsModal: React.FC<SelectableItemsModalProps> = ({
           onClick={() => onSave(draftSelectedIds)}
           disabled={disabled}
         >
-          Сохранить
+          {t("components.selectableModalSave")}
         </button>
       </div>
     </Modal>

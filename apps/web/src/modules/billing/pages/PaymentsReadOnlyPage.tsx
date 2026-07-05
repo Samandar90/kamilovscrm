@@ -174,7 +174,7 @@ export const PaymentsReadOnlyPage: React.FC = () => {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Link to={`/billing/invoices/${p.invoiceId}`} className="text-xs font-medium text-[#16a34a] hover:underline">
-                          Открыть счёт
+                          {t("billing.payments.openInvoice")}
                         </Link>
                       </td>
                     </tr>

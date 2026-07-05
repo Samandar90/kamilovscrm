@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   Area,
   CartesianGrid,
@@ -55,6 +56,7 @@ const ChartTooltip: React.FC<{
 };
 
 export const ReportsChart: React.FC<Props> = ({ points, granularity, loading }) => {
+  const { t } = useTranslation("reports");
   const rows = React.useMemo(() => points.map((point) => toRow(point, granularity)), [points, granularity]);
   return (
     <motion.section
@@ -63,13 +65,13 @@ export const ReportsChart: React.FC<Props> = ({ points, granularity, loading }) 
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
-      <h3 className="text-base font-semibold text-slate-950">Выручка</h3>
-      <p className="mt-1 text-sm text-slate-500">Линейный график по выбранному периоду</p>
+      <h3 className="text-base font-semibold text-slate-950">{t("chartTitle")}</h3>
+      <p className="mt-1 text-sm text-slate-500">{t("chartSubtitle")}</p>
       {loading ? (
         <div className="mt-5 h-[280px] animate-pulse rounded-xl bg-slate-100" />
       ) : rows.length === 0 ? (
         <div className="mt-5 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-          Нет данных для графика
+          {t("noChartData")}
         </div>
       ) : (
         <div className="mt-5 h-[280px]">

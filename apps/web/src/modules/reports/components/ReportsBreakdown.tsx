@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { formatSum } from "../../../utils/formatMoney";
 import type { RevenueByDoctorRow, RevenueByServiceRow } from "../api/reportsApi";
@@ -12,6 +13,7 @@ type Props = {
 const TOP_N = 7;
 
 export const ReportsBreakdown: React.FC<Props> = ({ doctors, services, loading }) => {
+  const { t } = useTranslation("reports");
   const topDoctors = [...doctors].sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, TOP_N);
   const topServices = [...services].sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, TOP_N);
 
@@ -26,13 +28,13 @@ export const ReportsBreakdown: React.FC<Props> = ({ doctors, services, loading }
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.26, ease: "easeOut" }}
       >
-        <h3 className="text-base font-semibold text-slate-950">Выручка по врачам</h3>
-        <p className="mt-1 text-sm text-slate-500">Топ врачей по сумме оплат</p>
+        <h3 className="text-base font-semibold text-slate-950">{t("doctorRevenueTitle")}</h3>
+        <p className="mt-1 text-sm text-slate-500">{t("doctorRevenueSubtitle")}</p>
         {loading ? (
           <div className="mt-4 h-56 animate-pulse rounded-xl bg-slate-100" />
         ) : topDoctors.length === 0 ? (
           <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-            Нет данных
+            {t("noBreakdownData")}
           </div>
         ) : (
           <ul className="mt-4 space-y-3">
@@ -52,13 +54,13 @@ export const ReportsBreakdown: React.FC<Props> = ({ doctors, services, loading }
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.26, ease: "easeOut", delay: 0.06 }}
       >
-        <h3 className="text-base font-semibold text-slate-950">Выручка по услугам</h3>
-        <p className="mt-1 text-sm text-slate-500">Топ услуг по сумме оплат</p>
+        <h3 className="text-base font-semibold text-slate-950">{t("serviceRevenueTitle")}</h3>
+        <p className="mt-1 text-sm text-slate-500">{t("serviceRevenueSubtitle")}</p>
         {loading ? (
           <div className="mt-4 h-56 animate-pulse rounded-xl bg-slate-100" />
         ) : topServices.length === 0 ? (
           <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-            Нет данных
+            {t("noBreakdownData")}
           </div>
         ) : (
           <ul className="mt-4 space-y-3">

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowDownAZ, ArrowUpZA } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatDateTimeRu } from "../../../utils/formatDateTime";
@@ -24,6 +25,7 @@ type Props = {
 type SortKey = "createdAt" | "amount";
 
 export const ReportsTable: React.FC<Props> = ({ payments, invoices, loading }) => {
+  const { t } = useTranslation("reports");
   const [sortKey, setSortKey] = React.useState<SortKey>("createdAt");
   const [sortAsc, setSortAsc] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -33,10 +35,10 @@ export const ReportsTable: React.FC<Props> = ({ payments, invoices, loading }) =
     const paymentRows: Row[] = payments.map((payment) => ({
       id: `p-${payment.id}`,
       type: "payment",
-      ref: `ОПЛ-${payment.id}`,
+      ref: `${t("paymentPrefix")}${payment.id}`,
       amount: payment.amount,
-      status: payment.deletedAt ? "аннулирован" : "проведён",
-      method: payment.method === "cash" ? "Наличные" : "Карта",
+      status: payment.deletedAt ? t("paymentStatusCancelled") : t("paymentStatusExecuted"),
+      method: payment.method === "cash" ? t("paymentMethodCash") : t("paymentMethodCard"),
       createdAt: payment.createdAt,
     }));
     const invoiceRows: Row[] = invoices.map((invoice) => ({
@@ -87,13 +89,13 @@ export const ReportsTable: React.FC<Props> = ({ payments, invoices, loading }) =
       transition={{ duration: 0.3, ease: "easeOut", delay: 0.08 }}
     >
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <h3 className="text-base font-semibold text-slate-950">Операции</h3>
+        <h3 className="text-base font-semibold text-slate-950">{t("operationsTitle")}</h3>
         <div className="flex flex-col gap-2 sm:flex-row">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск по номеру или статусу"
+            placeholder={t("operationsSearchPlaceholder")}
             className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none transition focus:border-slate-400 focus:bg-white"
           />
           <select
@@ -101,9 +103,9 @@ export const ReportsTable: React.FC<Props> = ({ payments, invoices, loading }) =
             onChange={(e) => setTypeFilter(e.target.value as "all" | "payment" | "invoice")}
             className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none transition focus:border-slate-400 focus:bg-white"
           >
-            <option value="all">Все</option>
-            <option value="payment">Оплаты</option>
-            <option value="invoice">Счета</option>
+            <option value="all">{t("typeFilterAll")}</option>
+            <option value="payment">{t("typeFilterPayment")}</option>
+            <option value="invoice">{t("typeFilterInvoice")}</option>
           </select>
         </div>
       </div>
@@ -112,25 +114,25 @@ export const ReportsTable: React.FC<Props> = ({ payments, invoices, loading }) =
         <div className="mt-4 h-64 animate-pulse rounded-xl bg-slate-100" />
       ) : sorted.length === 0 ? (
         <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-          Нет операций за выбранный фильтр
+          {t("noFilteredOperations")}
         </div>
       ) : (
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full border-separate border-spacing-0">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                <th className="px-3 py-2">Тип</th>
+                <th className="px-3 py-2">{t("typeColumn")}</th>
                 <th className="px-3 py-2">Ref</th>
-                <th className="px-3 py-2">Статус</th>
-                <th className="px-3 py-2">Метод</th>
+                <th className="px-3 py-2">{t("statusColumn")}</th>
+                <th className="px-3 py-2">{t("methodColumn")}</th>
                 <th className="px-3 py-2">
                   <button type="button" onClick={() => toggleSort("amount")} className="inline-flex items-center gap-1">
-                    Сумма {sortKey === "amount" ? (sortAsc ? <ArrowDownAZ className="h-3.5 w-3.5" /> : <ArrowUpZA className="h-3.5 w-3.5" />) : null}
+                    {t("amountColumn")} {sortKey === "amount" ? (sortAsc ? <ArrowDownAZ className="h-3.5 w-3.5" /> : <ArrowUpZA className="h-3.5 w-3.5" />) : null}
                   </button>
                 </th>
                 <th className="px-3 py-2">
                   <button type="button" onClick={() => toggleSort("createdAt")} className="inline-flex items-center gap-1">
-                    Дата {sortKey === "createdAt" ? (sortAsc ? <ArrowDownAZ className="h-3.5 w-3.5" /> : <ArrowUpZA className="h-3.5 w-3.5" />) : null}
+                    {t("dateColumn")} {sortKey === "createdAt" ? (sortAsc ? <ArrowDownAZ className="h-3.5 w-3.5" /> : <ArrowUpZA className="h-3.5 w-3.5" />) : null}
                   </button>
                 </th>
               </tr>
@@ -138,7 +140,7 @@ export const ReportsTable: React.FC<Props> = ({ payments, invoices, loading }) =
             <tbody>
               {sorted.map((row) => (
                 <tr key={row.id} className="border-t border-slate-100 text-sm text-slate-700">
-                  <td className="px-3 py-2">{row.type === "payment" ? "Оплата" : "Счёт"}</td>
+                  <td className="px-3 py-2">{row.type === "payment" ? t("paymentType") : t("invoiceType")}</td>
                   <td className="px-3 py-2 font-medium text-slate-900">{row.ref}</td>
                   <td className="px-3 py-2">{row.status}</td>
                   <td className="px-3 py-2">{row.method}</td>

@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ChatMessage, AI_CHAT_GUTTER } from "./ChatMessage";
 import { AiMessageActions } from "./AiMessageActions";
 import { MessageActions } from "./MessageActions";
@@ -28,6 +29,7 @@ export const AssistantMessageBlock: React.FC<AssistantMessageBlockProps> = ({
   onRunAction,
   sending,
 }) => {
+  const { t } = useTranslation(["ai"]);
   const streamSource = message.streamText ?? "";
   const isStreaming = Boolean(message.streamText);
 
@@ -43,7 +45,7 @@ export const AssistantMessageBlock: React.FC<AssistantMessageBlockProps> = ({
   const fullAssistantText = message.streamText ?? message.text;
   const showDoneBadge = showFollowUps && fullAssistantText.startsWith("✔");
 
-  const ruleActions = useMemo(() => getActionsForMessage(message), [message.text, message.streamText]);
+  const ruleActions = useMemo(() => getActionsForMessage(message, t), [message.text, message.streamText, t]);
 
   return (
     <div className="space-y-2.5">
@@ -51,7 +53,7 @@ export const AssistantMessageBlock: React.FC<AssistantMessageBlockProps> = ({
         {bubbleText}
       </ChatMessage>
 
-      {showTypingHint ? <TypingInline label="AI печатает..." /> : null}
+      {showTypingHint ? <TypingInline label={t("aiAssistant.aiTyping")} /> : null}
 
       {showDoneBadge ? (
         <div
@@ -60,14 +62,14 @@ export const AssistantMessageBlock: React.FC<AssistantMessageBlockProps> = ({
             "inline-flex rounded-full border border-emerald-200/60 bg-emerald-50/70 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800 backdrop-blur-sm"
           )}
         >
-          Готово
+          {t("aiAssistant.done")}
         </div>
       ) : null}
 
       {message.role === "assistant" && message.suggestions && message.suggestions.length > 0 && showFollowUps ? (
         <div className="space-y-1.5">
           <p className={cn(AI_CHAT_GUTTER, "text-[11px] font-semibold uppercase tracking-wide text-slate-400")}>
-            Дальше в CRM
+            {t("aiAssistant.nextInCrm")}
           </p>
           <SuggestionChips labels={message.suggestions} disabled={sending} onSelect={onSuggestionPick} />
         </div>
@@ -80,7 +82,7 @@ export const AssistantMessageBlock: React.FC<AssistantMessageBlockProps> = ({
       {message.role === "assistant" && showFollowUps && ruleActions.length > 0 ? (
         <div className="space-y-1.5">
           <p className={cn(AI_CHAT_GUTTER, "text-[11px] font-semibold uppercase tracking-wide text-slate-400")}>
-            Быстрые действия
+            {t("aiAssistant.quickActions")}
           </p>
           <AiMessageActions actions={ruleActions} disabled={sending} />
         </div>

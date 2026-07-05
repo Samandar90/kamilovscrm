@@ -1,5 +1,6 @@
 /**
  * Парсит ответы AI с блоками 📊 / 📈 / 📉 / 💡 / 👉 (и вариант «📊 Анализ»).
+ * Headings are normalized; actual localization happens at render time via useTranslation.
  */
 export type AssistantParsedBlock = {
   key: string;
@@ -9,10 +10,14 @@ export type AssistantParsedBlock = {
 
 const BLOCK_SPLIT = /\n(?=📊|📈|📉|💡|👉)/;
 
+/**
+ * Normalize headings by detecting patterns and marking them for i18n translation.
+ * Returns emoji + i18n key like "📊 aiAssistant.whatISee" for later component translation.
+ */
 function normalizeHeading(h: string): string {
   const t = h.trim();
-  if (/^📊\s*Анализ/i.test(t)) return "📊 Что вижу";
-  if (/^💡\s*Что делать/i.test(t)) return "💡 Что сделать";
+  if (/^📊\s*Анализ/i.test(t)) return "📊 aiAssistant.whatISee";
+  if (/^💡\s*Что делать/i.test(t)) return "💡 aiAssistant.whatToDo";
   return t.replace(/\s*:\s*$/, "");
 }
 

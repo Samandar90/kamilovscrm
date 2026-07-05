@@ -1,13 +1,14 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import type { InvoiceStatus } from "../../api/cashDeskApi";
 
-const LABELS: Record<InvoiceStatus, string> = {
-  draft: "Черновик",
-  issued: "К оплате",
-  partially_paid: "Частично оплачен",
-  paid: "Оплачен",
-  cancelled: "Отменён",
-  refunded: "Возврат",
+const LABEL_KEYS: Record<InvoiceStatus, string> = {
+  draft: "billing.status.draft",
+  issued: "billing.status.issued",
+  partially_paid: "billing.status.partial",
+  paid: "billing.status.paid",
+  cancelled: "billing.status.cancelled",
+  refunded: "billing.status.refunded",
 };
 
 /** Светлая палитра статусов — спокойный контраст, без тёмных заливок */
@@ -26,11 +27,13 @@ type Props = {
 };
 
 export const InvoiceStatusBadge: React.FC<Props> = ({ status, className = "" }) => {
+  const { t } = useTranslation();
+
   return (
     <span
       className={`inline-flex max-w-full items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium leading-tight tracking-wide transition-all duration-150 ease-out hover:opacity-90 ${styles[status]} ${className}`}
     >
-      {LABELS[status] ?? status}
+      {t(LABEL_KEYS[status] ?? status)}
     </span>
   );
 };

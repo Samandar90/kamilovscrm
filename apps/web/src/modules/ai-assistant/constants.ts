@@ -18,12 +18,12 @@ export type SmartQuickChip = {
   domain: string;
 };
 
-/** Умные подсказки: текст + иконка + домен — «продуктовые» suggestions */
+/** Smart quick chips are translated via i18n, keys in ai.smartChips.* */
 export const SMART_QUICK_CHIPS: readonly SmartQuickChip[] = [
-  { text: "Выручка сегодня", icon: "chart", domain: "Аналитика" },
-  { text: "Неоплаченные счета", icon: "invoice", domain: "Биллинг" },
-  { text: "Кто топ врач", icon: "crown", domain: "CRM" },
-  { text: "Какие врачи у нас есть", icon: "team", domain: "Справочник" },
+  { text: "ai.smartChips.revenue", icon: "chart", domain: "ai.smartChips.analyticsDomain" },
+  { text: "ai.smartChips.unpaidInvoices", icon: "invoice", domain: "ai.smartChips.billingDomain" },
+  { text: "ai.smartChips.topDoctor", icon: "crown", domain: "ai.smartChips.crmDomain" },
+  { text: "ai.smartChips.doctorsAvailable", icon: "team", domain: "ai.smartChips.directoryDomain" },
 ] as const;
 
 export type EmptyHeroAction = {
@@ -33,10 +33,11 @@ export type EmptyHeroAction = {
 };
 
 export const EMPTY_HERO_ACTIONS: readonly EmptyHeroAction[] = [
-  { prompt: "Выручка сегодня", subtitle: "Сводка выручки и показатели дня", icon: "chart" },
-  { prompt: "Неоплаченные счета", subtitle: "Долги и статусы оплат", icon: "invoice" },
-  { prompt: "Кто топ врач", subtitle: "Рейтинг специалистов по показателям", icon: "crown" },
-  { prompt: "Какие врачи у нас есть", subtitle: "Список специалистов в системе", icon: "team" },
+  { prompt: "ai.emptyHero.revenue.prompt", subtitle: "ai.emptyHero.revenue.subtitle", icon: "chart" },
+  { prompt: "ai.emptyHero.invoices.prompt", subtitle: "ai.emptyHero.invoices.subtitle", icon: "invoice" },
+  { prompt: "ai.emptyHero.doctor.prompt", subtitle: "ai.emptyHero.doctor.subtitle", icon: "crown" },
+  { prompt: "ai.emptyHero.doctors.prompt", subtitle: "ai.emptyHero.doctors.subtitle", icon: "team" },
 ] as const;
 
+/** Note: Component will call t() on these keys at render time */
 export const QUICK_PROMPT_LABELS = SMART_QUICK_CHIPS.map((c) => c.text);

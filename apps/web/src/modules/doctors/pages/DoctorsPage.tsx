@@ -366,12 +366,12 @@ export const DoctorsPage: React.FC = () => {
                 </div>
 
                 <div className="mt-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2">
-                  <p className="text-xs uppercase tracking-wide text-[#94a3b8]">Процент врача</p>
+                  <p className="text-xs uppercase tracking-wide text-[#94a3b8]">{t("percent")}</p>
                   <p className="mt-1 text-lg font-semibold tabular-nums text-[#0f172a]">{doctor.percent}%</p>
                 </div>
 
                 <div className="mt-3">
-                  <p className="text-xs uppercase tracking-wide text-[#94a3b8]">Услуги</p>
+                  <p className="text-xs uppercase tracking-wide text-[#94a3b8]">{t("services")}</p>
                   <DoctorServicesChips
                     doctorId={doctor.id}
                     serviceIds={doctor.serviceIds ?? []}
@@ -387,7 +387,7 @@ export const DoctorsPage: React.FC = () => {
                       onClick={() => openEdit(doctor)}
                       disabled={busy}
                     >
-                      Изменить
+                      {t("edit")}
                     </button>
                     <button
                       type="button"
@@ -399,7 +399,7 @@ export const DoctorsPage: React.FC = () => {
                       onClick={() => void handleToggleDoctorActive(doctor)}
                       disabled={busy}
                     >
-                      {isDeletingId === doctor.id ? "..." : doctor.active ? "Деактивировать" : "Активировать"}
+                      {isDeletingId === doctor.id ? "..." : doctor.active ? t("deactivate") : t("activate")}
                     </button>
                   </div>
                 )}
@@ -416,7 +416,7 @@ export const DoctorsPage: React.FC = () => {
           className="w-full max-w-2xl rounded-[20px] border border-[#e2e8f0] bg-white p-6 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.22)]"
         >
             <h3 className="text-lg font-semibold text-[#0f172a]">
-              {editingDoctorId ? "Редактировать врача" : "Добавить врача"}
+              {editingDoctorId ? t("editDoctor") : t("addDoctor")}
             </h3>
             {formError && (
               <div className="mt-3 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-sm text-[#991b1b]">
@@ -426,7 +426,7 @@ export const DoctorsPage: React.FC = () => {
 
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               <label className="text-sm text-[#334155]">
-                Имя *
+                {t("name")} *
                 <input
                   className="mt-1 h-11 w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:bg-white focus:ring-1 focus:ring-[#16a34a]/25"
                   value={formState.name}
@@ -436,7 +436,7 @@ export const DoctorsPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm text-[#334155]">
-                Специальность *
+                {t("speciality")} *
                 <input
                   className="mt-1 h-11 w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:bg-white focus:ring-1 focus:ring-[#16a34a]/25"
                   value={formState.speciality}
@@ -448,7 +448,7 @@ export const DoctorsPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm text-[#334155]">
-                Процент (0-100) *
+                {t("percentRange")} *
                 <input
                   type="number"
                   min={0}
@@ -462,7 +462,7 @@ export const DoctorsPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm text-[#334155]">
-                Телефон
+                {t("phone")}
                 <PhoneInput
                   defaultCountry998Prefix={false}
                   className="mt-1 h-11 w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:bg-white focus:ring-1 focus:ring-[#16a34a]/25"
@@ -474,7 +474,7 @@ export const DoctorsPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm text-[#334155]">
-                Дата рождения
+                {t("birthDate")}
                 <input
                   type="date"
                   className="mt-1 h-11 w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:bg-white focus:ring-1 focus:ring-[#16a34a]/25"
@@ -494,14 +494,14 @@ export const DoctorsPage: React.FC = () => {
                   disabled={isSaving}
                   className="h-4 w-4 rounded border-[#cbd5e1] text-[#16a34a] focus:ring-[#16a34a]/30"
                 />
-                Активен
+                {t("active")}
               </label>
             </div>
 
             <div className="mt-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium text-[#334155]">
-                  Выбрано услуг: {formState.serviceIds.length}
+                  {t("servicesSelected", { count: formState.serviceIds.length })}
                 </p>
                 <button
                   type="button"
@@ -509,7 +509,7 @@ export const DoctorsPage: React.FC = () => {
                   disabled={isSaving}
                   className="inline-flex h-9 items-center rounded-lg border border-[#e2e8f0] bg-white px-3 text-xs font-semibold text-[#0f172a] transition hover:bg-[#f8fafc] disabled:opacity-50"
                 >
-                  {formState.serviceIds.length === 0 ? "+ Добавить услуги" : "Изменить"}
+                  {formState.serviceIds.length === 0 ? t("addServices") : t("edit")}
                 </button>
               </div>
               {selectedServiceRefs.length > 0 ? (
@@ -527,7 +527,7 @@ export const DoctorsPage: React.FC = () => {
                   )}
                 />
               ) : (
-                <p className="mt-2 text-xs text-[#94a3b8]">Пока ничего не выбрано</p>
+                <p className="mt-2 text-xs text-[#94a3b8]">{t("nothingSelected")}</p>
               )}
             </div>
 
@@ -538,7 +538,7 @@ export const DoctorsPage: React.FC = () => {
                 onClick={closeModal}
                 disabled={isSaving}
               >
-                Отмена
+                {t("cancel")}
               </button>
               <button
                 type="button"
@@ -546,7 +546,7 @@ export const DoctorsPage: React.FC = () => {
                 onClick={() => void saveDoctor()}
                 disabled={isSaving}
               >
-                {isSaving ? "Сохранение..." : "Сохранить"}
+                {isSaving ? t("saving") : t("save")}
               </button>
             </div>
         </Modal>
@@ -554,10 +554,10 @@ export const DoctorsPage: React.FC = () => {
       {canManage && (
         <SelectableItemsModal
           isOpen={servicePickerOpen}
-          title="Выбор услуг"
+          title={t("selectServices")}
           options={services}
           selectedIds={formState.serviceIds}
-          searchPlaceholder="Поиск услуг..."
+          searchPlaceholder={t("searchServices")}
           onClose={() => setServicePickerOpen(false)}
           onSave={(nextIds) => {
             setFormState((prev) => ({ ...prev, serviceIds: nextIds }));

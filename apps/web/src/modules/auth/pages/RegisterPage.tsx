@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, Navigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Building2, Eye, EyeOff, Lock, User } from "lucide-react";
 import { authApi } from "../../../api/authApi";
@@ -20,6 +21,7 @@ const slugify = (value: string): string =>
     .replace(/^-|-$/g, "");
 
 export const RegisterPage: React.FC = () => {
+  const { t } = useTranslation();
   const { isAuthenticated, clearError } = useAuth();
   const { clinic } = useClinic();
   const brandName = clinic.name || BRANDING.productName;
@@ -38,8 +40,8 @@ export const RegisterPage: React.FC = () => {
   }
 
   React.useEffect(() => {
-    document.title = `${brandName} — Регистрация`;
-  }, [brandName]);
+    document.title = `${brandName} — ${t("auth.register")}`;
+  }, [brandName, t]);
 
   const canSubmit = Boolean(
     clinicName.trim() &&
@@ -73,14 +75,14 @@ export const RegisterPage: React.FC = () => {
       });
 
       if (!payload.token) {
-        throw new Error("Токен не получен");
+        throw new Error(t("auth.tokenNotReceived"));
       }
 
       sessionStorage.setItem(TOKEN_KEY, payload.token);
       localStorage.removeItem(TOKEN_KEY);
       window.location.assign("/dashboard");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось создать клинику");
+      setError(e instanceof Error ? e.message : t("auth.failedToCreateClinic"));
       setIsSubmitting(false);
     }
   };
@@ -95,7 +97,7 @@ export const RegisterPage: React.FC = () => {
           <h1 className="mt-4 text-[30px] font-bold leading-tight tracking-tight text-[#111827]">
             {brandName}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">Создайте клинику и начните работу</p>
+          <p className="mt-1 text-sm text-slate-500">{t("auth.createClinicAndStart")}</p>
         </div>
 
         <motion.div
@@ -105,9 +107,9 @@ export const RegisterPage: React.FC = () => {
           className="rounded-2xl border border-[#E5E7EB] bg-white p-8 shadow-[0_12px_28px_rgba(15,23,42,0.08)]"
         >
           <h2 className="mb-1 text-[26px] font-semibold leading-tight text-[#111827]">
-            Регистрация клиники
+            {t("auth.clinicRegistration")}
           </h2>
-          <p className="mb-5 text-sm text-gray-500">Один шаг до запуска вашей CRM</p>
+          <p className="mb-5 text-sm text-gray-500">{t("auth.oneStepToLaunch")}</p>
 
           <form className="space-y-4" onSubmit={onSubmit} noValidate aria-busy={isSubmitting}>
             <div className="relative">
@@ -117,7 +119,7 @@ export const RegisterPage: React.FC = () => {
                 onChange={(e) => onClinicNameChange(e.target.value)}
                 autoFocus
                 className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
-                placeholder="Название клиники"
+                placeholder={t("auth.clinicNamePlaceholder")}
               />
             </div>
 
@@ -130,7 +132,7 @@ export const RegisterPage: React.FC = () => {
                   setError(null);
                 }}
                 className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
-                placeholder="Slug (например, kamilovs-clinic)"
+                placeholder={t("auth.slugPlaceholder")}
               />
             </div>
 
@@ -143,7 +145,7 @@ export const RegisterPage: React.FC = () => {
                   setError(null);
                 }}
                 className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
-                placeholder="Ваше имя"
+                placeholder={t("auth.yourNamePlaceholder")}
               />
             </div>
 
@@ -157,7 +159,7 @@ export const RegisterPage: React.FC = () => {
                 }}
                 autoComplete="username"
                 className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
-                placeholder="Логин"
+                placeholder={t("auth.username")}
               />
             </div>
 
@@ -172,7 +174,7 @@ export const RegisterPage: React.FC = () => {
                 }}
                 autoComplete="new-password"
                 className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-10 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
-                placeholder="Пароль (минимум 6 символов)"
+                placeholder={t("auth.passwordMinChars")}
               />
               <button
                 type="button"
@@ -198,16 +200,16 @@ export const RegisterPage: React.FC = () => {
               disabled={isSubmitting || !canSubmit}
               className="h-12 w-full rounded-xl bg-[#2563EB] font-medium text-white transition hover:bg-[#1D4ED8] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? "Создаём..." : "Создать клинику"}
+              {isSubmitting ? t("auth.creating") : t("auth.createClinic")}
             </button>
 
             <p className="text-center text-sm text-slate-500">
-              Уже есть аккаунт?{" "}
+              {t("auth.alreadyHaveAccount")}{" "}
               <Link
                 to="/login"
                 className="font-medium text-[#2563EB] transition-colors hover:text-[#1D4ED8]"
               >
-                Войти
+                {t("auth.login")}
               </Link>
             </p>
           </form>

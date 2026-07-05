@@ -14,7 +14,10 @@ function messageText(m: Pick<ThreadMessage, "text" | "streamText">): string {
 /**
  * Rule-based действия CRM под ответом AI (только навигация, без мутаций).
  */
-export function getActionsForMessage(message: Pick<ThreadMessage, "text" | "streamText">): AiRuleAction[] {
+export function getActionsForMessage(
+  message: Pick<ThreadMessage, "text" | "streamText">,
+  t?: (key: string) => string
+): AiRuleAction[] {
   const raw = messageText(message).toLowerCase();
   if (!raw) return [];
 
@@ -27,17 +30,19 @@ export function getActionsForMessage(message: Pick<ThreadMessage, "text" | "stre
     out.push(a);
   };
 
+  const tr = (key: string, fallback: string) => t?.(key) ?? fallback;
+
   if (/выручк|доход|revenue|оборот|аналитик|отчёт|отчет/i.test(raw)) {
     push({
       id: "open-reports",
-      label: "Открыть отчёты",
-      tooltip: "Перейти в раздел отчётов",
+      label: tr("aiActions.openReports", "Открыть отчёты"),
+      tooltip: tr("aiActions.openReportsTooltip", "Перейти в раздел отчётов"),
       path: "/reports",
     });
     push({
       id: "by-doctors",
-      label: "Показать врачей",
-      tooltip: "Список врачей и показатели",
+      label: tr("aiActions.showDoctors", "Показать врачей"),
+      tooltip: tr("aiActions.showDoctorsTooltip", "Список врачей и показатели"),
       path: "/doctors",
     });
   }
@@ -45,20 +50,20 @@ export function getActionsForMessage(message: Pick<ThreadMessage, "text" | "stre
   if (/неоплачен|не\s+оплачен|задолжен|дебитор|просрочен.*сч|счет.*неоплачен|счета.*неоплачен|долг/i.test(raw)) {
     push({
       id: "open-invoices",
-      label: "Открыть счета",
-      tooltip: "Счета и статусы оплат",
+      label: tr("aiActions.openInvoices", "Открыть счета"),
+      tooltip: tr("aiActions.openInvoicesTooltip", "Счета и статусы оплат"),
       path: "/billing/invoices",
     });
     push({
       id: "take-payment",
-      label: "Принять оплату",
-      tooltip: "Касса — приём платежей",
+      label: tr("aiActions.takePayment", "Принять оплату"),
+      tooltip: tr("aiActions.takePaymentTooltip", "Касса — приём платежей"),
       path: "/billing/cash-desk",
     });
     push({
       id: "patients-debt",
-      label: "Пациенты с долгами",
-      tooltip: "Список пациентов",
+      label: tr("aiActions.patientsDebt", "Пациенты с долгами"),
+      tooltip: tr("aiActions.patientsDebtTooltip", "Список пациентов"),
       path: "/patients",
     });
   }
@@ -66,14 +71,14 @@ export function getActionsForMessage(message: Pick<ThreadMessage, "text" | "stre
   if (/загрузк|низк|слот|окн|расписан|запис(и|ей|ь)|приём|прием/i.test(raw)) {
     push({
       id: "open-appointments",
-      label: "Открыть записи",
-      tooltip: "Календарь записей",
+      label: tr("aiActions.openAppointments", "Открыть записи"),
+      tooltip: tr("aiActions.openAppointmentsTooltip", "Календарь записей"),
       path: "/appointments",
     });
     push({
       id: "open-doctors-load",
-      label: "Показать врачей",
-      tooltip: "Нагрузка и справочник",
+      label: tr("aiActions.showDoctorsLoad", "Показать врачей"),
+      tooltip: tr("aiActions.showDoctorsLoadTooltip", "Нагрузка и справочник"),
       path: "/doctors",
     });
   }
@@ -81,14 +86,14 @@ export function getActionsForMessage(message: Pick<ThreadMessage, "text" | "stre
   if (/\bврач(и|а|ей|ом|ам)?\b|доктор|специалист|перегруж|нагрузк/i.test(raw)) {
     push({
       id: "open-doctors",
-      label: "Открыть врачей",
-      tooltip: "Справочник врачей",
+      label: tr("aiActions.openDoctors", "Открыть врачей"),
+      tooltip: tr("aiActions.openDoctorsTooltip", "Справочник врачей"),
       path: "/doctors",
     });
     push({
       id: "doctor-appointments",
-      label: "Записи по врачам",
-      tooltip: "Календарь",
+      label: tr("aiActions.doctorAppointments", "Записи по врачам"),
+      tooltip: tr("aiActions.doctorAppointmentsTooltip", "Календарь"),
       path: "/appointments",
     });
   }
@@ -96,14 +101,14 @@ export function getActionsForMessage(message: Pick<ThreadMessage, "text" | "stre
   if (/пациент|клиент.*клиник|запись\s+на\s+при/i.test(raw)) {
     push({
       id: "add-patient",
-      label: "Добавить пациента",
-      tooltip: "Раздел пациентов — создайте карточку",
+      label: tr("aiActions.addPatient", "Добавить пациента"),
+      tooltip: tr("aiActions.addPatientTooltip", "Раздел пациентов — создайте карточку"),
       path: "/patients",
     });
     push({
       id: "open-patients",
-      label: "Открыть пациентов",
-      tooltip: "Список пациентов",
+      label: tr("aiActions.openPatients", "Открыть пациентов"),
+      tooltip: tr("aiActions.openPatientsTooltip", "Список пациентов"),
       path: "/patients",
     });
   }

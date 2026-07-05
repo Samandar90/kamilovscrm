@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { dashboardApi } from "../api/dashboardApi";
 import { hasPermission } from "../../../auth/permissions";
 import { canReadAppointments, canReadBilling, canReadPatients } from "../../../auth/roleGroups";
@@ -21,6 +22,7 @@ type DashboardDataState = {
 };
 
 export const useDashboardData = (role: UserRole | undefined): DashboardDataState => {
+  const { t } = useTranslation("dashboard");
   const [loading, setLoading] = React.useState(true);
   const [partialError, setPartialError] = React.useState<string | null>(null);
   const [appointments, setAppointments] = React.useState<Appointment[]>([]);
@@ -100,7 +102,7 @@ export const useDashboardData = (role: UserRole | undefined): DashboardDataState
     });
 
     if (hasFail) {
-      setPartialError("Часть данных не удалось загрузить. Проверьте сеть и права доступа.");
+      setPartialError(t("dashboard.partialLoadError"));
     }
     setLoading(false);
   }, [role]);

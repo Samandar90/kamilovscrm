@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { reportsApi, type PeriodKey, type ReportsGranularity } from "../api/reportsApi";
 import { ReportsHeader } from "../components/ReportsHeader";
@@ -30,6 +31,7 @@ const mapPeriod = (period: PeriodKey): ReportsGranularity => {
 };
 
 export const ReportsPage: React.FC = () => {
+  const { t } = useTranslation(["reports", "common"]);
   const [period, setPeriod] = React.useState<PeriodKey>("week");
   const [doctorId, setDoctorId] = React.useState<number | null>(null);
   const [serviceId, setServiceId] = React.useState<number | null>(null);
@@ -86,7 +88,7 @@ export const ReportsPage: React.FC = () => {
         setPayments(p);
         setInvoices(i);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Не удалось загрузить отчёты");
+        setError(err instanceof Error ? err.message : t("errorLoadingReports"));
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -137,10 +139,10 @@ export const ReportsPage: React.FC = () => {
   return (
     <div className="mx-auto max-w-7xl space-y-6 bg-slate-50/80 px-4 py-6 md:space-y-8 md:px-6 md:py-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">Отчёты</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">{t("title")}</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Финансовая аналитика клиники: выручка, структура и операции
-          {summary?.timezone ? ` · часовой пояс ${summary.timezone}` : ""}
+          {t("subtitle")}
+          {summary?.timezone ? ` · ${t("timezone")} ${summary.timezone}` : ""}
         </p>
       </header>
 
@@ -163,17 +165,17 @@ export const ReportsPage: React.FC = () => {
       />
 
       {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error || t("common:error")}</div>
       ) : null}
 
       <ReportsKPI
         loading={loading}
         items={[
-          { title: "Выручка", value: metrics?.totalRevenue ?? 0, changePct: growth },
-          { title: "Рост", value: growth == null ? "—" : `${growth > 0 ? "+" : ""}${Math.round(growth)}%`, changePct: growth },
-          { title: "Пациенты", value: summary?.revenueByDoctor.length ?? 0 },
-          { title: "Счета", value: invoices.length },
-          { title: "Средний чек", value: averageCheck },
+          { title: t("revenue"), value: metrics?.totalRevenue ?? 0, changePct: growth },
+          { title: t("growth"), value: growth == null ? "—" : `${growth > 0 ? "+" : ""}${Math.round(growth)}%`, changePct: growth },
+          { title: t("patients"), value: summary?.revenueByDoctor.length ?? 0 },
+          { title: t("invoices"), value: invoices.length },
+          { title: t("averageCheck"), value: averageCheck },
         ]}
       />
 
@@ -200,11 +202,11 @@ export const ReportsPage: React.FC = () => {
 
       {!loading && !error && metrics && metrics.totalRevenue <= 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
-          Нет финансовых данных за текущий период. Попробуйте изменить фильтр периода или обновить данные.
+          {t("noFinancialData")}
         </div>
       ) : null}
 
-      <footer className="text-xs text-slate-400">Текущая выручка: {formatSum(metrics?.totalRevenue ?? 0)}</footer>
+      <footer className="text-xs text-slate-400">{t("currentRevenue")}: {formatSum(metrics?.totalRevenue ?? 0)}</footer>
     </div>
   );
 };

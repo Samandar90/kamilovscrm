@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import {
   AlertTriangle,
@@ -9,12 +10,12 @@ import {
 } from "lucide-react";
 import type { MorningBriefingState } from "../../../hooks/useMorningBriefing";
 
-function greetingPhrase(date: Date): string {
+function greetingPhrase(date: Date, t: any): string {
   const h = date.getHours();
-  if (h >= 5 && h < 12) return "Доброе утро";
-  if (h >= 12 && h < 17) return "Добрый день";
-  if (h >= 17) return "Добрый вечер";
-  return "Доброе утро";
+  if (h >= 5 && h < 12) return t("dashboard.greeting.morning");
+  if (h >= 12 && h < 17) return t("dashboard.greeting.afternoon");
+  if (h >= 17) return t("dashboard.greeting.evening");
+  return t("dashboard.greeting.morning");
 }
 
 export type DashboardMorningBriefingCardProps = {
@@ -188,8 +189,9 @@ export const DashboardMorningBriefingCard: React.FC<DashboardMorningBriefingCard
   state,
   onRefresh,
 }) => {
-  const greeting = greetingPhrase(new Date());
-  const displayName = userName.trim() || "коллега";
+  const { t } = useTranslation();
+  const greeting = greetingPhrase(new Date(), t);
+  const displayName = userName.trim() || t("dashboard.colleague");
   const loading = state.status === "loading";
   const contentKey =
     state.status === "success" ? state.briefing : state.status === "error" ? state.message : "loading";
@@ -211,7 +213,7 @@ export const DashboardMorningBriefingCard: React.FC<DashboardMorningBriefingCard
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-            Утренний AI-брифинг
+            {t("dashboard.morningAIBriefing")}
           </p>
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/10 to-indigo-500/5 text-violet-600 ring-1 ring-violet-200/60">
@@ -221,7 +223,7 @@ export const DashboardMorningBriefingCard: React.FC<DashboardMorningBriefingCard
               <h2 className="text-[17px] font-semibold tracking-tight text-slate-900">
                 {greeting}, {displayName}
               </h2>
-              <p className="mt-0.5 text-sm text-slate-500">Краткий разбор на сегодня</p>
+              <p className="mt-0.5 text-sm text-slate-500">{t("dashboard.briefSummaryToday")}</p>
             </div>
           </div>
         </div>
@@ -234,13 +236,13 @@ export const DashboardMorningBriefingCard: React.FC<DashboardMorningBriefingCard
           className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-slate-200/90 bg-slate-50/90 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} aria-hidden />
-          Обновить анализ
+          {t("dashboard.updateAnalysis")}
         </motion.button>
       </div>
 
       <div className="mt-4 space-y-2.5">
         {state.status === "loading" ? (
-          <div className="space-y-3" role="status" aria-label="Загрузка брифинга">
+          <div className="space-y-3" role="status" aria-label={t("dashboard.loadingBriefing")}>
             {skeletonBar("a", "h-4 w-full")}
             {skeletonBar("b", "h-4 w-[92%]")}
             {skeletonBar("c", "h-4 w-[88%]")}

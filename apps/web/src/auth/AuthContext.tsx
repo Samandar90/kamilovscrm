@@ -22,26 +22,26 @@ type AuthContextValue = AuthState & {
 
 const AuthContext = React.createContext<AuthContextValue | undefined>(undefined);
 
-const normalizeAuthError = (error: unknown): string => {
-  const message = error instanceof Error ? error.message : "Ошибка входа";
+const normalizeAuthError = (error: unknown, t?: (key: string) => string): string => {
+  const message = error instanceof Error ? error.message : (t?.("authContext.loginError") ?? "Unknown error");
   const normalized = message.toLowerCase();
   if (
     normalized.includes("invalid credentials") ||
     normalized.includes("invalid username or password") ||
     normalized.includes("password")
   ) {
-    return "Неверный логин или пароль";
+    return t?.("authContext.invalidCredentials") ?? "Invalid credentials";
   }
   if (normalized.includes("full_name") || normalized.includes("column")) {
-    return "Ошибка авторизации. Попробуйте снова или обратитесь к администратору.";
+    return t?.("authContext.authError") ?? "Authorization error";
   }
   if (normalized.includes("inactive")) {
-    return "Пользователь отключен. Обратитесь к администратору.";
+    return t?.("authContext.userDisabled") ?? "User disabled";
   }
   if (normalized.includes("too many login attempts")) {
-    return "Слишком много попыток входа. Повторите позже.";
+    return t?.("authContext.tooManyAttempts") ?? "Too many attempts";
   }
-  return "Не удалось выполнить вход. Попробуйте еще раз.";
+  return t?.("authContext.loginFailed") ?? "Login failed";
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({

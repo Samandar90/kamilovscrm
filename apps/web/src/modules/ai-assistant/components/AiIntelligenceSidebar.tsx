@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { AlertTriangle, CheckCircle, Info, RefreshCw, Sparkles } from "lucide-react";
 import { aiAssistantService, type BusinessInsightDto } from "../services/aiAssistantService";
@@ -37,6 +38,7 @@ function SidebarSkeleton() {
 }
 
 export const AiIntelligenceSidebar = () => {
+  const { t } = useTranslation();
   const [insights, setInsights] = useState<BusinessInsightDto[]>([]);
   const [todayFocus, setTodayFocus] = useState<string[]>([]);
   const [proactiveHeadline, setProactiveHeadline] = useState<string | null>(null);
@@ -54,7 +56,7 @@ export const AiIntelligenceSidebar = () => {
       setProactiveHeadline(data.proactiveHeadline ?? null);
       setKpiTeaser(data.kpiTeaser ?? null);
     } catch {
-      setError("Не удалось загрузить данные AI");
+      setError(t("ai.errors.loadAnalytics"));
       setInsights([]);
       setTodayFocus([]);
       setProactiveHeadline(null);
@@ -62,7 +64,7 @@ export const AiIntelligenceSidebar = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -71,7 +73,7 @@ export const AiIntelligenceSidebar = () => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-medium tracking-wide text-slate-500">Сегодня</h2>
+        <h2 className="text-sm font-medium tracking-wide text-slate-500">{t("aiAssistant.todayHeading")}</h2>
         <button
           type="button"
           onClick={() => void load()}
@@ -79,7 +81,7 @@ export const AiIntelligenceSidebar = () => {
           className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 transition hover:text-slate-700 disabled:opacity-50"
         >
           <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} strokeWidth={2} />
-          Обновить
+          {t("dashboard.refresh")}
         </button>
       </div>
 
@@ -100,7 +102,7 @@ export const AiIntelligenceSidebar = () => {
             <Sparkles className="h-4 w-4" strokeWidth={2} aria-hidden />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-indigo-600/90">AI-обзор</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-indigo-600/90">{t("aiAssistant.aiOverview")}</p>
             <p className="mt-0.5 text-sm font-medium leading-snug text-slate-800">{proactiveHeadline}</p>
             {kpiTeaser ? <p className="mt-1 text-xs leading-relaxed text-slate-600">{kpiTeaser}</p> : null}
           </div>
@@ -114,7 +116,7 @@ export const AiIntelligenceSidebar = () => {
           transition={{ duration: 0.3, delay: 0.05 }}
           className={cn("rounded-2xl p-4", PREMIUM_GLASS)}
         >
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Что важно сегодня</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">{t("aiAssistant.whatImportant")}</p>
           <ul className="mt-2.5 space-y-2">
             {todayFocus.map((line, i) => (
               <li
@@ -129,10 +131,10 @@ export const AiIntelligenceSidebar = () => {
       ) : null}
 
       <section className={cn("relative rounded-2xl p-4 pt-3", PREMIUM_GLASS)}>
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Инсайты и действия</p>
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{t("aiAssistant.insightsActions")}</p>
 
         {!loading && !error && insights.length === 0 ? (
-          <p className="py-2 text-center text-xs text-slate-500">Нет данных для инсайтов</p>
+          <p className="py-2 text-center text-xs text-slate-500">{t("aiAssistant.noDataForInsights")}</p>
         ) : null}
 
         <ul className="space-y-3">
@@ -156,11 +158,11 @@ export const AiIntelligenceSidebar = () => {
                 <InsightGlyph type={item.type} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold leading-tight text-slate-900">{item.title}</p>
-                  <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">Сигнал</p>
+                  <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">{t("aiAssistant.signal")}</p>
                   <p className="mt-0.5 text-xs leading-relaxed text-slate-600 line-clamp-3">{item.message}</p>
                   {item.recommendation ? (
                     <>
-                      <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-slate-400">Следующий шаг</p>
+                      <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-slate-400">{t("aiAssistant.nextStep")}</p>
                       <p className="mt-0.5 text-xs font-medium text-slate-800 line-clamp-2">{item.recommendation}</p>
                     </>
                   ) : null}

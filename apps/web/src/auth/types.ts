@@ -6,9 +6,9 @@ export type PublicUser = {
   fullName?: string;
   role: import("./permissions").UserRole;
   isActive: boolean;
-  /** Совпадает с колонкой users.doctor_id (JWT: doctorId). */
+  /** Matches users.doctor_id column (JWT: doctorId). */
   doctorId?: number | null;
-  /** Привязка медсестры к врачу (`nurses.doctor_id`, JWT: nurseDoctorId). */
+  /** Nurse's binding to doctor (`nurses.doctor_id`, JWT: nurseDoctorId). */
   nurseDoctorId?: number | null;
   createdAt: string;
 };

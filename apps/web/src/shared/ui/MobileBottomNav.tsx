@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { NavLink, useLocation } from "react-router-dom";
 import { CalendarDays, Landmark, LayoutDashboard, Menu, Users, X } from "lucide-react";
 import { cn } from "../../ui/utils/cn";
@@ -50,6 +51,7 @@ const iconWrap = (active: boolean) =>
   );
 
 export const MobileBottomNav: React.FC = () => {
+  const { t } = useTranslation("layout");
   const location = useLocation();
   const sections = useNavigation();
   const [moreOpen, setMoreOpen] = React.useState(false);
@@ -78,7 +80,7 @@ export const MobileBottomNav: React.FC = () => {
     <>
       <nav
         className="fixed bottom-0 left-0 right-0 z-[100] flex h-16 border-t border-slate-200/90 bg-white/90 shadow-[0_-1px_0_rgba(15,23,42,0.04)] backdrop-blur-md md:hidden"
-        aria-label="Основная навигация"
+        aria-label={t("mainNav")}
       >
         <NavLink
           to="/dashboard"
@@ -89,7 +91,7 @@ export const MobileBottomNav: React.FC = () => {
               <span className={iconWrap(isActive || pathActive(pathname, "/dashboard"))}>
                 <LayoutDashboard className="h-5 w-5" strokeWidth={1.75} aria-hidden />
               </span>
-              <span className="max-w-[4.5rem] truncate">Главная</span>
+              <span className="max-w-[4.5rem] truncate">{t("home")}</span>
             </>
           )}
         </NavLink>
@@ -102,7 +104,7 @@ export const MobileBottomNav: React.FC = () => {
               <span className={iconWrap(isActive || pathActive(pathname, "/appointments"))}>
                 <CalendarDays className="h-5 w-5" strokeWidth={1.75} aria-hidden />
               </span>
-              <span className="max-w-[4.5rem] truncate">Записи</span>
+              <span className="max-w-[4.5rem] truncate">{t("appointment")}</span>
             </>
           )}
         </NavLink>
@@ -115,7 +117,7 @@ export const MobileBottomNav: React.FC = () => {
               <span className={iconWrap(isActive || pathActive(pathname, "/patients"))}>
                 <Users className="h-5 w-5" strokeWidth={1.75} aria-hidden />
               </span>
-              <span className="max-w-[4.5rem] truncate">Пациенты</span>
+              <span className="max-w-[4.5rem] truncate">{t("patient")}</span>
             </>
           )}
         </NavLink>
@@ -128,7 +130,7 @@ export const MobileBottomNav: React.FC = () => {
               <span className={iconWrap(isActive || pathActive(pathname, "/billing/cash-desk"))}>
                 <Landmark className="h-5 w-5" strokeWidth={1.75} aria-hidden />
               </span>
-              <span className="max-w-[4.5rem] truncate">Касса</span>
+              <span className="max-w-[4.5rem] truncate">{t("cash")}</span>
             </>
           )}
         </NavLink>
@@ -142,7 +144,7 @@ export const MobileBottomNav: React.FC = () => {
           <span className={iconWrap(moreOpen || moreRouteActive)}>
             <Menu className="h-5 w-5" strokeWidth={1.75} aria-hidden />
           </span>
-          <span className="max-w-[4.5rem] truncate">Ещё</span>
+          <span className="max-w-[4.5rem] truncate">{t("more")}</span>
         </button>
       </nav>
 
@@ -151,26 +153,26 @@ export const MobileBottomNav: React.FC = () => {
           <button
             type="button"
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
-            aria-label="Закрыть меню"
+            aria-label={t("closeMenu")}
             onClick={() => setMoreOpen(false)}
           />
           <div className="absolute bottom-16 left-0 right-0 max-h-[min(72vh,calc(100vh-5rem))] overflow-hidden rounded-t-2xl border border-slate-200/90 bg-white shadow-[0_-12px_40px_-12px_rgba(15,23,42,0.2)]">
             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
               <h2 id="mobile-more-title" className="text-sm font-semibold text-slate-900">
-                Разделы
+                {t("sections")}
               </h2>
               <button
                 type="button"
                 onClick={() => setMoreOpen(false)}
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
-                aria-label="Закрыть"
+                aria-label={t("close")}
               >
                 <X className="h-5 w-5" strokeWidth={1.75} />
               </button>
             </div>
             <div className="max-h-[min(60vh,calc(100vh-11rem))] overflow-y-auto px-2 py-2 pb-4">
               {moreLinks.length === 0 ? (
-                <p className="px-3 py-6 text-center text-xs text-slate-500">Нет дополнительных разделов</p>
+                <p className="px-3 py-6 text-center text-xs text-slate-500">{t("noSections")}</p>
               ) : (
                 <ul className="space-y-0.5">
                   {moreLinks.map(({ path, label, Icon }) => {

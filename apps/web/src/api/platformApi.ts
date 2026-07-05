@@ -39,25 +39,25 @@ export type CreateClinicInput = {
   username: string;
   password: string;
   fullName: string;
-  /** data-URL картинки (png/jpeg/webp), опционально. */
+  /** data-URL image (png/jpeg/webp), optional. */
   logoUrl?: string;
 };
 
-/** Создаёт клинику + её админский аккаунт (trial 14 дней). Возвращаемый token игнорируем. */
+/** Creates clinic + its admin account (14-day trial). Returned token is ignored. */
 export const createClinicWithAdmin = (body: CreateClinicInput) =>
   requestJson<{ clinic: { id: number; name: string }; user: { username: string } }>(
     "/api/onboarding",
     { method: "POST", body }
   );
 
-/** Вкл/выкл SMS-напоминаний пациентам для клиники. */
+/** Enable/disable SMS reminders for patients. */
 export const updateClinicSms = (clinicId: number, enabled: boolean) =>
   requestJson<PlatformClinic>(`/api/platform/clinics/${clinicId}/sms`, {
     method: "POST",
     body: { enabled },
   });
 
-/** Смена логотипа/названия клиники (лого попадает в шапку интерфейса и на чеки). */
+/** Change clinic logo/name (logo appears in interface header and receipts). */
 export const updateClinicBranding = (clinicId: number, body: { logoUrl?: string; name?: string }) =>
   requestJson<{ ok: boolean; id: number }>(`/api/platform/clinics/${clinicId}/branding`, {
     method: "POST",

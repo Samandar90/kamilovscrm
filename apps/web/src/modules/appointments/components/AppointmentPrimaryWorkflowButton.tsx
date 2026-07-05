@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import type { Appointment } from "../api/appointmentsFlowApi";
 
 type Props = {
@@ -31,13 +32,14 @@ export const AppointmentPrimaryWorkflowButton: React.FC<Props> = ({
   onCompleteConsultation,
   onOpenDoctorWorkspace,
 }) => {
+  const { t } = useTranslation("appointments");
   const status =
     (appointment.status as string) === "in_progress" ? "in_consultation" : appointment.status;
 
   if (canOpenDoctorWorkspace && (status === "completed" || status === "in_consultation")) {
     return (
       <button type="button" className={btnNeutral} disabled={disabled} onClick={onOpenDoctorWorkspace}>
-        Рабочее место врача
+        {t("doctorWorkspace")}
       </button>
     );
   }
@@ -45,7 +47,7 @@ export const AppointmentPrimaryWorkflowButton: React.FC<Props> = ({
   if (canUpdateAppointment && (status === "scheduled" || status === "confirmed")) {
     return (
       <button type="button" className={btnPrimary} disabled={disabled} onClick={onMarkArrived}>
-        Принять
+        {t("accept")}
       </button>
     );
   }
@@ -53,7 +55,7 @@ export const AppointmentPrimaryWorkflowButton: React.FC<Props> = ({
   if (canUpdateAppointment && status === "arrived") {
     return (
       <button type="button" className={btnPrimary} disabled={disabled} onClick={onStartConsultation}>
-        Начать приём
+        {t("startConsultation")}
       </button>
     );
   }
@@ -61,7 +63,7 @@ export const AppointmentPrimaryWorkflowButton: React.FC<Props> = ({
   if (status === "in_consultation" && canUpdateAppointment && !canOpenDoctorWorkspace) {
     return (
       <button type="button" className={btnPrimary} disabled={disabled} onClick={onCompleteConsultation}>
-        Завершить приём
+        {t("completeConsultation")}
       </button>
     );
   }
