@@ -1,5 +1,6 @@
 import React from "react";
 import { CalendarPlus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { Patient, Service } from "../api/appointmentsFlowApi";
 import { coercePriceToNumber } from "../../../shared/lib/money";
 import { MoneyInput } from "../../../shared/ui/MoneyInput";
@@ -76,6 +77,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
   canCreateNewPatient = true,
   lockedDoctorDisplayName = null,
 }) => {
+  const { t } = useTranslation();
   const updateForm = React.useCallback(
     (patch: Partial<FullFormFields>) => {
       onChange((prev) => ({ ...prev, ...patch }));
@@ -116,10 +118,10 @@ export const AppointmentCreateModal: React.FC<Props> = ({
             </div>
             <div className="min-w-0 flex-1">
               <h2 id="full-appointment-title" className="text-base font-semibold tracking-tight text-[#111827]">
-                Новая запись
+                {t("appointments.addAppointment")}
               </h2>
               <p id="full-appointment-desc" className="mt-0.5 text-xs leading-snug text-[#6b7280]">
-                Пациент → врач → услуга → дата и время
+                {t("appointments.createSteps")}
               </p>
             </div>
           </div>
@@ -129,7 +131,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
           <div className="space-y-3">
             <div>
               <label htmlFor="create-patient" className={modalLabelClass}>
-                Пациент
+                {t("common.patient")}
               </label>
               {form.selectedPatient ? (
                 <div className="mt-1.5">
@@ -141,7 +143,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
                       type="button"
                       className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#166534] transition hover:bg-[#dcfce7]"
                       onClick={() => updateForm({ selectedPatient: null, patientQuery: "" })}
-                      aria-label="Убрать пациента"
+                      aria-label={t("appointments.removePatient")}
                     >
                       ✕
                     </button>
@@ -158,7 +160,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
                   onQueryChange={(patientQuery) => updateForm({ patientQuery })}
                   onSelectPatient={(selectedPatient) => updateForm({ selectedPatient: selectedPatient ?? null })}
                   onCreateRequested={canCreateNewPatient ? onCreatePatientRequest : undefined}
-                  placeholder="Имя или телефон"
+                  placeholder={t("appointments.patientSearchPlaceholder")}
                   wrapperClassName="relative mt-1.5"
                 />
               )}
@@ -166,7 +168,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
 
             <div>
               <label htmlFor="create-doctor" className={modalLabelClass}>
-                Врач
+                {t("appointments.doctor")}
               </label>
               {lockedDoctorDisplayName ? (
                 <div
@@ -187,7 +189,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
                     onDoctorChange(v);
                   }}
                 >
-                  <option value="">Выберите врача</option>
+                  <option value="">{t("appointments.selectDoctor")}</option>
                   {Object.entries(doctorsMap).map(([id, name]) => (
                     <option key={id} value={id}>
                       {name}
@@ -199,7 +201,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
 
             <div>
               <label htmlFor="create-service" className={modalLabelClass}>
-                Услуга
+                {t("common.service")}
               </label>
               <select
                 id="create-service"
@@ -210,10 +212,10 @@ export const AppointmentCreateModal: React.FC<Props> = ({
               >
                 <option value="">
                   {servicesLoading
-                    ? "Загрузка…"
+                    ? t("common.loading")
                     : form.doctorId
-                      ? "Выберите услугу"
-                      : "Сначала выберите врача"}
+                      ? t("appointments.selectService")
+                      : t("appointments.selectDoctorFirst")}
                 </option>
                 {form.doctorId && !servicesLoading
                   ? availableServices.map((service) => (
@@ -224,15 +226,15 @@ export const AppointmentCreateModal: React.FC<Props> = ({
                   : null}
               </select>
               {!form.doctorId ? (
-                <p className={modalHintClass}>Сначала выберите врача</p>
+                <p className={modalHintClass}>{t("appointments.selectDoctorFirst")}</p>
               ) : servicesLoading ? (
-                <p className={modalHintClass}>Подгружаем услуги…</p>
+                <p className={modalHintClass}>{t("appointments.loadingServices")}</p>
               ) : null}
             </div>
 
             <div>
               <label htmlFor="create-price" className={modalLabelClass}>
-                Цена
+                {t("billing.price")}
               </label>
               <MoneyInput
                 id="create-price"
@@ -246,7 +248,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="create-date" className={modalLabelClass}>
-                  Дата
+                  {t("appointments.date")}
                 </label>
                 <input
                   id="create-date"
@@ -258,7 +260,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
               </div>
               <div>
                 <label htmlFor="create-time" className={modalLabelClass}>
-                  Время
+                  {t("appointments.time")}
                 </label>
                 <input
                   id="create-time"
@@ -271,21 +273,21 @@ export const AppointmentCreateModal: React.FC<Props> = ({
               </div>
             </div>
             {allSlotFields && (slotAvailabilityPhase === "pending" || slotAvailabilityPhase === "loading") ? (
-              <p className="text-xs text-[#6b7280]">Проверка времени…</p>
+              <p className="text-xs text-[#6b7280]">{t("appointments.checkingTime")}</p>
             ) : null}
             {allSlotFields && slotAvailabilityPhase === "free" ? (
-              <p className="text-xs font-medium text-emerald-700">Свободно</p>
+              <p className="text-xs font-medium text-emerald-700">{t("appointments.slotFree")}</p>
             ) : null}
             {allSlotFields && slotAvailabilityPhase === "busy" ? (
-              <p className="text-xs font-medium text-rose-700">Это время уже занято</p>
+              <p className="text-xs font-medium text-rose-700">{t("appointments.slotBusy")}</p>
             ) : null}
             {allSlotFields && slotAvailabilityPhase === "error" ? (
-              <p className="text-xs font-medium text-amber-800">Не удалось проверить время</p>
+              <p className="text-xs font-medium text-amber-800">{t("appointments.checkTimeError")}</p>
             ) : null}
             {suggestedTimes.length > 0 ? (
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[#6b7280]">
-                  Ближайшее свободное время
+                  {t("appointments.suggestedTimes")}
                 </p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {suggestedTimes.map((time) => (
@@ -304,12 +306,12 @@ export const AppointmentCreateModal: React.FC<Props> = ({
 
             <div>
               <label htmlFor="create-notes" className={modalLabelClass}>
-                Комментарий
+                {t("appointments.notes")}
               </label>
               <textarea
                 id="create-notes"
                 className={`${inp} min-h-[4.25rem] py-2`}
-                placeholder="Комментарий к записи (необязательно)"
+                placeholder={t("appointments.notesPlaceholder")}
                 value={form.notes}
                 onChange={(e) => updateForm({ notes: e.target.value })}
               />
@@ -334,7 +336,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
               onClick={onClose}
               disabled={submitting}
             >
-              Отмена
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -342,7 +344,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
               onClick={onSubmit}
               disabled={!canSubmit}
             >
-              {submitting ? "Создаём запись…" : "Создать запись"}
+              {submitting ? `${t("appointments.creating")}…` : t("appointments.addAppointment")}
             </button>
           </div>
         </footer>

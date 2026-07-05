@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarPlus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { requestJson } from "../../../../api/http";
 import { Modal } from "../../../../components/ui/Modal";
 import type { Doctor, Patient, Service } from "../../api/appointmentsFlowApi";
@@ -41,6 +42,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
   onResumePatientConsumed,
   canCreateNewPatient = true,
 }) => {
+  const { t } = useTranslation();
   const [patientQuery, setPatientQuery] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 
@@ -138,7 +140,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
       })
       .catch(() => {
         setDoctorOptions([]);
-        setDoctorsLoadError("Не удалось загрузить врачей. Проверьте сеть и права доступа.");
+        setDoctorsLoadError(t("appointments.doctorsLoadError"));
       })
       .finally(() => setLoadingDoctors(false));
   }, [open, token]);
@@ -171,7 +173,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
           setServiceId("");
         }
       } catch (e) {
-        console.error("Ошибка загрузки услуг", e);
+        console.error(t("appointments.servicesLoadError"), e);
         if (!cancelled) {
           setServices([]);
           setServiceId("");
@@ -225,13 +227,13 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
     if (!token || miniSaving) return;
     const name = miniName.trim();
     if (name.length < 2) {
-      setMiniError("Укажите имя (не короче 2 символов)");
+      setMiniError(t("appointments.minNameError"));
       return;
     }
     const apiPhone = phoneToApiValue(miniPhone);
     const digits = apiPhone.replace(/\D/g, "");
     if (digits.length < 10 || digits.length > 15) {
-      setMiniError("Введите корректный телефон");
+      setMiniError(t("appointments.invalidPhoneError"));
       return;
     }
 
@@ -250,7 +252,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
       setMiniName("");
       setMiniPhone("");
     } catch (err) {
-      setMiniError(err instanceof Error ? err.message : "Не удалось создать пациента");
+      setMiniError(err instanceof Error ? err.message : t("appointments.createPatientError"));
     } finally {
       setMiniSaving(false);
     }
@@ -260,44 +262,44 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
     e.preventDefault();
     setFormError(null);
     if (!token) {
-      setFormError("Сессия недействительна");
+      setFormError(t("appointments.invalidSession"));
       return;
     }
     if (!selectedPatient) {
-      setFormError("Выберите пациента или создайте нового");
+      setFormError(t("appointments.selectPatientOrCreate"));
       return;
     }
     if (doctorId === "") {
-      setFormError("Выберите врача");
+      setFormError(t("appointments.selectDoctorError"));
       return;
     }
     const sid = resolvedServiceId;
     if (!sid) {
-      setFormError("У врача нет доступной услуги для записи");
+      setFormError(t("appointments.noDoctorServices"));
       return;
     }
     if (!services.some((s) => s.id === sid)) {
-      setFormError("Выберите услугу из списка выбранного врача");
+      setFormError(t("appointments.selectServiceError"));
       return;
     }
     if (!date || !time) {
-      setFormError("Укажите дату и время");
+      setFormError(t("appointments.selectDateTimeError"));
       return;
     }
     const startAt = normalizeDateTimeForApi(date, time);
     if (!startAt) {
-      setFormError("Неверная дата или время");
+      setFormError(t("appointments.invalidDateTimeError"));
       return;
     }
 
     const phase = slotAvailabilityPhaseRef.current;
     if (phase !== "free") {
       if (phase === "busy") {
-        setFormError("Это время уже занято");
+        setFormError(t("appointments.slotBusyError"));
       } else if (phase === "error") {
-        setFormError("Не удалось проверить занятость. Повторите попытку.");
+        setFormError(t("appointments.checkAvailabilityError"));
       } else {
-        setFormError("Дождитесь проверки времени");
+        setFormError(t("appointments.waitingForAvailability"));
       }
       return;
     }
@@ -321,7 +323,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
       resetForm();
       await onCreated();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Не удалось создать запись");
+      setFormError(err instanceof Error ? err.message : t("appointments.createAppointmentError"));
     } finally {
       setSubmitting(false);
     }
@@ -359,9 +361,9 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
               <CalendarPlus className="h-5 w-5" strokeWidth={1.75} />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-base font-semibold tracking-tight text-[#111827]">Быстрая запись</h2>
+              <h2 className="text-base font-semibold tracking-tight text-[#111827]">{t("appointments.quickCreate")}</h2>
               <p className="mt-0.5 text-xs leading-snug text-[#6b7280]">
-                Пациент → врач → услуга → дата и время
+                {t("appointments.createSteps")}
               </p>
             </div>
           </div>
@@ -371,7 +373,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
           <div className="space-y-3">
             <div>
               <label htmlFor="quick-patient" className={quickModalLabelClass}>
-                Пациент
+                {t("common.patient")}
               </label>
               {selectedPatient ? (
                 <div className="mt-1.5">
@@ -387,7 +389,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
                         setPatientQuery("");
                         window.setTimeout(() => patientInputRef.current?.focus(), 0);
                       }}
-                      aria-label="Убрать пациента"
+                      aria-label={t("appointments.removePatient")}
                     >
                       ✕
                     </button>
@@ -395,9 +397,9 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
                 </div>
               ) : miniPatientOpen && canCreateNewPatient ? (
                 <div className="mt-1.5 space-y-2.5 rounded-xl border border-[#e5e7eb] bg-[#f9fafb] p-3">
-                  <p className="text-sm font-medium text-[#111827]">Новый пациент</p>
+                  <p className="text-sm font-medium text-[#111827]">{t("appointments.newPatient")}</p>
                   <label className="block text-sm text-[#374151]">
-                    Имя
+                    {t("appointments.name")}
                     <input
                       ref={miniNameInputRef}
                       id="quick-mini-name"
@@ -410,7 +412,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
                     />
                   </label>
                   <label className="block text-sm text-[#374151]">
-                    Телефон
+                    {t("appointments.phone")}
                     <PhoneInput
                       id="quick-mini-phone"
                       value={miniPhone}
@@ -431,7 +433,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
                       onClick={closeMiniPatient}
                       disabled={submitting || miniSaving}
                     >
-                      Назад к поиску
+                      {t("appointments.backToSearch")}
                     </button>
                     <button
                       type="button"
@@ -439,7 +441,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
                       onClick={() => void submitMiniPatient()}
                       disabled={submitting || miniSaving}
                     >
-                      {miniSaving ? "Создаём…" : "Создать"}
+                      {miniSaving ? `${t("common.save")}…` : t("appointments.createPatient")}
                     </button>
                   </div>
                 </div>
@@ -455,7 +457,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
                     onQueryChange={setPatientQuery}
                     onSelectPatient={setSelectedPatient}
                     onCreateRequested={canCreateNewPatient ? (q) => openMiniPatient(q) : undefined}
-                    placeholder="Имя или телефон"
+                    placeholder={t("appointments.patientSearchPlaceholder")}
                     inputClassName={quickModalComboboxInputClass}
                     wrapperClassName="relative mt-1.5"
                   />
@@ -466,7 +468,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
                       onClick={() => openMiniPatient()}
                       disabled={submitting}
                     >
-                      Создать пациента
+                      {t("appointments.createPatient")}
                     </button>
                   ) : null}
                 </>
@@ -475,7 +477,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
 
             <div>
               <label htmlFor="quick-doctor" className={quickModalLabelClass}>
-                Врач
+                {t("appointments.doctor")}
               </label>
               <select
                 id="quick-doctor"
@@ -487,7 +489,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
                 }}
                 disabled={submitting || loadingDoctors || noDoctors}
               >
-                <option value="">{noDoctors ? "Нет врачей" : loadingDoctors ? "Загрузка..." : "Выберите врача"}</option>
+                <option value="">{noDoctors ? t("appointments.noDoctors") : loadingDoctors ? t("appointments.loadingDoctors") : t("appointments.selectDoctorOption")}</option>
                 {doctorOptions.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
@@ -510,15 +512,15 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
                 }
                 className={quickModalLabelClass}
               >
-                Услуга
+                {t("common.service")}
               </label>
               {typeof doctorId === "number" ? (
                 <>
                   {loadingServices ? (
-                    <p className="mt-1.5 text-xs text-[#6b7280]">Загрузка услуг…</p>
+                    <p className="mt-1.5 text-xs text-[#6b7280]">{t("appointments.loadingServices")}</p>
                   ) : null}
                   {!loadingServices && services.length === 0 ? (
-                    <p className="mt-1.5 text-xs text-amber-700">Нет услуг</p>
+                    <p className="mt-1.5 text-xs text-amber-700">{t("appointments.noServices")}</p>
                   ) : null}
                   {!loadingServices && services.length === 1 ? (
                     <p className="mt-1.5 rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-2.5 py-1.5 text-sm text-[#111827]">
@@ -533,7 +535,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
                       onChange={(e) => setServiceId(e.target.value === "" ? "" : Number(e.target.value))}
                       disabled={submitting}
                     >
-                      <option value="">Выберите услугу</option>
+                      <option value="">{t("appointments.selectServiceOption")}</option>
                       {services.map((s) => (
                         <option key={s.id} value={s.id}>
                           {s.name} — {formatSum(s.price)}
@@ -543,7 +545,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
                   ) : null}
                 </>
               ) : (
-                <p className="mt-1.5 text-xs text-[#6b7280]">Сначала выберите врача</p>
+                <p className="mt-1.5 text-xs text-[#6b7280]">{t("appointments.selectDoctorFirst")}</p>
               )}
             </div>
 

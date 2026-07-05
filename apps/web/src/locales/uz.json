@@ -6,56 +6,41 @@
     "edit": "Tahrirlash",
     "add": "Qo'shish",
     "close": "Yopish",
-    "loading": "YuklanmoqdaвЂ¦",
+    "loading": "Yuklanmoqda…",
     "error": "Xatolik",
     "success": "Muvaffaqiyatli",
     "logout": "Chiqish",
-    "password": "Parol",
-    "actions": {
-      "back": "Orqaga",
-      "saved": "Saqlandi"
-    },
-    "states": {
-      "loading": "Yuklanmoqda..."
-    },
-    "errors": {
-      "loadError": "Yuklashda xatolik"
-    },
-    "patient": "Bemor",
-    "service": "Xizmat",
-    "clinic": "Klinika",
-    "patientWithId": "Bemor #{{id}}",
-    "serviceWithId": "Xizmat #{{id}}"
+    "password": "Parol"
   },
   "landing": {
     "title": "Klinika uchun CRM tizimi",
-    "subtitle": "Bemorlar, qabul vaqtlari, kassa, hisobotlar va AI-yordamchi вЂ” klinika uchun zarur bo'lgan hamma narsasi bitta tizimda. Sizning brendi va logotipingiz bilan.",
-    "cta": "Klinikani ulash вЂ” 14 kun bepul",
+    "subtitle": "Bemorlar, qabul vaqtlari, kassa, hisobotlar va AI-yordamchi — klinika uchun zarur bo'lgan hamma narsasi bitta tizimda. Sizning brendi va logotipingiz bilan.",
+    "cta": "Klinikani ulash — 14 kun bepul",
     "demo": "Demoni ko'rish",
     "demoLogin": "login",
     "demoPassword": "parol",
-    "features": "Barcha kerakli вЂ” to'liq to'plamda",
+    "features": "Barcha kerakli — to'liq to'plamda",
     "feature1": "Bemorlar va vizit tarixi",
-    "feature1Desc": "Bemor kartotekasi, murojaat manbalari, telefonlar va eslatmalar вЂ” hamma bir joyda.",
+    "feature1Desc": "Bemor kartotekasi, murojaat manbalari, telefonlar va eslatmalar — hamma bir joyda.",
     "feature2": "Qabul vaqtlari va shifokorlar jadavali",
     "feature2Desc": "Bir necha klikda qabul olish, vizit statuslari, ko'chirish va reglamenta eslatmalar.",
     "feature3": "Kassa, hisob-kitoblar va to'lovlar",
-    "feature3Desc": "Bitta klikda hisob-kitob, kassa smenalarД±, naqd pul va terminal, qaytarish.",
+    "feature3Desc": "Bitta klikda hisob-kitob, kassa smenaları, naqd pul va terminal, qaytarish.",
     "feature4": "Firmali kvitansiyalar",
-    "feature4Desc": "Sizning klinikangizning logotipi va nomi bilan kvitansiyalar вЂ” kassadan to'g'ridan-to'g'ri chop qilish.",
+    "feature4Desc": "Sizning klinikangizning logotipi va nomi bilan kvitansiyalar — kassadan to'g'ridan-to'g'ri chop qilish.",
     "feature5": "Hisobotlar va tahlillar",
     "feature5Desc": "Kunlik, shifokorlar va xizmatlar bo'yicha daromadlar. Nima pul keltirishi, nima bo'sh turishi ko'rinadi.",
     "feature6": "AI-yordamchi",
     "feature6Desc": "Ertalabki shumatni, klinika ma'lumotlari bo'yicha savollar, yuklashning tavsiyalari.",
     "howToConnect": "Qanday ulash kerak",
     "step1": "Ariza yuboring",
-    "step1Desc": "Bizga Telegramda yozing yoki qo'ng'iroq qiling вЂ” aytib beramiz va ko'rsatamiz.",
+    "step1Desc": "Bizga Telegramda yozing yoki qo'ng'iroq qiling — aytib beramiz va ko'rsatamiz.",
     "step2": "Biz klinikani yaratamiz",
-    "step2Desc": "Nomi, logotipi, xodimlar akkauntlari вЂ” bir kunda tayyor.",
+    "step2Desc": "Nomi, logotipi, xodimlar akkauntlari — bir kunda tayyor.",
     "step3": "14 kun bepul",
-    "step3Desc": "Barcha funksiyalarga to'liq kirish. Yoqqan bo'lsa вЂ” abonentlikni davom ettiring.",
+    "step3Desc": "Barcha funksiyalarga to'liq kirish. Yoqqan bo'lsa — abonentlikni davom ettiring.",
     "pricing": "Butun klinika uchun oddiy abonentlik",
-    "pricingDesc": "Bitta narxi вЂ” barcha funksiyalar, shifokorlar va bemorlar soni bo'yicha cheklovlarsiz. Narxni ulanishda muhokama qilamiz.",
+    "pricingDesc": "Bitta narxi — barcha funksiyalar, shifokorlar va bemorlar soni bo'yicha cheklovlarsiz. Narxni ulanishda muhokama qilamiz.",
     "benefits": "Barcha modullar: qabul vaqtlari, kassa, hisobotlar, AI-yordamchi",
     "benefit1": "Sizning logotipi tizimda va kvitansiyalarda",
     "benefit2": "Har bir klinikaning ma'lumotlari butunlay ajratilgan",
@@ -75,9 +60,7 @@
     "changePassword": "Parol o'zgartirish",
     "passwordChanged": "Parol muvaffaqiyatli o'zgartirildi",
     "loginError": "Noto'g'ri login yoki parol",
-    "loading": "YuklanmoqdaвЂ¦",
-    "rememberMe": "Meni eslab qol",
-    "noAccount": "Akkaunt yo'qmi?"
+    "loading": "Yuklanmoqda…"
   },
   "nav": {
     "main": "Asosiy",
@@ -100,7 +83,7 @@
     "accessBlockedDesc": "Abonentlik muddati tugadi. Davom etish uchun abonentlikni davom ettiring."
   },
   "platform": {
-    "title": "Platforma В· Klinikalar",
+    "title": "Platforma · Klinikalar",
     "desc": "Klinikalar abonentligini boshqarish. To'lov qo'lda qayd qilinadi: to'lov kelgandan keyin kirish huquqini davom ettiring.",
     "createClinic": "Klinika yaratish",
     "newClinic": "+ Yangi klinika",
@@ -114,61 +97,30 @@
     "selectFile": "Faylni tanlash (PNG/JPEG)",
     "replaceLogo": "Logotipni almashtirish",
     "createClinicBtn": "Klinika yaratish",
-    "created": "Klinika В«{{name}}В» yaratildi вњ…",
+    "created": "Klinika «{{name}}» yaratildi ✅",
     "createdAccess": "Egasining kirish ma'lumotlari: login",
     "createdPassword": "parol",
-    "savePwd": "Parolni hozir saqlang вЂ” u boshqa joyda ko'rsatilmaydi.",
+    "savePwd": "Parolni hozir saqlang — u boshqa joyda ko'rsatilmaydi.",
     "table": {
       "name": "Klinika",
       "status": "Status",
       "endsAt": "Amal qiladi",
       "users": "Foyd.",
-      "actions": "Amallar",
-      "clinic": "Klinika",
-      "expiresAt": "Amal qiladi"
+      "actions": "Amallar"
     },
     "actions": {
       "extend": "+{{m}} oy",
       "suspend": "To'xtatish",
       "activate": "Faollashtirish",
       "logo": "Logo",
-      "sms": "SMS {{status}}",
-      "enabled": "on",
-      "disabled": "off"
+      "sms": "SMS {{status}}"
     },
     "smsStatus": {
       "on": "on",
-      "off": "off",
-      "trialing": "Sinov",
-      "active": "Faol",
-      "expired": "Tugatildi",
-      "suspended": "To'xtatildi",
-      "unknown": "Noma'lum"
+      "off": "off"
     },
     "unlimited": "cheksiz",
-    "overdue": "{{days}} kun kechikdi",
-    "createClinicHelp": "Tizimga yangi klinika qo'shing",
-    "clinicNamePlaceholder": "Klinika nomi",
-    "ownerNamePlaceholder": "Sizning ismingiz",
-    "logoAlt": "Klinika logotipi",
-    "creating": "Yaratmoqda...",
-    "clinicCreated": "Klinika В«{{clinic}}В» yaratildi вњ…",
-    "accessCreated": "Egasining kirish ma'lumotlari",
-    "login": "login",
-    "savePassword": "Parolni hozir saqlang вЂ” u boshqa joyda ko'rsatilmaydi.",
-    "daysLeft": "{{days}} kun qoldi",
-    "loading": "Yuklanmoqda...",
-    "noClinics": "Klinikalar yo'q",
-    "months": "oy",
-    "smsTooltip": "SMS-ni almashtirish",
-    "errors": {
-      "createFailed": "Klinika yaratib bo'lmadi",
-      "loadFailed": "Klinikalar yuklanmadi",
-      "updateFailed": "KlinikanД± yangilash muvaffaqiyatsiz",
-      "smsFailed": "SMS statusini o'zgartirish muvaffaqiyatsiz",
-      "logoFailed": "Logotipni yuklab bo'lmadi",
-      "logoUploadFailed": "Logotip yuklashda xatolik"
-    }
+    "overdue": "{{days}} kun kechikdi"
   },
   "pages": {
     "dashboard": "Bosh sahifa",
@@ -186,7 +138,7 @@
   },
   "patients": {
     "title": "Bemorlar",
-    "search": "Ism yoki telefonni qidirishвЂ¦",
+    "search": "Ism yoki telefonni qidirish…",
     "fullName": "To'liq ism",
     "phone": "Telefon",
     "birthDate": "Tug'ilgan sana",
@@ -215,12 +167,27 @@
     "completed": "Bajarilgan",
     "cancelled": "Bekor qilingan",
     "noshow": "Kelmagan",
-    "addAppointment": "Yangi qabul",
+    "addAppointment": "Yangi yozish",
     "editAppointment": "Qabulni tahrirlash",
     "deleteAppointment": "Qabulni o'chirish",
     "reschedule": "Ko'chirish",
     "changeStatus": "Statusni o'zgartirish",
-    "min": "min"
+    "min": "min",
+    "checkTimeError": "Vaqt tekshirish xatosi",
+    "checkingTime": "Mavjudlikni tekshirish...",
+    "createSteps": "Yozish yaratilish",
+    "creating": "Yozish yaratilmoqda...",
+    "loadingServices": "Xizmatlar yuklanmoqda...",
+    "notes": "Izohlar",
+    "notesPlaceholder": "Qo'shimcha ma'lumot (ixtiyoriy)",
+    "patientSearchPlaceholder": "FIO yoki raqam bo'yicha qidiring",
+    "removePatient": "Bemorni o'chirish",
+    "selectDoctor": "Shifokorni tanlang",
+    "selectDoctorFirst": "Avval shifokorni tanlang",
+    "selectService": "Xizmatni tanlang",
+    "slotBusy": "Slot band",
+    "slotFree": "Slot bo'sh",
+    "suggestedTimes": "Taklif etilgan vaqtlar"
   },
   "doctors": {
     "title": "Shifokorlar",
@@ -258,7 +225,7 @@
     "invoices": "Hisob-kitoblar",
     "cashDesk": "Kassa",
     "invoice": "Hisob-kitob",
-    "number": "Hisob-kitob в„–",
+    "number": "Hisob-kitob №",
     "created": "Yaratilgan",
     "total": "Jami",
     "status": "Status",
@@ -283,20 +250,14 @@
     "print": "Chop qilish",
     "pay": "To'lash",
     "returnPayment": "Qaytarish",
-    "cashShift": "Kassa smenalarД±",
+    "cashShift": "Kassa smenaları",
     "openShift": "Smenani ochish",
     "closeShift": "Smenani yopish",
     "shift": "Smena",
     "balance": "Qoldiq",
     "cashier": "Kassir",
     "openedAt": "Ochilgan",
-    "closedAt": "Yopilgan",
-    "refundDescription": "Jami kassadan chiqariladi, hisob-kitob va status yangilani. Summani kiriting (operatsiya bo'yicha mavjud bo'lmasa).",
-    "refundAmount": "Qaytarish summasi (so'm)",
-    "refundReason": "Qaytarish sababи",
-    "specifyReason": "Sababni kiriting",
-    "confirmRefund": "Qaytarishni tasdiqlash",
-    "maxRefundable": "maks."
+    "closedAt": "Yopilgan"
   },
   "reports": {
     "title": "Hisobotlar",
@@ -374,7 +335,7 @@
     "defaultDesc": "Klinikaning asosiy ish markazi",
     "today": "Bugun",
     "revenue": "Bugungi daromad",
-    "appointments": "Qabullari",
+    "appointments": "Bugungi qabullari",
     "newPatients": "Yangi bemorlar",
     "debts": "Bemor qarzi",
     "shift": "Faol smena",
@@ -390,27 +351,13 @@
     },
     "payment": "Naqd pul",
     "terminal": "Terminal",
-    "quickActions": "Tezkor harakatlar",
+    "quickActions": "Tezkor amallar",
     "quickActionsDesc": "Tez-tez ishlatiladigan stsenarylar",
     "newAppointment": "Yangi qabul",
     "newPatient": "Yangi bemor",
     "schedule": "Jadavali",
     "refresh": "Yangilash",
-    "updateAnalysis": "Analizni yangilash",
-    "greeting": {
-      "morning": "Xush kelibsiz",
-      "afternoon": "Xush kelibsiz",
-      "evening": "Xush kelibsiz"
-    },
-    "colleague": "hamkasb",
-    "morningAIBriefing": "Ertalabki AI-shumatni",
-    "briefSummaryToday": "Bugun uchun qisqa tafsili",
-    "loadingBriefing": "Shumatni yuklanmoqda",
-    "payments": "To'lovlar",
-    "completedPercent": "Tugallangan, %",
-    "shiftSummary": "Smena xulosasi",
-    "frequentScenariosOneClick": "Umumiy stsenarylar bir klikda",
-    "unavailableForCurrentRole": "Joriy rol uchun dostupemassiz"
+    "updateAnalysis": "Tahlilni yangilash"
   },
   "appointment": {
     "status": {
@@ -447,140 +394,9 @@
   },
   "setup": {
     "title": "Asosiy bilan boshlang",
-    "desc": "Shifokorlar, xizmatlar va jadavalni qo'shing вЂ” boshqa hamma o'zi ketadi",
+    "desc": "Shifokorlar, xizmatlar va jadavalni qo'shing — boshqa hamma o'zi ketadi",
     "doctors": "Shifokorlar",
     "services": "Xizmatlar",
     "patients": "Bemorlar"
-  },
-  "doctorWorkspace": {
-    "errors": {
-      "appointmentNotFound": "Qabul topilmadi",
-      "invalidAppointmentId": "Noto'g'ri qabul ID",
-      "saveFailed": "Saqlash muvaffaqiyatsiz",
-      "missingDiagnosisTreatment": "Diagnoz va davolashni to'ldiring",
-      "completeFailed": "Qabulni yakunlash muvaffaqiyatsiz",
-      "addServiceFailed": "Xizmatni qo'shish muvaffaqiyatsiz",
-      "createInvoiceFailed": "Hisob-kitob yaratish muvaffaqiyatsiz",
-      "noServicesForDoctor": "Bu shifokor uchun xizmatlar yo'q"
-    },
-    "notices": {
-      "serviceAdded": "Xizmat qo'shildi",
-      "invoiceCreated": "Hisob-kitob yaratildi"
-    },
-    "form": {
-      "diagnosis": "Diagnoz",
-      "diagnosisPlaceholder": "Diagnozni kiriting...",
-      "treatment": "Davolash",
-      "treatmentPlaceholder": "Davolashni kiriting...",
-      "prescription": "Retsept",
-      "prescriptionPlaceholder": "Dorilar va protseduralar..."
-    },
-    "actions": {
-      "title": "Amallar",
-      "addService": "Xizmat qo'shish",
-      "selectService": "Xizmatni tanlang",
-      "saveService": "Saqlash",
-      "createInvoice": "Hisob-kitob yaratish",
-      "printPrescription": "Retseptni chop qilish",
-      "completeVisit": "Qabulni yakunlash"
-    },
-    "print": {
-      "clinicLogo": "Klinika logotipi",
-      "patient": "Bemor",
-      "date": "Sana",
-      "doctor": "Shifokor",
-      "appointment": "Qabul",
-      "diagnosis": "Diagnoz",
-      "treatment": "Davolash",
-      "prescription": "Retsept",
-      "services": "Xizmatlar",
-      "footer": "Hujjat avtomatik yaratilgan"
-    }
-  },
-  "aiAssistant": {
-    "actions": {
-      "doctorAppointments": "Shifokor bo'yicha uchrashuvlar",
-      "showDoctorsLoad": "Shifokorlarni ko'rsating",
-      "goToSection": "Bo'limga o'ting",
-      "openAppointments": "Uchrashuvlarni ochish",
-      "openDoctorsTooltip": "Shifokorlar spravochniki",
-      "doctorAppointmentsTooltip": "Taqvim",
-      "openReportsTooltip": "Hisobot bo'limigatgo'ing",
-      "showDoctorsTooltip": "Shifokorlar ro'yxati va ko'rsatkichlar",
-      "showDoctors": "Shifokorlarni ko'rsating",
-      "takePayment": "To'lovni qabul qiling",
-      "takePaymentTooltip": "Kassa — to'lovlarni qabul qilish",
-      "openAppointmentsTooltip": "Uchrashuvlar taqvimi",
-      "addPatientTooltip": "Bemorlar bo'limi — kartochka yaratish",
-      "addPatient": "Bemor qo'shish",
-      "openPatientsTooltip": "Bemorlar ro'yxati",
-      "showDoctorsLoadTooltip": "Yuk va spravochnik",
-      "patientsDebtTooltip": "Bemorlar ro'yxati",
-      "openReports": "Hisobotlarni ochish",
-      "openDoctors": "Shifokorlarni ochish",
-      "openInvoices": "Schyotlarni ochish",
-      "openPatients": "Bemorlarni ochish",
-      "patientsDebt": "Qarzli bemorlar",
-      "openInvoicesTooltip": "Schyotlar va to'lov holatlari"
-    }
-  },
-  "aiActions": {
-    "doctorAppointments": "Shifokor bo'yicha uchrashuvlar",
-    "showDoctorsLoad": "Shifokorlarni ko'rsating",
-    "goToSection": "Bo'limga o'ting",
-    "openAppointments": "Uchrashuvlarni ochish",
-    "openDoctorsTooltip": "Shifokorlar spravochniki",
-    "doctorAppointmentsTooltip": "Taqvim",
-    "openReportsTooltip": "Hisobot bo'limigatgo'ing",
-    "showDoctorsTooltip": "Shifokorlar ro'yxati va ko'rsatkichlar",
-    "showDoctors": "Shifokorlarni ko'rsating",
-    "takePayment": "To'lovni qabul qiling",
-    "takePaymentTooltip": "Kassa — to'lovlarni qabul qilish",
-    "openAppointmentsTooltip": "Uchrashuvlar taqvimi",
-    "addPatientTooltip": "Bemorlar bo'limi — kartochka yaratish",
-    "openSection": "Bo'limni ochish",
-    "addPatient": "Bemor qo'shish",
-    "openCashDesk": "Kassani ochish",
-    "openPatientsTooltip": "Bemorlar ro'yxati",
-    "showDoctorsLoadTooltip": "Yuk va spravochnik",
-    "patientsDebtTooltip": "Bemorlar ro'yxati",
-    "openReports": "Hisobotlarni ochish",
-    "openDoctors": "Shifokorlarni ochish",
-    "openInvoices": "Schyotlarni ochish",
-    "openPatients": "Bemorlarni ochish",
-    "patientsDebt": "Qarzli bemorlar",
-    "openInvoicesTooltip": "Schyotlar va to'lov holatlari"
-  }
-    },
-  "clinic": {
-    "loadError": "Klinikalandi yuklash mumkin emas"
-  },
-  "briefing": {
-    "empty": "Brif tyusti bo'sh.",
-    "loadError": "Brif tyusti yuklash mumkin emas"
-  },
-  "layout": {
-    "patient": "Bemorlar",
-    "appointment": "Qabul vaqtlari",
-    "cash": "Kassa",
-    "reports": "Hisobotlar",
-    "aiAssistant": "AI-yordamchi"
-  },
-  "aiInsights": {
-    "revenueStable": "Daromad joriy yuklamaga nisbatan barqaror.",
-    "lowLoad": "Bugun past yuklamа: qabul vaqtlari deyarli yo'q.",
-    "revenueLow": "Daromad joriy qabul oqimi bilan bog'liq kutilgan darajadan past.",
-    "revenueHigh": "Daromad o'rtacha darajadan yuqori — joriy model samarali ishlaydi.",
-    "unpaidInvoices": "{{count}} to'lanmagan hisob-kitob {{amount}} so'm uchun.",
-    "lowDoctorLoad": "Bugun shifokorlar yuklamasi past.",
-    "cancellations": "Bekor qilish va no-show mavjud: 30 kun ichida {{count}}.",
-    "lowAverageCheck": "Bugungi o'rtacha chek oxirgi 7 kunning o'rtachasidan past.",
-    "noCritical": "Kritik og'ish qayd etilmadi.",
-    "contactPatients": "Qarzi bor bemorlar bilan bog'lanib, qarzlarni yopib qo'ying.",
-    "increaseBooking": "15:00 dan keyin eslatmalar va qo'ng'iroq skripti orqali qabul olishni kuchaytiring.",
-    "doubleConfirm": "Vizitning ikki tomonlama tasdiqlashini 24 va 2 soat oldin yoqing.",
-    "addPackages": "Paketli takliflar va qo'shimcha xizmatlarni qo'shing.",
-    "copyTopDoctor": "Top-shifokorning amallarini tarjima qiling: {{doctor}}.",
-    "maintain": "Joriy sur'atni saqlab qoling va jadvalni sifatini nazorat qiling."
   }
 }
