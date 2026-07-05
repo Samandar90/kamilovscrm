@@ -74,9 +74,9 @@ type ServiceRef = { id: number; name: string };
 const PATIENT_SOURCE_OPTIONS: { value: PatientSource; label: string }[] = [
   { value: "instagram", label: "Instagram" },
   { value: "telegram", label: "Telegram" },
-  { value: "advertising", label: "Реклама" },
-  { value: "referral", label: "По рекомендации" },
-  { value: "other", label: "Другое" },
+  { value: "advertising", label: t("patients.source.advertising") },
+  { value: "referral", label: t("patients.source.referral") },
+  { value: "other", label: t("patients.source.other") },
 ];
 
 const initialFormState: PatientFormState = {
@@ -249,7 +249,7 @@ export const PatientsPage: React.FC = () => {
       setLastVisitByPatientId(buildLastVisitMap(apptResult));
       setDebtByPatientId(buildDebtByPatient(invResult));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Ошибка загрузки");
+      setError(err instanceof Error ? err.message : t("patients.loadError"));
     } finally {
       if (!silent) {
         setLoading(false);

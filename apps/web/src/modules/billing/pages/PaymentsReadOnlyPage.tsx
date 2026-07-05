@@ -9,10 +9,10 @@ import { cashDeskApi, type InvoiceSummary, type Payment, type PaymentMethod } fr
 import { AppContainer, DataTable, FiltersBar, PageHeader, SectionCard, StatusBadge } from "../../../shared/ui";
 import { Button } from "../../../ui/Button";
 
-const METHOD_RU: Record<PaymentMethod, string> = {
-  cash: "Наличные",
-  card: "Терминал",
-};
+const METHOD_RU = (t: any): Record<PaymentMethod, string> => ({
+  cash: t("billing.cash"),
+  card: t("billing.card"),
+});
 
 export const PaymentsReadOnlyPage: React.FC = () => {
   const { t } = useTranslation();
@@ -121,7 +121,7 @@ export const PaymentsReadOnlyPage: React.FC = () => {
           <div className="space-y-2.5 md:hidden">
             {filteredRows.map((p) => {
               const invoice = invoicesMap[p.invoiceId];
-              const patientName = invoice ? patientsMap[invoice.patientId] ?? `Пациент #${invoice.patientId}` : "—";
+              const patientName = invoice ? patientsMap[invoice.patientId] ?? `${t("billing.patient")} #${invoice.patientId}` : "—";
               return (
                 <article key={p.id} className="rounded-2xl border border-[#e5e7eb] bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
@@ -129,7 +129,7 @@ export const PaymentsReadOnlyPage: React.FC = () => {
                       <p className="text-sm font-semibold text-[#0f172a]">{patientName}</p>
                       <p className="mt-0.5 text-xs text-[#64748b]">{invoice?.number ?? `#${p.invoiceId}`}</p>
                     </div>
-                    <StatusBadge tone={p.method === "cash" ? "neutral" : "info"}>{METHOD_RU[p.method]}</StatusBadge>
+                    <StatusBadge tone={p.method === "cash" ? "neutral" : "info"}>{METHOD_RU(t)[p.method]}</StatusBadge>
                   </div>
                   <p className="mt-2 text-xs tabular-nums text-[#64748b]">{formatDateTimeRu(p.createdAt)}</p>
                   <p className="mt-2 text-lg font-semibold tabular-nums text-[#16a34a]">{formatSum(p.amount)}</p>
@@ -157,7 +157,7 @@ export const PaymentsReadOnlyPage: React.FC = () => {
               <tbody className="divide-y divide-[#f1f5f9]">
                 {filteredRows.map((p) => {
                   const invoice = invoicesMap[p.invoiceId];
-                  const patientName = invoice ? patientsMap[invoice.patientId] ?? `Пациент #${invoice.patientId}` : "—";
+                  const patientName = invoice ? patientsMap[invoice.patientId] ?? `${t("billing.patient")} #${invoice.patientId}` : "—";
                   return (
                     <tr key={p.id} className="hover:bg-[#f8fafc]">
                       <td className="px-4 py-3 text-xs tabular-nums text-[#64748b]">{formatDateTimeRu(p.createdAt)}</td>
@@ -165,7 +165,7 @@ export const PaymentsReadOnlyPage: React.FC = () => {
                       <td className="px-4 py-3 text-sm text-[#334155]">{invoice?.number ?? `#${p.invoiceId}`}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <StatusBadge tone={p.method === "cash" ? "neutral" : "info"}>{METHOD_RU[p.method]}</StatusBadge>
+                          <StatusBadge tone={p.method === "cash" ? "neutral" : "info"}>{METHOD_RU(t)[p.method]}</StatusBadge>
                           {(p.refundedAmount ?? 0) > 0 ? <StatusBadge tone="warning">{t("billing.payments.refund")}</StatusBadge> : null}
                         </div>
                       </td>

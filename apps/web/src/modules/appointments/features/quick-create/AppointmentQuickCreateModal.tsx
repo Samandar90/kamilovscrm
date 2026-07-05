@@ -552,7 +552,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
             <div className="grid grid-cols-2 gap-2">
               <div className="col-span-2">
                 <label htmlFor="quick-price" className={quickModalLabelClass}>
-                  Цена
+                  {t("appointments.price")}
                 </label>
                 <MoneyInput
                   id="quick-price"
@@ -565,7 +565,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
               </div>
               <div>
                 <label htmlFor="quick-date" className={quickModalLabelClass}>
-                  Дата
+                  {t("appointments.date")}
                 </label>
                 <input
                   id="quick-date"
@@ -578,7 +578,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
               </div>
               <div>
                 <label htmlFor="quick-time" className={quickModalLabelClass}>
-                  Время
+                  {t("appointments.time")}
                 </label>
                 <input
                   id="quick-time"
@@ -592,16 +592,16 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
               </div>
             </div>
             {allSlotFields && (slotAvailabilityPhase === "pending" || slotAvailabilityPhase === "loading") ? (
-              <p className="text-xs text-[#6b7280]">Проверка времени…</p>
+              <p className="text-xs text-[#6b7280]">{t("appointments.checkingSlot")}</p>
             ) : null}
             {allSlotFields && slotAvailabilityPhase === "free" ? (
-              <p className="text-xs font-medium text-emerald-700">Свободно</p>
+              <p className="text-xs font-medium text-emerald-700">{t("appointments.slotFree")}</p>
             ) : null}
             {allSlotFields && slotAvailabilityPhase === "busy" ? (
-              <p className="text-xs font-medium text-rose-700">Это время уже занято</p>
+              <p className="text-xs font-medium text-rose-700">{t("appointments.slotBusyLabel")}</p>
             ) : null}
             {allSlotFields && slotAvailabilityPhase === "error" ? (
-              <p className="text-xs font-medium text-amber-800">Не удалось проверить время</p>
+              <p className="text-xs font-medium text-amber-800">{t("appointments.checkSlotError")}</p>
             ) : null}
           </div>
 
@@ -620,14 +620,14 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
               onClick={onClose}
               disabled={submitting}
             >
-              Отмена
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
               className="h-10 rounded-xl bg-[#22c55e] px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#16a34a] disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!canSubmit}
             >
-              {submitting ? "Создаём…" : "Создать запись"}
+              {submitting ? t("appointments.creating") : t("appointments.create")}
             </button>
           </div>
         </footer>

@@ -1246,7 +1246,7 @@ export const AppointmentsPage: React.FC = () => {
         <SectionCard className="hidden p-4 md:block">
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("date")}</label>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("appointments.date")}</label>
               <input
                 type="date"
                 value={customDate}
@@ -1258,7 +1258,7 @@ export const AppointmentsPage: React.FC = () => {
               />
             </div>
             <div className="relative flex-1">
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("search")}</label>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("appointments.search")}</label>
               <Search className="pointer-events-none absolute left-3 top-[34px] h-4 w-4 text-[#9ca3af]" />
               <input
                 type="search"
@@ -1270,7 +1270,7 @@ export const AppointmentsPage: React.FC = () => {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <label className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">Период</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("appointments.period")}</label>
             {tabList.map((tab) => (
               <button
                 key={tab.id}
@@ -1295,7 +1295,7 @@ export const AppointmentsPage: React.FC = () => {
               }`}
             >
               <CalendarDays className="h-4 w-4" />
-              Календарь
+              {t("appointments.calendar")}
             </button>
           </div>
         </SectionCard>
@@ -1312,7 +1312,7 @@ export const AppointmentsPage: React.FC = () => {
         )}
 
         <section className="space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-[#6b7280]">Расписание</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-[#6b7280]">{t("appointments.schedule")}</h2>
 
           {isLoading ? (
             <PageLoader label={t("common.loading")} />
@@ -1327,7 +1327,7 @@ export const AppointmentsPage: React.FC = () => {
                     onClick={isDoctorUser ? openFullModal : openQuickModal}
                     className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
                   >
-                    + Создать запись
+                    + {t("appointments.create")}
                   </button>
                 </div>
               ) : null}
@@ -1347,7 +1347,7 @@ export const AppointmentsPage: React.FC = () => {
                     onClick={isDoctorUser ? openFullModal : openQuickModal}
                     className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
                   >
-                    + Создать запись
+                    + {t("appointments.create")}
                   </button>
                 </div>
               ) : null}
@@ -1365,7 +1365,7 @@ export const AppointmentsPage: React.FC = () => {
                   <AppointmentMobileCard
                     key={appointment.id}
                     appointment={appointment}
-                    patientName={patientsMap[appointment.patientId] ?? `Пациент #${appointment.patientId}`}
+                    patientName={patientsMap[appointment.patientId] ?? `${t("patient")} #${appointment.patientId}`}
                     patientPhone={patientPhoneMap[appointment.patientId]}
                     service={service}
                     timeLabel={formatTimeOnly(appointment.startAt)}
@@ -1394,7 +1394,7 @@ export const AppointmentsPage: React.FC = () => {
                   onClick={() => setMobileWindow((n) => n + MOBILE_WINDOW_STEP)}
                   className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm"
                 >
-                  Показать ещё ({filteredAppointments.length - mobileAppointments.length})
+                  {t("appointments.showMore")} ({filteredAppointments.length - mobileAppointments.length})
                 </button>
               </div>
             ) : null}
@@ -1407,7 +1407,7 @@ export const AppointmentsPage: React.FC = () => {
                     key={appointment.id}
                     appointment={appointment}
                     invoice={invoice}
-                    patientName={patientsMap[appointment.patientId] ?? `Пациент #${appointment.patientId}`}
+                    patientName={patientsMap[appointment.patientId] ?? `${t("patient")} #${appointment.patientId}`}
                     patientPhone={patientPhoneMap[appointment.patientId]}
                     onCopyPatientPhone={(phone) => void copyPatientPhone(phone)}
                     doctorName={doctorsMap[appointment.doctorId] ?? `#${appointment.doctorId}`}
@@ -1463,10 +1463,10 @@ export const AppointmentsPage: React.FC = () => {
           type="button"
           onClick={isDoctorUser ? openFullModal : openQuickModal}
           className="fixed bottom-16 left-0 right-0 z-[90] flex justify-center px-4 transition-transform duration-150 ease-out active:scale-[0.98] md:hidden"
-          aria-label={isDoctorUser ? "Создать запись" : "Быстрая запись"}
+          aria-label={isDoctorUser ? t("createAppointment") : t("quickCreate")}
         >
           <span className="flex min-h-[48px] w-full items-center justify-center rounded-[14px] bg-emerald-600 px-4 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(5,150,105,0.45)]">
-            {isDoctorUser ? "+ Создать запись" : "+ Запись"}
+            {isDoctorUser ? `+ ${t("createAppointment")}` : `+ ${t("appointment")}`}
           </span>
         </button>
       ) : null}
@@ -1574,8 +1574,8 @@ export const AppointmentsPage: React.FC = () => {
                 <div className="shrink-0 border-b border-slate-100 px-6 pb-4 pt-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-lg font-semibold tracking-tight text-slate-900">Детали записи</h3>
-                      <p className="mt-0.5 text-xs text-slate-500">Карточка визита</p>
+                      <h3 className="text-lg font-semibold tracking-tight text-slate-900">{t("appointments.detailsTitle")}</h3>
+                      <p className="mt-0.5 text-xs text-slate-500">{t("appointments.visitCard")}</p>
                     </div>
                     <StatusBadge tone={appointmentStatusToneForBadge(ap.status)} className="shrink-0">
                       {appointmentStatusDetailedRu(ap.status, t)}
@@ -1584,13 +1584,13 @@ export const AppointmentsPage: React.FC = () => {
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-2">
                   <div className={rowClass}>
-                    <span className={labelClass}>Пациент</span>
+                    <span className={labelClass}>{t("patient")}</span>
                     <span className={valueClass}>
-                      {patientsMap[ap.patientId] ?? `Пациент #${ap.patientId}`}
+                      {patientsMap[ap.patientId] ?? `${t("patient")} #${ap.patientId}`}
                     </span>
                   </div>
                   <div className={rowClass}>
-                    <span className={labelClass}>Телефон</span>
+                    <span className={labelClass}>{t("appointments.phone")}</span>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={valueClass}>{phoneRaw || "—"}</span>
                       {phoneRaw ? (
@@ -1599,29 +1599,29 @@ export const AppointmentsPage: React.FC = () => {
                           onClick={() => void copyPatientPhone(phoneRaw)}
                           className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
                         >
-                          Скопировать
+                          {t("appointments.copy")}
                         </button>
                       ) : null}
                     </div>
                   </div>
                   {birthLabel ? (
                     <div className={rowClass}>
-                      <span className={labelClass}>Дата рождения</span>
+                      <span className={labelClass}>{t("appointments.birthDate")}</span>
                       <span className={valueClass}>{birthLabel}</span>
                     </div>
                   ) : null}
                   <div className={rowClass}>
-                    <span className={labelClass}>Источник пациента</span>
+                    <span className={labelClass}>{t("appointments.patientSource")}</span>
                     <span className={valueClass}>{patientSourceLabelRu(patient?.source, t)}</span>
                   </div>
                   <div className={rowClass}>
-                    <span className={labelClass}>Врач</span>
+                    <span className={labelClass}>{t("doctor")}</span>
                     <span className={valueClass}>
-                      {doctorsMap[ap.doctorId] ?? `Врач #${ap.doctorId}`}
+                      {doctorsMap[ap.doctorId] ?? `${t("doctor")} #${ap.doctorId}`}
                     </span>
                   </div>
                   <div className={rowClass}>
-                    <span className={labelClass}>Услуга</span>
+                    <span className={labelClass}>{t("appointments.service")}</span>
                     <div className={valueClass}>
                       {services.length > 0 ? (
                         <ul className="mt-1 list-none space-y-1">
@@ -1633,20 +1633,20 @@ export const AppointmentsPage: React.FC = () => {
                           ))}
                         </ul>
                       ) : (
-                        fallbackService?.name ?? `Услуга #${ap.serviceId}`
+                        fallbackService?.name ?? `${t("appointments.service")} #${ap.serviceId}`
                       )}
                     </div>
                   </div>
                   <div className={rowClass}>
-                    <span className={labelClass}>Дата</span>
+                    <span className={labelClass}>{t("appointments.date")}</span>
                     <span className={valueClass}>{formatAppointmentDateOnlyRu(ap.startAt)}</span>
                   </div>
                   <div className={rowClass}>
-                    <span className={labelClass}>Время</span>
+                    <span className={labelClass}>{t("appointments.time")}</span>
                     <span className={valueClass}>{formatTimeOnly(ap.startAt)}</span>
                   </div>
                   <div className={rowClass}>
-                    <span className={labelClass}>Запись создана</span>
+                    <span className={labelClass}>{t("appointments.createdAt")}</span>
                     <span className={valueClass}>{formatAppointmentCreatedAtRu(ap.createdAt)}</span>
                   </div>
                 </div>
@@ -1670,7 +1670,7 @@ export const AppointmentsPage: React.FC = () => {
                           }}
                           className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50"
                         >
-                          Изменить время
+                          {t("appointments.reschedule")}
                         </button>
                       ) : null}
                       {showStart ? (
@@ -1680,7 +1680,7 @@ export const AppointmentsPage: React.FC = () => {
                           onClick={() => void updateStatus(ap)}
                           className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
                         >
-                          Начать приём
+                          {t("appointments.startConsultation")}
                         </button>
                       ) : null}
                       {showCancelBtn ? (
@@ -1693,7 +1693,7 @@ export const AppointmentsPage: React.FC = () => {
                           }}
                           className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-800 shadow-sm transition hover:bg-rose-100 disabled:opacity-50"
                         >
-                          Отменить запись
+                          {t("appointments.cancelAppointment")}
                         </button>
                       ) : null}
                     </div>
@@ -1704,7 +1704,7 @@ export const AppointmentsPage: React.FC = () => {
                       className="rounded-xl px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
                       onClick={() => setDetailsModal({ open: false, appointment: null })}
                     >
-                      Закрыть
+                      {t("appointments.close")}
                     </button>
                   </div>
                 </div>
@@ -1734,7 +1734,7 @@ export const AppointmentsPage: React.FC = () => {
           }}
           className="w-full max-w-sm rounded-2xl border border-slate-200/90 bg-white p-6 shadow-[0_20px_50px_-24px_rgba(15,23,42,0.2)]"
         >
-          <h3 className="text-base font-semibold text-slate-900">Изменить время</h3>
+          <h3 className="text-base font-semibold text-slate-900">{t("appointments.reschedule")}</h3>
           <p className="mt-1 text-xs text-slate-500">
             {patientsMap[rescheduleModal.appointment.patientId] ?? "Пациент"} ·{" "}
             {formatTimeOnly(rescheduleModal.appointment.startAt)}
@@ -1815,13 +1815,13 @@ export const AppointmentsPage: React.FC = () => {
           onClose={() => setCancelModal({ open: false, appointment: null, reason: "" })}
           className="w-full max-w-md rounded-[20px] border border-[#e5e7eb] bg-white p-6 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.2)]"
         >
-          <h3 className="text-lg font-semibold text-[#111827]">Отменить запись</h3>
+          <h3 className="text-lg font-semibold text-[#111827]">{t("appointments.cancelAppointment")}</h3>
           <p className="mt-2 text-sm text-[#6b7280]">
-            Пациент: {patientsMap[cancelModal.appointment.patientId] ?? `#${cancelModal.appointment.patientId}`}
+            {t("patient")}: {patientsMap[cancelModal.appointment.patientId] ?? `#${cancelModal.appointment.patientId}`}
           </p>
           <div className="mt-4">
             <label className="mb-1 block text-xs uppercase tracking-wide text-[#6b7280]">
-              Причина отмены
+              {t("appointments.cancelReason")}
             </label>
             <textarea
               value={cancelModal.reason}
@@ -2085,7 +2085,7 @@ export const AppointmentsPage: React.FC = () => {
                 onClick={printPrescription}
                 disabled={consultationBusy}
               >
-                Печать назначения
+                {t("appointments.printPrescription")}
               </button>
               <div className="flex items-center gap-2">
               <button

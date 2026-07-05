@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import type { Patient } from "../api/appointmentsFlowApi";
 import { appointmentsFlowApi } from "../api/appointmentsFlowApi";
 import { useDebounce } from "./useDebounce";
@@ -11,6 +12,7 @@ type Result = {
 };
 
 export function usePatientSearch(token: string | null, query: string): Result {
+  const { t } = useTranslation();
   const debouncedQuery = useDebounce(query.trim(), 300);
   const [suggestions, setSuggestions] = React.useState<Patient[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -32,12 +34,12 @@ export function usePatientSearch(token: string | null, query: string): Result {
         setSuggestions(rows);
       } catch (e) {
         setSuggestions([]);
-        setError(e instanceof Error ? e.message : "Не удалось найти пациентов");
+        setError(e instanceof Error ? e.message : t("patients.loadError"));
       } finally {
         setLoading(false);
       }
     },
-    [token]
+    [token, t]
   );
 
   React.useEffect(() => {
