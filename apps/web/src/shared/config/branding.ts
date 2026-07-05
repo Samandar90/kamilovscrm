@@ -1,8 +1,8 @@
 export const BRANDING = {
   productName: "Sazion CRM",
-  productTagline: "Система управления клиникой",
-  /** Запасной подпись, если имя клиники из API ещё не загружено. */
-  clinicName: "Клиника",
+  productTagline: "common.clinicManagementSystem",
+  /** Fallback clinic name if not loaded from API. Translation at call site. */
+  clinicName: "common.clinic",
 };
 
 /**

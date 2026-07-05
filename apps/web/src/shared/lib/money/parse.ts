@@ -22,10 +22,10 @@ export function normalizeNumberInput(value: unknown): number | null {
   return normalizeMoneyInput(value);
 }
 
-export function normalizeRequiredMoneyInput(value: unknown, fieldName = "сумма"): number {
+export function normalizeRequiredMoneyInput(value: unknown, fieldName = "money.amount"): number {
   const n = normalizeMoneyInput(value);
   if (n === null) {
-    throw new Error(`Некорректное значение поля «${fieldName}»`);
+    throw new Error(`money.invalidField: ${fieldName}`);
   }
   return n;
 }
