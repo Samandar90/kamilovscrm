@@ -30,6 +30,9 @@ const formatMoneyUz = (value: number): string => `${formatMoney(value)} сум`;
 
 const DEFAULT_CLINIC_LABEL = "Клиника";
 
+// These labels should be handled by i18n at the call site
+// The template is i18n-agnostic and just formats data
+
 /** Строка «метка — значение» с точечным заполнителем, как на официальных квитанциях. */
 const infoRow = (label: string, value: string): string => `
   <div style="display:flex;align-items:baseline;gap:6px;margin:3px 0;">

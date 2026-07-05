@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, Printer } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
@@ -20,15 +21,15 @@ const cardBase =
   "rounded-2xl border border-[#eef2f7] bg-white shadow-[0_6px_24px_rgba(15,23,42,0.04)]";
 
 const METHOD_LABEL: Record<PaymentMethod, string> = {
-  cash: "Наличные",
-  card: "Терминал",
+  cash: "billing.cash",
+  card: "billing.terminal",
 };
 
 const ENTRY_TYPE_LABEL: Record<CashRegisterEntry["type"], string> = {
-  payment: "Оплата",
-  refund: "Возврат",
-  manual_in: "Внесение",
-  manual_out: "Изъятие",
+  payment: "billing.payment",
+  refund: "billing.refund",
+  manual_in: "billing.manualIn",
+  manual_out: "billing.manualOut",
 };
 
 const signedAmount = (e: CashRegisterEntry): number =>
@@ -39,6 +40,7 @@ export const CashShiftPage: React.FC = () => {
   const navigate = useNavigate();
   const { token } = useAuth();
   const { clinic } = useClinic();
+  const { t } = useTranslation();
 
   const [shift, setShift] = React.useState<CashRegisterShift | null>(null);
   const [entries, setEntries] = React.useState<CashRegisterEntry[]>([]);
@@ -51,7 +53,7 @@ export const CashShiftPage: React.FC = () => {
   React.useEffect(() => {
     const shiftId = Number(id);
     if (!token || !Number.isInteger(shiftId) || shiftId <= 0) {
-      setError("Некорректный номер смены");
+      setError(t("billing.invalidShiftNumber") || "Некорректный номер смены");
       setLoading(false);
       return;
     }
@@ -73,7 +75,7 @@ export const CashShiftPage: React.FC = () => {
         setInvoices(Object.fromEntries(invoiceRows.map((inv) => [inv.id, inv])));
         setPatientsMap(Object.fromEntries(patientRows.map((p) => [p.id, p.fullName])));
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Не удалось загрузить смену");
+        setError(e instanceof Error ? e.message : t("billing.loadShiftFailed") || "Не удалось загрузить смену");
       } finally {
         setLoading(false);
       }
@@ -102,10 +104,10 @@ export const CashShiftPage: React.FC = () => {
   }, [entries, shift?.openingBalance]);
 
   const patientLabel = (e: CashRegisterEntry): string => {
-    if (e.patientId != null) return patientsMap[e.patientId] ?? `Пациент #${e.patientId}`;
+    if (e.patientId != null) return patientsMap[e.patientId] ?? `${t("billing.patient")} #${e.patientId}`;
     if (e.invoiceId != null) {
       const inv = invoices[e.invoiceId];
-      if (inv) return patientsMap[inv.patientId] ?? `Пациент #${inv.patientId}`;
+      if (inv) return patientsMap[inv.patientId] ?? `${t("billing.patient")} #${inv.patientId}`;
     }
     return "—";
   };
@@ -115,15 +117,15 @@ export const CashShiftPage: React.FC = () => {
     const html = buildReceiptHTML({
       clinicName: resolveReceiptClinicName(undefined, clinicMetaName),
       logoUrl: clinic.logoUrl,
-      patient: "Смена кассы",
+      patient: t("receipt.shift"),
       doctor: null,
       invoiceId: `SHIFT-${shift.id}`,
       date: formatDateTimeRu(shift.closedAt ?? shift.openedAt),
-      paymentMethod: "Сводный отчёт",
+      paymentMethod: t("receipt.shiftReport"),
       total: totals.closing,
       paid: totals.inflow,
       items: entries.map((entry) => ({
-        name: `${ENTRY_TYPE_LABEL[entry.type]} · ${patientLabel(entry)}`,
+        name: `${t(ENTRY_TYPE_LABEL[entry.type])} · ${patientLabel(entry)}`,
         price: Math.abs(signedAmount(entry)),
       })),
     });
@@ -139,7 +141,7 @@ export const CashShiftPage: React.FC = () => {
           className="inline-flex items-center gap-2 rounded-xl border border-[#e2e8f0] bg-[#f1f5f9] px-4 py-2 text-sm font-medium text-[#334155] hover:bg-[#e2e8f0]"
         >
           <ArrowLeft className="h-4 w-4" />
-          Назад
+          {t("common.back") || "Назад"}
         </button>
         <button
           type="button"
@@ -147,27 +149,27 @@ export const CashShiftPage: React.FC = () => {
           className="inline-flex items-center gap-2 rounded-xl bg-[#22c55e] px-4 py-2 text-sm font-medium text-white hover:bg-[#16a34a]"
         >
           <Printer className="h-4 w-4" />
-          Печать смены
+          {t("billing.print")}
         </button>
       </div>
 
       {loading ? (
-        <div className={`${cardBase} p-6 text-sm text-[#64748b]`}>Загрузка...</div>
+        <div className={`${cardBase} p-6 text-sm text-[#64748b]`}>{t("common.loading")}</div>
       ) : error || !shift ? (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-          {error ?? "Смена не найдена"}
+          {error ?? (t("billing.shiftNotFound") || "Смена не найдена")}
         </div>
       ) : (
         <>
           <section className={`${cardBase} p-5`}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h1 className="text-2xl font-semibold text-[#0f172a]">Смена #{shift.id}</h1>
+                <h1 className="text-2xl font-semibold text-[#0f172a]">{t("billing.shift")} #{shift.id}</h1>
                 <p className="mt-1 text-sm text-[#64748b]">
-                  Открыта: {formatDateTimeRu(shift.openedAt)}
+                  {t("billing.opened")}: {formatDateTimeRu(shift.openedAt)}
                 </p>
                 <p className="mt-0.5 text-sm text-[#64748b]">
-                  Закрыта: {shift.closedAt ? formatDateTimeRu(shift.closedAt) : "Не закрыта"}
+                  {t("billing.closed")}: {shift.closedAt ? formatDateTimeRu(shift.closedAt) : t("billing.notClosed")}
                 </p>
               </div>
               <span
@@ -175,16 +177,16 @@ export const CashShiftPage: React.FC = () => {
                   shift.closedAt ? "bg-[#f1f5f9] text-[#475569]" : "bg-[#dcfce7] text-[#166534]"
                 }`}
               >
-                {shift.closedAt ? "Закрыта" : "Открыта"}
+                {shift.closedAt ? t("billing.shiftClosedStatus") : t("billing.shiftOpenStatus")}
               </span>
             </div>
           </section>
 
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {[
-              { label: "Наличные", value: totals.cash },
-              { label: "Терминал", value: totals.card },
-              { label: "Всего", value: totals.total },
+              { label: t("billing.cash"), value: totals.cash },
+              { label: t("billing.terminal"), value: totals.card },
+              { label: t("billing.total"), value: totals.total },
             ].map((item) => (
               <div key={item.label} className={`${cardBase} p-4`}>
                 <p className="text-[11px] font-medium uppercase tracking-wide text-[#64748b]">{item.label}</p>
@@ -194,22 +196,22 @@ export const CashShiftPage: React.FC = () => {
           </section>
 
           <section className={`${cardBase} p-4`}>
-            <h2 className="text-sm font-semibold text-[#0f172a]">Итоги</h2>
+            <h2 className="text-sm font-semibold text-[#0f172a]">{t("billing.shiftSummary")}</h2>
             <dl className="mt-3 space-y-2 text-sm">
               <div className="flex justify-between border-b border-[#eef2f7] pb-2">
-                <dt className="text-[#64748b]">Старт</dt>
+                <dt className="text-[#64748b]">{t("billing.start")}</dt>
                 <dd className="text-[#334155]">{formatSum(shift.openingBalance)}</dd>
               </div>
               <div className="flex justify-between border-b border-[#eef2f7] pb-2">
-                <dt className="text-[#64748b]">Приход</dt>
+                <dt className="text-[#64748b]">{t("billing.shiftIncome")}</dt>
                 <dd className="text-[#16a34a]">{formatSum(totals.inflow)}</dd>
               </div>
               <div className="flex justify-between border-b border-[#eef2f7] pb-2">
-                <dt className="text-[#64748b]">Возвраты</dt>
+                <dt className="text-[#64748b]">{t("billing.refund")}</dt>
                 <dd className="text-rose-700">{formatSum(totals.outflow)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="font-medium text-[#0f172a]">Итог</dt>
+                <dt className="font-medium text-[#0f172a]">{t("billing.total")}</dt>
                 <dd className="text-lg font-semibold text-[#16a34a]">{formatSum(totals.closing)}</dd>
               </div>
             </dl>
@@ -217,18 +219,18 @@ export const CashShiftPage: React.FC = () => {
 
           <section className={`${cardBase} overflow-hidden`}>
             <div className="border-b border-[#eef2f7] p-4">
-              <h2 className="text-sm font-semibold text-[#0f172a]">Операции смены</h2>
+              <h2 className="text-sm font-semibold text-[#0f172a]">{t("billing.operations")}</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-[#eef2f7] bg-[#f8fafc] text-[11px] uppercase tracking-wide text-[#64748b]">
-                    <th className="px-3 py-2">Время</th>
-                    <th className="px-3 py-2">Пациент</th>
-                    <th className="px-3 py-2">Счёт</th>
-                    <th className="px-3 py-2">Тип</th>
-                    <th className="px-3 py-2">Метод</th>
-                    <th className="px-3 py-2 text-right">Сумма</th>
+                    <th className="px-3 py-2">{t("receipt.date")}</th>
+                    <th className="px-3 py-2">{t("receipt.patient")}</th>
+                    <th className="px-3 py-2">{t("billing.invoice")}</th>
+                    <th className="px-3 py-2">{t("billing.type")}</th>
+                    <th className="px-3 py-2">{t("billing.method")}</th>
+                    <th className="px-3 py-2 text-right">{t("receipt.amount")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -239,8 +241,8 @@ export const CashShiftPage: React.FC = () => {
                       <td className="px-3 py-2 font-mono text-xs text-[#64748b]">
                         {e.invoiceId != null ? invoices[e.invoiceId]?.number ?? `#${e.invoiceId}` : "—"}
                       </td>
-                      <td className="px-3 py-2 text-[#334155]">{ENTRY_TYPE_LABEL[e.type]}</td>
-                      <td className="px-3 py-2 text-[#334155]">{METHOD_LABEL[e.method]}</td>
+                      <td className="px-3 py-2 text-[#334155]">{t(ENTRY_TYPE_LABEL[e.type])}</td>
+                      <td className="px-3 py-2 text-[#334155]">{t(METHOD_LABEL[e.method])}</td>
                       <td
                         className={`px-3 py-2 text-right font-medium ${
                           signedAmount(e) < 0 ? "text-rose-700" : "text-[#16a34a]"

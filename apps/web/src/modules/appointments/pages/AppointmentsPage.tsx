@@ -206,35 +206,35 @@ function formatAppointmentCreatedAtRu(value: string | undefined): string {
   });
 }
 
-function appointmentStatusDetailedRu(status: Appointment["status"]): string {
+function appointmentStatusDetailedRu(status: Appointment["status"], t: any): string {
   const map: Record<Appointment["status"], string> = {
-    scheduled: "Запланирован",
-    confirmed: "Подтверждён",
-    arrived: "Пришёл",
-    in_consultation: "На приёме",
-    completed: "Завершён",
-    cancelled: "Отменён",
-    no_show: "Неявка",
+    scheduled: t("appointments.statusLabels.scheduled") ?? "Запланирован",
+    confirmed: t("appointments.statusLabels.confirmed") ?? "Подтверждён",
+    arrived: t("appointments.statusLabels.arrived") ?? "Пришёл",
+    in_consultation: t("appointments.statusLabels.in_consultation") ?? "На приёме",
+    completed: t("appointments.statusLabels.completed") ?? "Завершён",
+    cancelled: t("appointments.statusLabels.cancelled") ?? "Отменён",
+    no_show: t("appointments.statusLabels.no_show") ?? "Неявка",
   };
   return map[status] ?? status;
 }
 
-function patientSourceLabelRu(source: Patient["source"]): string {
+function patientSourceLabelRu(source: Patient["source"], t: any): string {
   switch (source) {
     case "doctor":
-      return "Врач";
+      return t("patients.source.doctor") ?? "Врач";
     case "reception":
-      return "Регистратура";
+      return t("patients.source.reception") ?? "Регистратура";
     case "instagram":
-      return "Instagram";
+      return t("patients.source.instagram") ?? "Instagram";
     case "telegram":
-      return "Telegram";
+      return t("patients.source.telegram") ?? "Telegram";
     case "advertising":
-      return "Реклама";
+      return t("patients.source.advertising") ?? "Реклама";
     case "referral":
-      return "Рекомендация";
+      return t("patients.source.referral") ?? "Рекомендация";
     case "other":
-      return "Другое";
+      return t("patients.source.other") ?? "Другое";
     default:
       return "—";
   }
@@ -415,7 +415,7 @@ export const AppointmentsPage: React.FC = () => {
       setDoctorsMap(Object.fromEntries(doctors.map((item) => [item.id, item.name])));
       setServicesMap(Object.fromEntries(services.map((item) => [item.id, item])));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка загрузки");
+      setError(requestError instanceof Error ? requestError.message : t("appointments.errors.loadingError"));
     } finally {
       if (!silent) {
         setIsLoading(false);
@@ -453,7 +453,7 @@ export const AppointmentsPage: React.FC = () => {
         setAvailableServices(rows);
       } catch (_error) {
         setAvailableServices([]);
-        setError("Не удалось загрузить услуги врача");
+        setError(t("appointments.errors.serviceNotFound"));
       } finally {
         setServicesLoading(false);
       }
@@ -627,37 +627,37 @@ export const AppointmentsPage: React.FC = () => {
       !form.date ||
       !form.time
     ) {
-      setError("Заполните все обязательные поля");
+      setError(t("appointments.errors.fillAllFields"));
       return;
     }
     const startAt = normalizeDateTimeForApi(form.date, form.time);
     if (!startAt) {
-      setError("Неверная дата или время");
+      setError(t("appointments.errors.invalidDateTime"));
       return;
     }
     if (!availableServices.some((s) => s.id === serviceId)) {
-      setError("Выберите услугу из списка выбранного врача");
+      setError(t("appointments.errors.selectServiceFromList"));
       return;
     }
     const servicePrice = coercePriceToNumber(servicesMap[serviceId]?.price ?? 0);
     const parsedPrice = form.priceLocked ? form.price : servicePrice;
     if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
-      setError("Цена должна быть числом больше или равна 0");
+      setError(t("appointments.errors.priceError"));
       return;
     }
     const serviceDuration = servicesMap[serviceId]?.duration ?? 0;
     if (!serviceDuration) {
-      setError("Не удалось определить длительность услуги");
+      setError(t("appointments.errors.serviceDurationError"));
       return;
     }
     const slotPhase = fullSlotAvailabilityPhaseRef.current;
     if (slotPhase !== "free") {
       if (slotPhase === "busy") {
-        setError("Это время уже занято");
+        setError(t("appointments.errors.slotBusy"));
       } else if (slotPhase === "error") {
-        setError("Не удалось проверить занятость. Повторите попытку.");
+        setError(t("appointments.errors.checkingSlotError"));
       } else {
-        setError("Дождитесь проверки времени");
+        setError(t("appointments.errors.waitingForCheck"));
       }
       return;
     }
@@ -682,10 +682,10 @@ export const AppointmentsPage: React.FC = () => {
       setInvoicesByAppointmentId((prev) => ({ ...prev, [created.id]: null }));
       setFullModalOpen(false);
       setFullForm(emptyFullForm());
-      setToast("Запись создана");
+      setToast(t("appointments.messages.appointmentCreated"));
       void loadData({ silent: true });
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка создания записи");
+      setError(requestError instanceof Error ? requestError.message : t("appointments.errors.creationError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -713,10 +713,10 @@ export const AppointmentsPage: React.FC = () => {
       setDetailsModal((d) =>
         d.appointment?.id === updated.id ? { open: d.open, appointment: updated } : d
       );
-      setToast("Статус записи обновлен");
+      setToast(t("appointments.messages.statusUpdated"));
       void loadData({ silent: true });
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка обновления");
+      setError(requestError instanceof Error ? requestError.message : t("appointments.errors.updateError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -736,7 +736,7 @@ export const AppointmentsPage: React.FC = () => {
       await loadData();
       navigate(`/billing/invoices/${created.id}`);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка создания счета");
+      setError(requestError instanceof Error ? requestError.message : t("appointments.errors.invoiceCreationError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -797,13 +797,13 @@ export const AppointmentsPage: React.FC = () => {
   const completeConsultation = async () => {
     if (!token || !consultationModal.appointment || !canDoClinical) return;
     if (consultationModal.services.length === 0) {
-      window.alert("Добавьте хотя бы одну услугу перед завершением приёма");
+      window.alert(t("appointments.errors.addServiceBeforeComplete"));
       return;
     }
     const diagnosis = consultationModal.diagnosis.trim();
     const treatment = consultationModal.treatment.trim();
     if (!diagnosis || !treatment) {
-      setError("Заполните diagnosis и treatment перед завершением приема");
+      setError(t("appointments.errors.fillDiagnosisAndTreatment"));
       return;
     }
     const saved = await saveConsultationDraft(false);
@@ -820,9 +820,9 @@ export const AppointmentsPage: React.FC = () => {
       });
       closeConsultation();
       await loadData();
-      setToast("Пациент готов к оплате");
+      setToast(t("appointments.messages.patientReady"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка завершения приема");
+      setError(requestError instanceof Error ? requestError.message : t("appointments.errors.creationError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -839,7 +839,7 @@ export const AppointmentsPage: React.FC = () => {
     }
     const service = servicesMap[serviceId];
     if (!service) {
-      setError("Не удалось найти услугу");
+      setError(t("appointments.errors.serviceNotFound"));
       return;
     }
     setConsultationModal((prev) => ({
@@ -919,7 +919,7 @@ export const AppointmentsPage: React.FC = () => {
       if (showToast) setToast("Изменения сохранены");
       return true;
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Не удалось сохранить черновик");
+      setError(requestError instanceof Error ? requestError.message : t("appointments.errors.saveDraftError"));
       return false;
     } finally {
       setIsConsultationSaving(false);
@@ -948,7 +948,7 @@ export const AppointmentsPage: React.FC = () => {
           setError(
             requestError instanceof Error
               ? requestError.message
-              : "Не удалось выполнить автосохранение"
+              : t("appointments.errors.autosaveError")
           );
         })
         .finally(() => setIsConsultationAutoSaving(false));
@@ -978,10 +978,10 @@ export const AppointmentsPage: React.FC = () => {
       setDetailsModal((d) =>
         d.appointment?.id === updated.id ? { open: d.open, appointment: updated } : d
       );
-      setToast("Запись отменена");
+      setToast(t("appointments.messages.appointmentCancelled"));
       void loadData({ silent: true });
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка отмены записи");
+      setError(requestError instanceof Error ? requestError.message : t("appointments.errors.cancellationError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -991,7 +991,7 @@ export const AppointmentsPage: React.FC = () => {
     if (!token || !rescheduleModal.appointment) return;
     const startAt = normalizeDateTimeForApi(rescheduleModal.date, rescheduleModal.time);
     if (!startAt) {
-      setRescheduleModal((s) => ({ ...s, error: "Укажите корректную дату и время" }));
+      setRescheduleModal((s) => ({ ...s, error: t("appointments.messages.invalidRecheduleDate") }));
       return;
     }
     setIsSubmitting(true);
@@ -1008,11 +1008,11 @@ export const AppointmentsPage: React.FC = () => {
         d.appointment?.id === updated.id ? { open: true, appointment: updated } : d
       );
       setRescheduleModal({ open: false, appointment: null, date: "", time: "", error: "" });
-      setToast("Время записи обновлено");
+      setToast(t("appointments.messages.appointmentRescheduled"));
       void loadData({ silent: true });
     } catch (requestError) {
       const msg =
-        requestError instanceof Error ? requestError.message : "Не удалось изменить время";
+        requestError instanceof Error ? requestError.message : t("appointments.errors.rescheduleError");
       setRescheduleModal((s) => ({ ...s, error: msg }));
     } finally {
       setIsSubmitting(false);
@@ -1021,16 +1021,16 @@ export const AppointmentsPage: React.FC = () => {
 
   const deleteAppointment = async (appointment: Appointment) => {
     if (!token || !canHardDeleteAppointment) return;
-    const confirmed = window.confirm("Вы уверены? Это действие нельзя отменить");
+    const confirmed = window.confirm(t("appointments.errors.confirmDelete"));
     if (!confirmed) return;
     setIsSubmitting(true);
     setError(null);
     try {
       await appointmentsFlowApi.deleteAppointment(token, appointment.id);
       await loadData();
-      setToast("Запись удалена");
+      setToast(t("appointments.messages.appointmentDeleted"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Ошибка удаления записи");
+      setError(requestError instanceof Error ? requestError.message : t("appointments.errors.deletionError"));
     } finally {
       setIsSubmitting(false);
     }
@@ -1040,7 +1040,7 @@ export const AppointmentsPage: React.FC = () => {
     if (!token || !priceModal.appointment || !canEditAppointmentPrice) return;
     const price = priceModal.price;
     if (!Number.isFinite(price) || price < 0) {
-      setError("Цена должна быть числом больше или равна 0");
+      setError(t("appointments.errors.priceError"));
       return;
     }
     setIsSubmitting(true);
@@ -1053,10 +1053,10 @@ export const AppointmentsPage: React.FC = () => {
       );
       setPriceModal({ open: false, appointment: null, price: 0 });
       await loadData();
-      setToast("Цена записи обновлена");
+      setToast(t("appointments.messages.priceUpdated"));
     } catch (requestError) {
       setError(
-        requestError instanceof Error ? requestError.message : "Ошибка обновления цены"
+        requestError instanceof Error ? requestError.message : t("appointments.errors.priceUpdateError")
       );
     } finally {
       setIsSubmitting(false);
@@ -1110,7 +1110,7 @@ export const AppointmentsPage: React.FC = () => {
     if (!t) return;
     try {
       await navigator.clipboard.writeText(t);
-      setToast("Номер скопирован");
+      setToast(t("appointments.messages.phoneCopied"));
     } catch {
       setToast(t);
     }
@@ -1142,9 +1142,9 @@ export const AppointmentsPage: React.FC = () => {
   }, [rangeTab, customDate, searchQuery, appointments.length]);
 
   const tabList: { id: RangeTab; label: string }[] = [
-    { id: "today", label: "Сегодня" },
-    { id: "tomorrow", label: "Завтра" },
-    { id: "week", label: "Неделя" },
+    { id: "today", label: t("appointments.today") },
+    { id: "tomorrow", label: t("appointments.tomorrow") },
+    { id: "week", label: t("appointments.week") },
   ];
 
   const glassPanel = "";
@@ -1226,7 +1226,7 @@ export const AppointmentsPage: React.FC = () => {
                       : "bg-slate-100 text-slate-600"
                   }`}
                 >
-                  {tab === "today" ? "Сегодня" : "Завтра"}
+                  {tab === "today" ? t("appointments.today") : t("appointments.tomorrow")}
                 </button>
               ))}
             </div>
@@ -1235,7 +1235,7 @@ export const AppointmentsPage: React.FC = () => {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="search"
-              placeholder="Поиск пациента…"
+              placeholder={t("appointments.search") || "Поиск пациента…"}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="h-10 w-full rounded-[10px] border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20"
@@ -1262,7 +1262,7 @@ export const AppointmentsPage: React.FC = () => {
               <Search className="pointer-events-none absolute left-3 top-[34px] h-4 w-4 text-[#9ca3af]" />
               <input
                 type="search"
-                placeholder="Поиск пациента…"
+                placeholder={t("appointments.search") || "Поиск пациента…"}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-10 w-full rounded-[10px] border border-[#e5e7eb] bg-white py-2 pl-10 pr-3 text-sm text-[#111827] placeholder:text-[#9ca3af] outline-none transition hover:border-[#d1d5db] focus:border-[#22c55e] focus:ring-1 focus:ring-[#22c55e]/25"
@@ -1315,11 +1315,11 @@ export const AppointmentsPage: React.FC = () => {
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[#6b7280]">Расписание</h2>
 
           {isLoading ? (
-            <PageLoader label="Загрузка записей..." />
+            <PageLoader label={t("common.loading")} />
           ) : appointments.length === 0 ? (
             <>
             <SectionCard className="md:hidden border-slate-100 bg-white py-8 shadow-sm">
-              <EmptyState title="Нет записей на сегодня" subtitle="" />
+              <EmptyState title={t("appointments.emptyToday")} subtitle="" />
               {canOpenAppointmentCreateModals ? (
                 <div className="mt-3 flex justify-center">
                   <button
@@ -1333,13 +1333,13 @@ export const AppointmentsPage: React.FC = () => {
               ) : null}
             </SectionCard>
             <SectionCard className="hidden md:block">
-              <EmptyState title="Нет записей" subtitle="Добавьте первую запись" />
+              <EmptyState title={t("appointments.emptyGeneral")} subtitle={t("appointments.addFirst")} />
             </SectionCard>
             </>
           ) : filteredAppointments.length === 0 ? (
             <>
             <SectionCard className="md:hidden border-slate-100 bg-white py-8 shadow-sm">
-              <EmptyState title="Нет записей на сегодня" subtitle="" />
+              <EmptyState title={t("appointments.emptyToday")} subtitle="" />
               {canOpenAppointmentCreateModals ? (
                 <div className="mt-3 flex justify-center">
                   <button
@@ -1353,7 +1353,7 @@ export const AppointmentsPage: React.FC = () => {
               ) : null}
             </SectionCard>
             <SectionCard className="hidden md:block">
-              <EmptyState title={emptyRangeMessage(rangeTab)} subtitle="Добавьте первую запись" />
+              <EmptyState title={emptyRangeMessage(rangeTab, t)} subtitle={t("appointments.addFirst")} />
             </SectionCard>
             </>
           ) : (
@@ -1480,7 +1480,7 @@ export const AppointmentsPage: React.FC = () => {
           }}
           onCreated={async () => {
             await loadData();
-            setToast("Запись создана");
+            setToast(t("appointments.messages.appointmentCreated"));
           }}
           token={token ?? null}
           resumePatient={quickResumePatient}
@@ -1578,7 +1578,7 @@ export const AppointmentsPage: React.FC = () => {
                       <p className="mt-0.5 text-xs text-slate-500">Карточка визита</p>
                     </div>
                     <StatusBadge tone={appointmentStatusToneForBadge(ap.status)} className="shrink-0">
-                      {appointmentStatusDetailedRu(ap.status)}
+                      {appointmentStatusDetailedRu(ap.status, t)}
                     </StatusBadge>
                   </div>
                 </div>
@@ -1612,7 +1612,7 @@ export const AppointmentsPage: React.FC = () => {
                   ) : null}
                   <div className={rowClass}>
                     <span className={labelClass}>Источник пациента</span>
-                    <span className={valueClass}>{patientSourceLabelRu(patient?.source)}</span>
+                    <span className={valueClass}>{patientSourceLabelRu(patient?.source, t)}</span>
                   </div>
                   <div className={rowClass}>
                     <span className={labelClass}>Врач</span>
