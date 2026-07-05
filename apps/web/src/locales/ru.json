@@ -267,7 +267,9 @@
     "cancelAppointment": "Отменить запись",
     "close": "Закрыть",
     "printPrescription": "Печать назначения",
-    "cancelReason": "Причина отмены"
+    "cancelReason": "Причина отмены",
+    "cancelReasonPlaceholder": "Например: пациент не пришел",
+    "completeConsultation": "Завершить приём"
   },
   "doctors": {
     "noServicesAssigned": "Услуги пока не назначены"

@@ -1795,7 +1795,7 @@ export const AppointmentsPage: React.FC = () => {
               }}
               className="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
             >
-              Отмена
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -1803,7 +1803,7 @@ export const AppointmentsPage: React.FC = () => {
               onClick={() => void submitRescheduleTime()}
               className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
             >
-              Сохранить
+              {t("common.save")}
             </button>
           </div>
         </Modal>
@@ -1829,7 +1829,7 @@ export const AppointmentsPage: React.FC = () => {
                 setCancelModal((prev) => ({ ...prev, reason: event.target.value }))
               }
               className="min-h-24 w-full rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-sm text-[#111827] outline-none transition focus:border-[#22c55e] focus:bg-white focus:ring-1 focus:ring-[#22c55e]/25"
-              placeholder={isDoctorUser ? "Причина отмены" : "Например: пациент не пришел"}
+              placeholder={isDoctorUser ? t("appointments.cancelReason") : t("appointments.cancelReasonPlaceholder")}
               maxLength={500}
               disabled={isSubmitting}
             />
@@ -1841,7 +1841,7 @@ export const AppointmentsPage: React.FC = () => {
               onClick={() => setCancelModal({ open: false, appointment: null, reason: "" })}
               disabled={isSubmitting}
             >
-              Закрыть
+              {t("common.close")}
             </button>
             <button
               type="button"
@@ -1884,7 +1884,7 @@ export const AppointmentsPage: React.FC = () => {
               onClick={() => setPriceModal({ open: false, appointment: null, price: 0 })}
               disabled={isSubmitting}
             >
-              Закрыть
+              {t("common.close")}
             </button>
             <button
               type="button"
@@ -1892,7 +1892,7 @@ export const AppointmentsPage: React.FC = () => {
               onClick={() => void updateAppointmentPrice()}
               disabled={isSubmitting}
             >
-              Сохранить
+              {t("common.save")}
             </button>
           </div>
         </Modal>
@@ -1917,7 +1917,7 @@ export const AppointmentsPage: React.FC = () => {
               {appointments.filter((row) => row.patientId === consultationModal.appointment?.patientId).length}
             </p>
             <div className="mt-1 text-xs text-[#94a3b8]">
-              {isConsultationAutoSaving ? "Автосохранение..." : "Изменения сохраняются автоматически"}
+              {isConsultationAutoSaving ? t("common.autosaving") : t("common.autoSavingDesc")}
             </div>
             <div className="mt-4 grid max-h-[65vh] gap-4 overflow-y-auto pr-1">
               <div className="rounded-xl border border-[#e5e7eb] bg-[#f8fafc] p-4 shadow-sm">
@@ -2094,7 +2094,7 @@ export const AppointmentsPage: React.FC = () => {
                 onClick={() => void saveConsultationDraft(true)}
                 disabled={consultationBusy}
               >
-                {isConsultationSaving ? "Сохранение..." : "Сохранить"}
+                {isConsultationSaving ? t("common.saving") : t("common.save")}
               </button>
               <button
                 type="button"
@@ -2102,7 +2102,7 @@ export const AppointmentsPage: React.FC = () => {
                 onClick={() => void completeConsultation()}
                 disabled={consultationBusy || !canCompleteConsultation}
               >
-                {isSubmitting ? "Сохранение..." : "Завершить приём"}
+                {isSubmitting ? t("common.saving") : t("appointments.completeConsultation")}
               </button>
               </div>
             </div>

@@ -267,7 +267,9 @@
     "cancelAppointment": "Kunni bekor qilish",
     "close": "Yopish",
     "printPrescription": "Tavsiyani chop etish",
-    "cancelReason": "Bekor qilish sababi"
+    "cancelReason": "Bekor qilish sababi",
+    "cancelReasonPlaceholder": "Masalan: bemorni topilmadi",
+    "completeConsultation": "Konsultatsiyani tugatish"
   },
   "doctors": {
     "noServicesAssigned": "Xizmatlar hali tayinlanmadi"

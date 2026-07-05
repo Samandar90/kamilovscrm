@@ -125,7 +125,7 @@ export const CreatePatientModal: React.FC<Props> = ({
           disabled={submitting || saving}
           className="rounded-xl border border-[#e5e7eb] bg-white px-4 py-2 text-sm font-medium text-[#111827] transition hover:bg-[#f3f4f6] disabled:opacity-60"
         >
-          {t("cancel", { defaultValue: "Отмена" })}
+          {t("common.cancel")}
         </button>
         <button
           type="button"
