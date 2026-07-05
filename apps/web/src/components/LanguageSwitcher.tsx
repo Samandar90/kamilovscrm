@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
 
 export const LanguageSwitcher: React.FC = () => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = React.useState(false);
 
   const languages = [

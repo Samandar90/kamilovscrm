@@ -71,7 +71,9 @@ type PatientVisit = {
 type DoctorRef = { id: number; name: string };
 type ServiceRef = { id: number; name: string };
 
-const PATIENT_SOURCE_OPTIONS: { value: PatientSource; label: string }[] = [
+const getPatientSourceOptions = (
+  t: (key: string) => string
+): { value: PatientSource; label: string }[] => [
   { value: "instagram", label: "Instagram" },
   { value: "telegram", label: "Telegram" },
   { value: "advertising", label: t("patients.source.advertising") },

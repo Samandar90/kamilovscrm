@@ -10,14 +10,16 @@ type DashboardTodaySummaryProps = {
   loading?: boolean;
 };
 
-const getRowMeta = (t: any) => [
-  { label: t("dashboard.appointments"), icon: CalendarClock, tone: "indigo" as const },
-  { label: t("dashboard.payments"), icon: CreditCard, tone: "emerald" as const },
-  { label: t("dashboard.newPatients"), icon: UserPlus, tone: "violet" as const },
-  { label: t("dashboard.completedPercent"), icon: Activity, tone: "sky" as const },
+type RowTone = "indigo" | "emerald" | "violet" | "sky";
+
+const getRowMeta = (t: any): { label: string; icon: typeof CalendarClock; tone: RowTone }[] => [
+  { label: t("dashboard.appointments"), icon: CalendarClock, tone: "indigo" },
+  { label: t("dashboard.payments"), icon: CreditCard, tone: "emerald" },
+  { label: t("dashboard.newPatients"), icon: UserPlus, tone: "violet" },
+  { label: t("dashboard.completedPercent"), icon: Activity, tone: "sky" },
 ];
 
-const toneClass: Record<(typeof rowMeta)[number]["tone"], string> = {
+const toneClass: Record<RowTone, string> = {
   indigo: "border-indigo-100 bg-indigo-50 text-indigo-600",
   emerald: "border-emerald-100 bg-emerald-50 text-emerald-600",
   violet: "border-violet-100 bg-violet-50 text-violet-600",
