@@ -23,8 +23,8 @@ export const LandingPage: React.FC = () => {
   const { t, i18n } = useTranslation();
 
   React.useEffect(() => {
-    document.title = `${BRANDING.productName} — ${BRANDING.productTagline}`;
-  }, []);
+    document.title = `${BRANDING.productName} — ${t(BRANDING.productTagline)}`;
+  }, [t]);
 
   const features = [
     { icon: Users, keyPrefix: "feature1" },
@@ -174,7 +174,7 @@ export const LandingPage: React.FC = () => {
 
       {/* Подвал */}
       <footer className="border-t border-slate-200 py-8 text-center text-xs text-slate-400">
-        © {new Date().getFullYear()} {BRANDING.productName} · {BRANDING.productTagline}
+        © {new Date().getFullYear()} {BRANDING.productName} · {t(BRANDING.productTagline)}
       </footer>
     </div>
   );

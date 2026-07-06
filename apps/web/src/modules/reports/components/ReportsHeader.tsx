@@ -45,16 +45,16 @@ export const ReportsHeader: React.FC<Props> = ({
   refreshing,
   onRefresh,
 }) => {
-  const { t } = useTranslation("reports");
+  const { t } = useTranslation();
   return (
     <section className="rounded-2xl border border-slate-200/70 bg-white p-4 shadow-sm md:p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap gap-2">
           {[
-            ["today", t("periodToday")],
-            ["week", t("periodWeek")],
-            ["month", t("periodMonth")],
-            ["custom", t("periodCustom")],
+            ["today", t("reports.periodToday")],
+            ["week", t("reports.periodWeek")],
+            ["month", t("reports.periodMonth")],
+            ["custom", t("reports.periodCustom")],
           ].map(([key, label]) => (
             <button
               key={key}
@@ -73,7 +73,7 @@ export const ReportsHeader: React.FC<Props> = ({
           className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
         >
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-          {t("refresh")}
+          {t("reports.refresh")}
         </button>
       </div>
 
@@ -81,7 +81,7 @@ export const ReportsHeader: React.FC<Props> = ({
         {period === "custom" ? (
           <>
             <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              {t("dateFrom")}
+              {t("reports.dateFrom")}
               <input
                 type="date"
                 value={customDateFrom}
@@ -90,7 +90,7 @@ export const ReportsHeader: React.FC<Props> = ({
               />
             </label>
             <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              {t("dateTo")}
+              {t("reports.dateTo")}
               <input
                 type="date"
                 value={customDateTo}
@@ -102,13 +102,13 @@ export const ReportsHeader: React.FC<Props> = ({
         ) : null}
 
         <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
-          {t("doctorLabel")}
+          {t("reports.doctorLabel")}
           <select
             value={doctorId ?? ""}
             onChange={(e) => onDoctorChange(e.target.value ? Number(e.target.value) : null)}
             className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
           >
-            <option value="">{t("allDoctors")}</option>
+            <option value="">{t("reports.allDoctors")}</option>
             {doctors.map((doctor) => (
               <option key={doctor.id} value={doctor.id}>
                 {doctor.name}
@@ -118,13 +118,13 @@ export const ReportsHeader: React.FC<Props> = ({
         </label>
 
         <label className="text-xs font-medium uppercase tracking-wide text-slate-500">
-          {t("serviceLabel")}
+          {t("reports.serviceLabel")}
           <select
             value={serviceId ?? ""}
             onChange={(e) => onServiceChange(e.target.value ? Number(e.target.value) : null)}
             className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:bg-white"
           >
-            <option value="">{t("allServices")}</option>
+            <option value="">{t("reports.allServices")}</option>
             {services.map((service) => (
               <option key={service.id} value={service.id}>
                 {service.name}

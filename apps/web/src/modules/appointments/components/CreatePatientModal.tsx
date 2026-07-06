@@ -25,7 +25,7 @@ export const CreatePatientModal: React.FC<Props> = ({
   onCreated,
   onError,
 }) => {
-  const { t } = useTranslation("appointments");
+  const { t } = useTranslation();
   const [fullName, setFullName] = React.useState(initialName);
   const [phone, setPhone] = React.useState("");
   const [birthDate, setBirthDate] = React.useState("");
@@ -44,13 +44,13 @@ export const CreatePatientModal: React.FC<Props> = ({
     if (!token || submitting || saving) return;
     const name = fullName.trim();
     if (name.length < 5) {
-      onError(t("patientNameTooShort"));
+      onError(t("appointments.patientNameTooShort"));
       return;
     }
     const apiPhone = phoneToApiValue(phone);
     const digits = apiPhone.replace(/\D/g, "");
     if (digits.length < 10 || digits.length > 15) {
-      onError(t("invalidPhone"));
+      onError(t("appointments.invalidPhone"));
       return;
     }
     const payload: PatientCreateInput = {
@@ -65,7 +65,7 @@ export const CreatePatientModal: React.FC<Props> = ({
       const created = await appointmentsFlowApi.createPatient(token, payload);
       onCreated(created);
     } catch (error) {
-      onError(error instanceof Error ? error.message : t("failedToCreatePatient"));
+      onError(error instanceof Error ? error.message : t("appointments.failedToCreatePatient"));
     } finally {
       setSaving(false);
     }
@@ -77,10 +77,10 @@ export const CreatePatientModal: React.FC<Props> = ({
       onClose={onClose}
       className="w-[min(480px,calc(100vw-2rem))] rounded-[20px] border border-[#e5e7eb] bg-white p-6 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.2)]"
     >
-      <h3 className="text-lg font-semibold text-[#111827]">{t("createPatientHeader")}</h3>
+      <h3 className="text-lg font-semibold text-[#111827]">{t("appointments.createPatientHeader")}</h3>
       <div className="mt-4 space-y-3">
         <label className="block text-sm text-[#374151]">
-          {t("fullName")}
+          {t("appointments.fullName")}
           <input
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
@@ -88,7 +88,7 @@ export const CreatePatientModal: React.FC<Props> = ({
           />
         </label>
         <label className="block text-sm text-[#374151]">
-          {t("phone")}
+          {t("appointments.phone")}
           <PhoneInput
             value={phone}
             onChange={setPhone}
@@ -97,7 +97,7 @@ export const CreatePatientModal: React.FC<Props> = ({
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block text-sm text-[#374151]">
-            {t("birthDate")}
+            {t("appointments.birthDate")}
             <input
               type="date"
               value={birthDate}
@@ -106,14 +106,14 @@ export const CreatePatientModal: React.FC<Props> = ({
             />
           </label>
           <label className="block text-sm text-[#374151]">
-            {t("gender")}
+            {t("appointments.gender")}
             <select
               value={gender}
               onChange={(e) => setGender(e.target.value as "male" | "female")}
               className="mt-1 h-11 w-full rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] px-3 text-sm text-[#111827] outline-none transition focus:border-[#22c55e] focus:bg-white focus:ring-1 focus:ring-[#22c55e]/25"
             >
-              <option value="male">{t("male")}</option>
-              <option value="female">{t("female")}</option>
+              <option value="male">{t("appointments.male")}</option>
+              <option value="female">{t("appointments.female")}</option>
             </select>
           </label>
         </div>
@@ -133,7 +133,7 @@ export const CreatePatientModal: React.FC<Props> = ({
           disabled={submitting || saving}
           className="rounded-xl bg-[#22c55e] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#16a34a] disabled:opacity-60"
         >
-          {saving ? t("creating") : t("create")}
+          {saving ? t("appointments.creating") : t("appointments.create")}
         </button>
       </div>
     </Modal>

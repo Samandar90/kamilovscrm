@@ -19,16 +19,16 @@ type AppointmentStatusBadgeProps = {
 export const AppointmentStatusBadge: React.FC<AppointmentStatusBadgeProps> = ({
   status,
 }) => {
-  const { t } = useTranslation("appointments");
+  const { t } = useTranslation();
 
   const labelRu: Record<AppointmentStatus, string> = {
-    scheduled: t("scheduled"),
-    confirmed: t("confirmed"),
-    arrived: t("arrived"),
-    in_consultation: t("in_consultation"),
-    completed: t("completed"),
-    cancelled: t("cancelled"),
-    no_show: t("noshow"),
+    scheduled: t("appointments.statusLabels.scheduled"),
+    confirmed: t("appointments.statusLabels.confirmed"),
+    arrived: t("appointments.statusLabels.arrived"),
+    in_consultation: t("appointments.statusLabels.in_consultation"),
+    completed: t("appointments.statusLabels.completed"),
+    cancelled: t("appointments.statusLabels.cancelled"),
+    no_show: t("appointments.statusLabels.no_show"),
   };
 
   return (

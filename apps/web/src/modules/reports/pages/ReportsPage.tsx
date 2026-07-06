@@ -31,7 +31,7 @@ const mapPeriod = (period: PeriodKey): ReportsGranularity => {
 };
 
 export const ReportsPage: React.FC = () => {
-  const { t } = useTranslation(["reports", "common"]);
+  const { t } = useTranslation();
   const [period, setPeriod] = React.useState<PeriodKey>("week");
   const [doctorId, setDoctorId] = React.useState<number | null>(null);
   const [serviceId, setServiceId] = React.useState<number | null>(null);
@@ -88,7 +88,7 @@ export const ReportsPage: React.FC = () => {
         setPayments(p);
         setInvoices(i);
       } catch (err) {
-        setError(err instanceof Error ? err.message : t("errorLoadingReports"));
+        setError(err instanceof Error ? err.message : t("reports.errorLoadingReports"));
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -139,10 +139,10 @@ export const ReportsPage: React.FC = () => {
   return (
     <div className="mx-auto max-w-7xl space-y-6 bg-slate-50/80 px-4 py-6 md:space-y-8 md:px-6 md:py-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">{t("title")}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">{t("reports.title")}</h1>
         <p className="mt-1 text-sm text-slate-500">
-          {t("subtitle")}
-          {summary?.timezone ? ` · ${t("timezone")} ${summary.timezone}` : ""}
+          {t("reports.subtitle")}
+          {summary?.timezone ? ` · ${t("reports.timezone")} ${summary.timezone}` : ""}
         </p>
       </header>
 
@@ -165,17 +165,17 @@ export const ReportsPage: React.FC = () => {
       />
 
       {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error || t("common:error")}</div>
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error || t("common.error")}</div>
       ) : null}
 
       <ReportsKPI
         loading={loading}
         items={[
-          { title: t("revenue"), value: metrics?.totalRevenue ?? 0, changePct: growth },
-          { title: t("growth"), value: growth == null ? "—" : `${growth > 0 ? "+" : ""}${Math.round(growth)}%`, changePct: growth },
-          { title: t("patients"), value: summary?.revenueByDoctor.length ?? 0 },
-          { title: t("invoices"), value: invoices.length },
-          { title: t("averageCheck"), value: averageCheck },
+          { title: t("reports.revenue"), value: metrics?.totalRevenue ?? 0, changePct: growth },
+          { title: t("reports.growth"), value: growth == null ? "—" : `${growth > 0 ? "+" : ""}${Math.round(growth)}%`, changePct: growth },
+          { title: t("reports.patientsCount"), value: summary?.revenueByDoctor.length ?? 0 },
+          { title: t("reports.invoicesCount"), value: invoices.length },
+          { title: t("reports.averageCheck"), value: averageCheck },
         ]}
       />
 
@@ -202,11 +202,11 @@ export const ReportsPage: React.FC = () => {
 
       {!loading && !error && metrics && metrics.totalRevenue <= 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
-          {t("noFinancialData")}
+          {t("reports.noFinancialData")}
         </div>
       ) : null}
 
-      <footer className="text-xs text-slate-400">{t("currentRevenue")}: {formatSum(metrics?.totalRevenue ?? 0)}</footer>
+      <footer className="text-xs text-slate-400">{t("reports.currentRevenue")}: {formatSum(metrics?.totalRevenue ?? 0)}</footer>
     </div>
   );
 };

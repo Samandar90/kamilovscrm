@@ -81,7 +81,7 @@ const DoctorServicesChips: React.FC<DoctorServicesChipsProps> = ({
 };
 
 export const DoctorsPage: React.FC = () => {
-  const { t } = useTranslation("doctors");
+  const { t } = useTranslation();
   const { user } = useAuth();
   const canManage = !!user?.role && hasPermission(user.role, "doctors", "create");
   const [doctors, setDoctors] = React.useState<Doctor[]>([]);
@@ -111,7 +111,7 @@ export const DoctorsPage: React.FC = () => {
       setDoctors(doctorRows);
       setServices(serviceRows);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t("errors.loadFailed"));
+      setError(requestError instanceof Error ? requestError.message : t("doctors.errors.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -166,10 +166,10 @@ export const DoctorsPage: React.FC = () => {
     const name = formState.name.trim();
     const speciality = formState.speciality.trim();
     const percent = Number(formState.percent);
-    if (!name) return t("validation.nameRequired");
-    if (!speciality) return t("validation.specialityRequired");
+    if (!name) return t("doctors.validation.nameRequired");
+    if (!speciality) return t("doctors.validation.specialityRequired");
     if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
-      return t("validation.percentRange");
+      return t("doctors.validation.percentRange");
     }
     return null;
   };
@@ -206,9 +206,9 @@ export const DoctorsPage: React.FC = () => {
       }
       closeModal();
       await loadData();
-      setSuccessMessage(isEdit ? t("messages.doctorUpdated") : t("messages.doctorAdded"));
+      setSuccessMessage(isEdit ? t("doctors.messages.doctorUpdated") : t("doctors.messages.doctorAdded"));
     } catch (requestError) {
-      setFormError(requestError instanceof Error ? requestError.message : t("errors.saveFailed"));
+      setFormError(requestError instanceof Error ? requestError.message : t("doctors.errors.saveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -218,8 +218,8 @@ export const DoctorsPage: React.FC = () => {
     if (isDeletingId !== null) return;
     const confirmed = window.confirm(
       doctor.active
-        ? t("confirmDeactivate", { name: doctor.name })
-        : t("confirmActivate", { name: doctor.name })
+        ? t("doctors.confirmDeactivate", { name: doctor.name })
+        : t("doctors.confirmActivate", { name: doctor.name })
     );
     if (!confirmed) return;
 
@@ -235,9 +235,9 @@ export const DoctorsPage: React.FC = () => {
         });
       }
       await loadData();
-      setSuccessMessage(doctor.active ? t("messages.doctorDeactivated") : t("messages.doctorActivated"));
+      setSuccessMessage(doctor.active ? t("doctors.messages.doctorDeactivated") : t("doctors.messages.doctorActivated"));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t("errors.updateFailed"));
+      setError(requestError instanceof Error ? requestError.message : t("doctors.errors.updateFailed"));
     } finally {
       setIsDeletingId(null);
     }
@@ -270,9 +270,9 @@ export const DoctorsPage: React.FC = () => {
     <div className="page-enter space-y-6 p-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-[#0f172a]">{t("title")}</h2>
+          <h2 className="text-2xl font-semibold text-[#0f172a]">{t("doctors.title")}</h2>
           <p className="mt-1 text-sm text-[#64748b]">
-            {t("subtitle")}
+            {t("doctors.subtitle")}
           </p>
         </div>
         <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
@@ -283,7 +283,7 @@ export const DoctorsPage: React.FC = () => {
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder={t("search")}
+              placeholder={t("doctors.search")}
               className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-9 text-sm text-[#0f172a] outline-none transition focus:ring-2 focus:ring-blue-500"
             />
             {search ? (
@@ -305,7 +305,7 @@ export const DoctorsPage: React.FC = () => {
               disabled={busy}
             >
               <Plus className="h-4 w-4" strokeWidth={2.2} />
-              {t("addDoctor")}
+              {t("doctors.addDoctor")}
             </button>
           ) : null}
         </div>
@@ -324,22 +324,22 @@ export const DoctorsPage: React.FC = () => {
 
       {loading ? (
         <div className="rounded-2xl border border-[#e2e8f0] bg-white px-6 py-16 text-center text-sm text-[#64748b] shadow-sm">
-          {t("loading")}
+          {t("common.loading")}
         </div>
       ) : doctors.length === 0 ? (
         <ListEmptyState
           icon={Stethoscope}
-          title={t("emptyState.noDoctors")}
-          description={t("emptyState.noDoctorsDesc")}
-          actionLabel={t("add")}
+          title={t("doctors.emptyState.noDoctors")}
+          description={t("doctors.emptyState.noDoctorsDesc")}
+          actionLabel={t("common.add")}
           onAction={openCreate}
           showAction={canManage}
           actionDisabled={busy}
         />
       ) : filteredDoctors.length === 0 ? (
         <div className="rounded-2xl border border-[#e2e8f0] bg-white px-6 py-16 text-center shadow-sm">
-          <p className="text-base font-medium text-slate-400">{t("emptyState.notFound")}</p>
-          <p className="mt-1 text-sm text-slate-400">{t("emptyState.changeQuery")}</p>
+          <p className="text-base font-medium text-slate-400">{t("doctors.emptyState.notFound")}</p>
+          <p className="mt-1 text-sm text-slate-400">{t("doctors.emptyState.changeQuery")}</p>
         </div>
       ) : (
         <ul className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
@@ -361,17 +361,17 @@ export const DoctorsPage: React.FC = () => {
                         : "border-[#fecaca] bg-[#fef2f2] text-[#991b1b]"
                     }`}
                   >
-                    {doctor.active ? t("active") : t("inactive")}
+                    {doctor.active ? t("doctors.active") : t("doctors.inactive")}
                   </span>
                 </div>
 
                 <div className="mt-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 py-2">
-                  <p className="text-xs uppercase tracking-wide text-[#94a3b8]">{t("percent")}</p>
+                  <p className="text-xs uppercase tracking-wide text-[#94a3b8]">{t("doctors.percent")}</p>
                   <p className="mt-1 text-lg font-semibold tabular-nums text-[#0f172a]">{doctor.percent}%</p>
                 </div>
 
                 <div className="mt-3">
-                  <p className="text-xs uppercase tracking-wide text-[#94a3b8]">{t("services")}</p>
+                  <p className="text-xs uppercase tracking-wide text-[#94a3b8]">{t("doctors.services")}</p>
                   <DoctorServicesChips
                     doctorId={doctor.id}
                     serviceIds={doctor.serviceIds ?? []}
@@ -387,7 +387,7 @@ export const DoctorsPage: React.FC = () => {
                       onClick={() => openEdit(doctor)}
                       disabled={busy}
                     >
-                      {t("edit")}
+                      {t("common.edit")}
                     </button>
                     <button
                       type="button"
@@ -399,7 +399,7 @@ export const DoctorsPage: React.FC = () => {
                       onClick={() => void handleToggleDoctorActive(doctor)}
                       disabled={busy}
                     >
-                      {isDeletingId === doctor.id ? "..." : doctor.active ? t("deactivate") : t("activate")}
+                      {isDeletingId === doctor.id ? "..." : doctor.active ? t("doctors.deactivate") : t("doctors.activate")}
                     </button>
                   </div>
                 )}
@@ -416,7 +416,7 @@ export const DoctorsPage: React.FC = () => {
           className="w-full max-w-2xl rounded-[20px] border border-[#e2e8f0] bg-white p-6 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.22)]"
         >
             <h3 className="text-lg font-semibold text-[#0f172a]">
-              {editingDoctorId ? t("editDoctor") : t("addDoctor")}
+              {editingDoctorId ? t("doctors.editDoctor") : t("doctors.addDoctor")}
             </h3>
             {formError && (
               <div className="mt-3 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-sm text-[#991b1b]">
@@ -426,7 +426,7 @@ export const DoctorsPage: React.FC = () => {
 
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
               <label className="text-sm text-[#334155]">
-                {t("name")} *
+                {t("doctors.name")} *
                 <input
                   className="mt-1 h-11 w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:bg-white focus:ring-1 focus:ring-[#16a34a]/25"
                   value={formState.name}
@@ -436,7 +436,7 @@ export const DoctorsPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm text-[#334155]">
-                {t("speciality")} *
+                {t("doctors.speciality")} *
                 <input
                   className="mt-1 h-11 w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:bg-white focus:ring-1 focus:ring-[#16a34a]/25"
                   value={formState.speciality}
@@ -448,7 +448,7 @@ export const DoctorsPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm text-[#334155]">
-                {t("percentRange")} *
+                {t("doctors.percentRange")} *
                 <input
                   type="number"
                   min={0}
@@ -462,7 +462,7 @@ export const DoctorsPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm text-[#334155]">
-                {t("phone")}
+                {t("doctors.phone")}
                 <PhoneInput
                   defaultCountry998Prefix={false}
                   className="mt-1 h-11 w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:bg-white focus:ring-1 focus:ring-[#16a34a]/25"
@@ -474,7 +474,7 @@ export const DoctorsPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm text-[#334155]">
-                {t("birthDate")}
+                {t("doctors.birthDate")}
                 <input
                   type="date"
                   className="mt-1 h-11 w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:bg-white focus:ring-1 focus:ring-[#16a34a]/25"
@@ -494,14 +494,14 @@ export const DoctorsPage: React.FC = () => {
                   disabled={isSaving}
                   className="h-4 w-4 rounded border-[#cbd5e1] text-[#16a34a] focus:ring-[#16a34a]/30"
                 />
-                {t("active")}
+                {t("doctors.active")}
               </label>
             </div>
 
             <div className="mt-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium text-[#334155]">
-                  {t("servicesSelected", { count: formState.serviceIds.length })}
+                  {t("doctors.servicesSelected", { count: formState.serviceIds.length })}
                 </p>
                 <button
                   type="button"
@@ -509,7 +509,7 @@ export const DoctorsPage: React.FC = () => {
                   disabled={isSaving}
                   className="inline-flex h-9 items-center rounded-lg border border-[#e2e8f0] bg-white px-3 text-xs font-semibold text-[#0f172a] transition hover:bg-[#f8fafc] disabled:opacity-50"
                 >
-                  {formState.serviceIds.length === 0 ? t("addServices") : t("edit")}
+                  {formState.serviceIds.length === 0 ? t("doctors.addServices") : t("common.edit")}
                 </button>
               </div>
               {selectedServiceRefs.length > 0 ? (
@@ -527,7 +527,7 @@ export const DoctorsPage: React.FC = () => {
                   )}
                 />
               ) : (
-                <p className="mt-2 text-xs text-[#94a3b8]">{t("nothingSelected")}</p>
+                <p className="mt-2 text-xs text-[#94a3b8]">{t("doctors.nothingSelected")}</p>
               )}
             </div>
 
@@ -538,7 +538,7 @@ export const DoctorsPage: React.FC = () => {
                 onClick={closeModal}
                 disabled={isSaving}
               >
-                {t("cancel")}
+                {t("common.cancel")}
               </button>
               <button
                 type="button"
@@ -546,7 +546,7 @@ export const DoctorsPage: React.FC = () => {
                 onClick={() => void saveDoctor()}
                 disabled={isSaving}
               >
-                {isSaving ? t("saving") : t("save")}
+                {isSaving ? t("common.saving") : t("common.save")}
               </button>
             </div>
         </Modal>
@@ -554,10 +554,10 @@ export const DoctorsPage: React.FC = () => {
       {canManage && (
         <SelectableItemsModal
           isOpen={servicePickerOpen}
-          title={t("selectServices")}
+          title={t("doctors.selectServices")}
           options={services}
           selectedIds={formState.serviceIds}
-          searchPlaceholder={t("searchServices")}
+          searchPlaceholder={t("doctors.searchServices")}
           onClose={() => setServicePickerOpen(false)}
           onSave={(nextIds) => {
             setFormState((prev) => ({ ...prev, serviceIds: nextIds }));

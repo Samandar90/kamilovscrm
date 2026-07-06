@@ -21,14 +21,14 @@ export const AppointmentBillingActions: React.FC<Props> = ({
   canCreateInvoice,
   onCreateInvoice,
 }) => {
-  const { t } = useTranslation("billing");
+  const { t } = useTranslation();
   if (!canCreateInvoice) return null;
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {canCreateInvoice && appointment.status === "completed" && !hasInvoice && (
         <button type="button" className={linkBtn} disabled={disabled} onClick={onCreateInvoice}>
-          {t("invoice")}
+          {t("billing.invoice")}
         </button>
       )}
     </div>

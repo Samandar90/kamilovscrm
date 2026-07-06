@@ -83,7 +83,7 @@ export const LoginPage: React.FC = () => {
           <h1 className="mt-4 text-[30px] font-bold leading-tight tracking-tight text-[#111827]">
             {brandName}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">{BRANDING.productTagline}</p>
+          <p className="mt-1 text-sm text-slate-500">{t(BRANDING.productTagline)}</p>
         </div>
 
         <motion.div

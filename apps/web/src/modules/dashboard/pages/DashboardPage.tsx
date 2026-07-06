@@ -427,7 +427,7 @@ export const DashboardPage: React.FC = () => {
             />
             <DashboardCard
               title={t("dashboard.unpaidInvoices")}
-              subtitle={readBilling && !loading ? t("billing.status") : undefined}
+              subtitle={readBilling && !loading ? t("billing.statusLabel") : undefined}
               value={loading ? "..." : readBilling ? String(openInvoices.length) : "—"}
               icon={CreditCard}
               animationIndex={5}

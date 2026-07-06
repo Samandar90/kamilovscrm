@@ -101,11 +101,11 @@ function formatRangeDateLabel(tab: RangeTab, customDateYmd: string, t: any): str
   const now = new Date();
   const toRu = (d: Date) =>
     d.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "long" });
-  if (tab === "today") return `${t("range.today")}, ${toRu(now)}`;
+  if (tab === "today") return `${t("appointments.range.today")}, ${toRu(now)}`;
   if (tab === "tomorrow") {
     const d = new Date(now);
     d.setDate(d.getDate() + 1);
-    return `${t("range.tomorrow")}, ${toRu(d)}`;
+    return `${t("appointments.range.tomorrow")}, ${toRu(d)}`;
   }
   if (customDateYmd && /^\d{4}-\d{2}-\d{2}$/.test(customDateYmd)) {
     const [y, m, d] = customDateYmd.split("-").map(Number);
@@ -157,13 +157,13 @@ function getFilterRange(
 function emptyRangeMessage(tab: RangeTab, t: any): string {
   switch (tab) {
     case "today":
-      return t("emptyState.today");
+      return t("appointments.emptyState.today");
     case "tomorrow":
-      return t("emptyState.tomorrow");
+      return t("appointments.emptyState.tomorrow");
     case "week":
-      return t("emptyState.week");
+      return t("appointments.emptyState.week");
     default:
-      return t("emptyState.custom");
+      return t("appointments.emptyState.custom");
   }
 }
 
@@ -272,7 +272,7 @@ const emptyFullForm = (): FullFormFields => ({
 });
 
 export const AppointmentsPage: React.FC = () => {
-  const { t } = useTranslation("appointments");
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { token, user } = useAuth();
@@ -1106,15 +1106,15 @@ export const AppointmentsPage: React.FC = () => {
   );
 
   const copyPatientPhone = React.useCallback(async (phone: string) => {
-    const t = phone.trim();
-    if (!t) return;
+    const trimmedPhone = phone.trim();
+    if (!trimmedPhone) return;
     try {
-      await navigator.clipboard.writeText(t);
+      await navigator.clipboard.writeText(trimmedPhone);
       setToast(t("appointments.messages.phoneCopied"));
     } catch {
-      setToast(t);
+      setToast(trimmedPhone);
     }
-  }, []);
+  }, [t]);
 
   const canManageAppointmentDetailsActions = React.useCallback(
     (a: Appointment) => {
@@ -1133,8 +1133,8 @@ export const AppointmentsPage: React.FC = () => {
   );
   const hasMoreMobileAppointments = filteredAppointments.length > mobileAppointments.length;
   const mobileDateLabel = React.useMemo(
-    () => formatRangeDateLabel(rangeTab, customDate),
-    [rangeTab, customDate]
+    () => formatRangeDateLabel(rangeTab, customDate, t),
+    [rangeTab, customDate, t]
   );
 
   React.useEffect(() => {
@@ -1181,8 +1181,8 @@ export const AppointmentsPage: React.FC = () => {
         <div className="grid grid-cols-12 gap-6">
       <div className="col-span-12 space-y-6 lg:col-span-8">
         <PageHeader
-          title={t("title")}
-          subtitle={t("subtitle")}
+          title={t("appointments.title")}
+          subtitle={t("appointments.subtitle")}
           actions={
             canOpenAppointmentCreateModals ? (
               <div className="hidden items-center gap-2 md:flex">
@@ -1194,7 +1194,7 @@ export const AppointmentsPage: React.FC = () => {
                     className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all duration-150"
                   >
                     <Zap className="h-4 w-4" />
-                    {t("quickCreate")}
+                    {t("appointments.quickCreate")}
                   </Button>
                 ) : null}
                 <Button
@@ -1204,7 +1204,7 @@ export const AppointmentsPage: React.FC = () => {
                   className={primaryActionButtonClass}
                 >
                   <Plus className="h-4 w-4" strokeWidth={2.5} />
-                  {isDoctorUser ? t("createAppointment") : t("newAppointment")}
+                  {isDoctorUser ? t("appointments.createAppointment") : t("appointments.newAppointment")}
                 </Button>
               </div>
             ) : null
@@ -1365,7 +1365,7 @@ export const AppointmentsPage: React.FC = () => {
                   <AppointmentMobileCard
                     key={appointment.id}
                     appointment={appointment}
-                    patientName={patientsMap[appointment.patientId] ?? `${t("patient")} #${appointment.patientId}`}
+                    patientName={patientsMap[appointment.patientId] ?? `${t("appointments.patient")} #${appointment.patientId}`}
                     patientPhone={patientPhoneMap[appointment.patientId]}
                     service={service}
                     timeLabel={formatTimeOnly(appointment.startAt)}
@@ -1407,7 +1407,7 @@ export const AppointmentsPage: React.FC = () => {
                     key={appointment.id}
                     appointment={appointment}
                     invoice={invoice}
-                    patientName={patientsMap[appointment.patientId] ?? `${t("patient")} #${appointment.patientId}`}
+                    patientName={patientsMap[appointment.patientId] ?? `${t("appointments.patient")} #${appointment.patientId}`}
                     patientPhone={patientPhoneMap[appointment.patientId]}
                     onCopyPatientPhone={(phone) => void copyPatientPhone(phone)}
                     doctorName={doctorsMap[appointment.doctorId] ?? `#${appointment.doctorId}`}
@@ -1463,10 +1463,10 @@ export const AppointmentsPage: React.FC = () => {
           type="button"
           onClick={isDoctorUser ? openFullModal : openQuickModal}
           className="fixed bottom-16 left-0 right-0 z-[90] flex justify-center px-4 transition-transform duration-150 ease-out active:scale-[0.98] md:hidden"
-          aria-label={isDoctorUser ? t("createAppointment") : t("quickCreate")}
+          aria-label={isDoctorUser ? t("appointments.createAppointment") : t("appointments.quickCreate")}
         >
           <span className="flex min-h-[48px] w-full items-center justify-center rounded-[14px] bg-emerald-600 px-4 text-sm font-semibold text-white shadow-[0_8px_24px_-8px_rgba(5,150,105,0.45)]">
-            {isDoctorUser ? `+ ${t("createAppointment")}` : `+ ${t("appointment")}`}
+            {isDoctorUser ? `+ ${t("appointments.createAppointment")}` : `+ ${t("appointments.appointment")}`}
           </span>
         </button>
       ) : null}
@@ -1584,9 +1584,9 @@ export const AppointmentsPage: React.FC = () => {
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-2">
                   <div className={rowClass}>
-                    <span className={labelClass}>{t("patient")}</span>
+                    <span className={labelClass}>{t("appointments.patient")}</span>
                     <span className={valueClass}>
-                      {patientsMap[ap.patientId] ?? `${t("patient")} #${ap.patientId}`}
+                      {patientsMap[ap.patientId] ?? `${t("appointments.patient")} #${ap.patientId}`}
                     </span>
                   </div>
                   <div className={rowClass}>
@@ -1615,9 +1615,9 @@ export const AppointmentsPage: React.FC = () => {
                     <span className={valueClass}>{patientSourceLabelRu(patient?.source, t)}</span>
                   </div>
                   <div className={rowClass}>
-                    <span className={labelClass}>{t("doctor")}</span>
+                    <span className={labelClass}>{t("appointments.doctor")}</span>
                     <span className={valueClass}>
-                      {doctorsMap[ap.doctorId] ?? `${t("doctor")} #${ap.doctorId}`}
+                      {doctorsMap[ap.doctorId] ?? `${t("appointments.doctor")} #${ap.doctorId}`}
                     </span>
                   </div>
                   <div className={rowClass}>
@@ -1817,7 +1817,7 @@ export const AppointmentsPage: React.FC = () => {
         >
           <h3 className="text-lg font-semibold text-[#111827]">{t("appointments.cancelAppointment")}</h3>
           <p className="mt-2 text-sm text-[#6b7280]">
-            {t("patient")}: {patientsMap[cancelModal.appointment.patientId] ?? `#${cancelModal.appointment.patientId}`}
+            {t("appointments.patient")}: {patientsMap[cancelModal.appointment.patientId] ?? `#${cancelModal.appointment.patientId}`}
           </p>
           <div className="mt-4">
             <label className="mb-1 block text-xs uppercase tracking-wide text-[#6b7280]">

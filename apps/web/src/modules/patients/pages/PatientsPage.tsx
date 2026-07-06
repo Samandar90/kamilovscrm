@@ -123,21 +123,21 @@ function getPatientFormValidationError(state: PatientFormState, t: any): string 
   const birthDate = state.birthDate.trim();
   const notesTrim = state.notes.trim();
 
-  if (!fullName) return t("validation.fullNameRequired");
-  if (fullName.length < 2) return t("validation.fullNameTooShort");
-  if (!apiPhone) return t("validation.phoneRequired");
-  if (!phoneAllowedCharsRe.test(apiPhone)) return t("validation.phoneInvalidChars");
-  if (apiPhone.includes("+") && !apiPhone.startsWith("+")) return t("validation.plusOnlyStart");
+  if (!fullName) return t("patients.validation.fullNameRequired");
+  if (fullName.length < 2) return t("patients.validation.fullNameTooShort");
+  if (!apiPhone) return t("patients.validation.phoneRequired");
+  if (!phoneAllowedCharsRe.test(apiPhone)) return t("patients.validation.phoneInvalidChars");
+  if (apiPhone.includes("+") && !apiPhone.startsWith("+")) return t("patients.validation.plusOnlyStart");
   const digits = apiPhone.replace(/\D/g, "");
-  if (digits.length < 10 || digits.length > 15) return t("validation.phoneDigitsRange");
+  if (digits.length < 10 || digits.length > 15) return t("patients.validation.phoneDigitsRange");
 
   if (birthDate) {
     const date = new Date(birthDate);
-    if (Number.isNaN(date.getTime())) return t("validation.birthDateInvalid");
-    if (date > new Date()) return t("validation.birthDateFuture");
+    if (Number.isNaN(date.getTime())) return t("patients.validation.birthDateInvalid");
+    if (date > new Date()) return t("patients.validation.birthDateFuture");
   }
 
-  if (notesTrim.length > 2000) return t("validation.notesTooLong");
+  if (notesTrim.length > 2000) return t("patients.validation.notesTooLong");
 
   return null;
 }
@@ -174,7 +174,7 @@ function buildDebtByPatient(invoices: InvoiceSummary[]): Map<number, number> {
 }
 
 export const PatientsPage: React.FC = () => {
-  const { t } = useTranslation("patients");
+  const { t } = useTranslation();
   const { user, token } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [lastVisitByPatientId, setLastVisitByPatientId] = useState<Map<number, string>>(
@@ -201,6 +201,7 @@ export const PatientsPage: React.FC = () => {
   const [relatedDataWarning, setRelatedDataWarning] = useState<string | null>(null);
   const [listWindow, setListWindow] = useState(LIST_WINDOW_INITIAL);
 
+  const patientSourceOptions = useMemo(() => getPatientSourceOptions(t), [t]);
   const role = user?.role;
   const canCreatePatient = canCreatePatients(role);
   const canUpdatePatient = canUpdatePatients(role);
@@ -351,11 +352,11 @@ export const PatientsPage: React.FC = () => {
     }
     const isEdit = Boolean(editingPatientId);
     if (isEdit && !canUpdatePatient) {
-      setFormError(t("errors.insufficientPermissionsUpdate"));
+      setFormError(t("patients.errors.insufficientPermissionsUpdate"));
       return;
     }
     if (!isEdit && !canCreatePatient) {
-      setFormError(t("errors.insufficientPermissionsCreate"));
+      setFormError(t("patients.errors.insufficientPermissionsCreate"));
       return;
     }
 
@@ -385,15 +386,15 @@ export const PatientsPage: React.FC = () => {
         );
         setPatients((prev) => [normalized, ...prev.filter((p) => p.id !== normalized.id)]);
         closeModal();
-        setToast(t("messages.patientAdded"));
+        setToast(t("patients.messages.patientAdded"));
         void loadPatients({ silent: true });
       } else {
         await loadPatients();
         closeModal();
-        setToast(t("messages.patientUpdated"));
+        setToast(t("patients.messages.patientUpdated"));
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : t("errors.saveFailed");
+      const message = err instanceof Error ? err.message : t("patients.errors.saveFailed");
       setFormError(message);
     } finally {
       setIsSaving(false);
@@ -404,7 +405,7 @@ export const PatientsPage: React.FC = () => {
     e.stopPropagation();
     if (archivingPatientId !== null) return;
     const confirmed = window.confirm(
-      t("messages.archiveConfirm", { name: patient.fullName })
+      t("patients.messages.archiveConfirm", { name: patient.fullName })
     );
     if (!confirmed) return;
 
@@ -416,9 +417,9 @@ export const PatientsPage: React.FC = () => {
       });
 
       await loadPatients();
-      setToast(t("messages.patientArchived"));
+      setToast(t("patients.messages.patientArchived"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errors.archiveFailed"));
+      setError(err instanceof Error ? err.message : t("patients.errors.archiveFailed"));
     } finally {
       setArchivingPatientId(null);
     }
@@ -441,7 +442,7 @@ export const PatientsPage: React.FC = () => {
       setDoctorsMap(Object.fromEntries(doctors.map((d) => [d.id, d.name])));
       setServicesMap(Object.fromEntries(services.map((s) => [s.id, s.name])));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("errors.historyLoadFailed"));
+      setError(err instanceof Error ? err.message : t("patients.errors.historyLoadFailed"));
     } finally {
       setHistoryLoading(false);
     }
@@ -499,7 +500,7 @@ export const PatientsPage: React.FC = () => {
     >
       <header className="flex flex-wrap items-end justify-between gap-3 md:gap-4">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">{t("title")}</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">{t("patients.title")}</h2>
           <p
             className={
               role === "doctor" || role === "nurse"
@@ -508,10 +509,10 @@ export const PatientsPage: React.FC = () => {
             }
           >
             {role === "doctor" || role === "nurse"
-              ? t("subtitle.doctor")
+              ? t("patients.subtitle.doctor")
               : role === "operator"
-                ? t("subtitle.operator")
-                : t("subtitle.admin")}
+                ? t("patients.subtitle.operator")
+                : t("patients.subtitle.admin")}
           </p>
         </div>
         {canCreatePatient && (
@@ -520,7 +521,7 @@ export const PatientsPage: React.FC = () => {
             onClick={openCreateModal}
             className="hidden h-11 items-center justify-center rounded-xl bg-emerald-600 px-5 text-sm font-semibold text-white shadow-sm transition duration-200 hover:bg-emerald-700 active:scale-[0.98] md:inline-flex"
           >
-            {t("addPatient")}
+            {t("patients.addPatient")}
           </button>
         )}
       </header>
@@ -542,8 +543,8 @@ export const PatientsPage: React.FC = () => {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className={cn(fieldInputClass, "h-11 w-full pl-10 pr-3 max-md:border-slate-200 max-md:bg-white")}
-              aria-label={t("search")}
-              placeholder={t("search")}
+              aria-label={t("patients.search")}
+              placeholder={t("patients.search")}
             />
           </div>
         </div>
@@ -561,25 +562,25 @@ export const PatientsPage: React.FC = () => {
       ) : null}
       {loading ? (
         <div className="rounded-2xl border border-[#e2e8f0] bg-white px-6 py-16 text-center text-sm text-[#64748b] shadow-sm">
-          {t("loading")}
+          {t("common.loading")}
         </div>
       ) : showEmptyNoData ? (
         <ListEmptyState
           icon={UserRound}
-          title={t("emptyState.noPatients")}
-          actionLabel={t("addPatient")}
+          title={t("patients.emptyState.noPatients")}
+          actionLabel={t("patients.addPatient")}
           onAction={openCreateModal}
           showAction={canCreatePatient}
           actionDisabled={isSaving || archivingPatientId !== null}
         />
       ) : showEmptyFilter ? (
         <div className="rounded-xl border border-slate-100 bg-white px-5 py-12 text-center text-sm text-slate-500 shadow-sm">
-          <p className="font-medium text-slate-900">{t("emptyState.notFound")}</p>
-          <p className="mt-1 text-slate-500">{t("emptyState.changeQuery")}</p>
+          <p className="font-medium text-slate-900">{t("patients.emptyState.notFound")}</p>
+          <p className="mt-1 text-slate-500">{t("patients.emptyState.changeQuery")}</p>
         </div>
       ) : (
         <div className="space-y-2.5">
-          <ul className="flex flex-col gap-2.5 md:hidden" aria-label={t("list")}>
+          <ul className="flex flex-col gap-2.5 md:hidden" aria-label={t("patients.list")}>
             {windowedPatients.map((patient) => {
               const birthLabel = patient.birthDate?.trim() ? formatDate(patient.birthDate) : null;
               return (
@@ -605,12 +606,12 @@ export const PatientsPage: React.FC = () => {
             <table className="w-full min-w-[720px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  <th className="whitespace-nowrap px-4 py-3">{t("fullName")}</th>
-                  <th className="whitespace-nowrap px-4 py-3">{t("phone")}</th>
-                  <th className="whitespace-nowrap px-4 py-3">{t("birthDate")}</th>
-                  <th className="whitespace-nowrap px-4 py-3">{t("lastVisit")}</th>
-                  {showPatientDebt ? <th className="whitespace-nowrap px-4 py-3">{t("debt")}</th> : null}
-                  <th className="whitespace-nowrap px-4 py-3 text-right">{t("actions")}</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("patients.fullName")}</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("patients.phone")}</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("patients.birthDate")}</th>
+                  <th className="whitespace-nowrap px-4 py-3">{t("patients.lastVisit")}</th>
+                  {showPatientDebt ? <th className="whitespace-nowrap px-4 py-3">{t("patients.debt")}</th> : null}
+                  <th className="whitespace-nowrap px-4 py-3 text-right">{t("common.actionsColumn")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -645,7 +646,7 @@ export const PatientsPage: React.FC = () => {
                             className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-800 hover:bg-slate-50"
                             onClick={() => void openPatientHistory(patient)}
                           >
-                            {t("open")}
+                            {t("patients.open")}
                           </button>
                           {canBookAppointment ? (
                             <Link
@@ -653,14 +654,14 @@ export const PatientsPage: React.FC = () => {
                               className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
                             >
                               <CalendarPlus className="h-3.5 w-3.5" strokeWidth={1.75} />
-                              {t("bookAppointment")}
+                              {t("patients.bookAppointment")}
                             </Link>
                           ) : null}
                           {canUpdatePatient ? (
                             <button
                               type="button"
                               className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:bg-slate-50"
-                              title={t("edit")}
+                              title={t("common.edit")}
                               disabled={isSaving || archivingPatientId !== null}
                               onClick={() => openEditModal(patient)}
                             >
@@ -671,7 +672,7 @@ export const PatientsPage: React.FC = () => {
                             <button
                               type="button"
                               className="rounded-lg border border-red-100 bg-red-50 p-1.5 text-red-700 hover:bg-red-100"
-                              title={t("archive")}
+                              title={t("patients.archive")}
                               disabled={archivingPatientId !== null}
                               onClick={(e) => void handleArchivePatient(patient, e)}
                             >
@@ -694,7 +695,7 @@ export const PatientsPage: React.FC = () => {
                 onClick={() => setListWindow((n) => n + LIST_WINDOW_STEP)}
                 className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
               >
-                {t("loadMore", { count: filteredPatients.length - windowedPatients.length })}
+                {t("patients.loadMore", { count: filteredPatients.length - windowedPatients.length })}
               </button>
             </div>
           ) : null}
@@ -706,10 +707,10 @@ export const PatientsPage: React.FC = () => {
           type="button"
           onClick={openCreateModal}
           className="fixed bottom-16 left-0 right-0 z-[90] flex justify-center px-4 transition-transform duration-150 ease-out active:scale-[0.98] md:hidden"
-          aria-label={t("addPatient")}
+          aria-label={t("patients.addPatient")}
         >
           <span className="flex min-h-[48px] w-full max-w-none items-center justify-center gap-2 rounded-[14px] bg-emerald-600 px-4 text-sm font-semibold text-white shadow-md">
-            + {t("patient")}
+            + {t("common.patient")}
           </span>
         </button>
       ) : null}
@@ -723,9 +724,9 @@ export const PatientsPage: React.FC = () => {
           className="w-full max-w-2xl max-h-[min(92vh,880px)] overflow-y-auto rounded-[20px] border border-[#e2e8f0] bg-white p-6 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.2)]"
         >
           <h3 className="text-lg font-semibold tracking-tight text-[#0f172a]">
-            {editingPatientId ? t("editPatient") : t("addPatient")}
+            {editingPatientId ? t("patients.editPatient") : t("patients.addPatient")}
           </h3>
-          <p className="mt-1 text-sm text-[#64748b]">{t("formHint")}</p>
+          <p className="mt-1 text-sm text-[#64748b]">{t("patients.formHint")}</p>
           {formError ? (
             <div className="mt-4 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2.5 text-sm text-[#991b1b]">
               {formError}
@@ -735,20 +736,20 @@ export const PatientsPage: React.FC = () => {
           <div className="mt-6 space-y-8">
             <section>
               <h4 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">
-                {t("sections.basic")}
+                {t("patients.sections.basic")}
               </h4>
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label={t("fullName")} required>
+                <Field label={t("patients.fullName")} required>
                   <input
                     value={formState.fullName}
                     onChange={(e) => setFormState((prev) => ({ ...prev, fullName: e.target.value }))}
                     className={fieldInputClass}
-                    placeholder={t("placeholders.fullName")}
+                    placeholder={t("patients.placeholders.fullName")}
                     autoComplete="name"
                   />
                 </Field>
                 <div>
-                  <Field label={t("phone")} required>
+                  <Field label={t("patients.phone")} required>
                     <PhoneInput
                       value={formState.phone}
                       onChange={(normalized) =>
@@ -762,11 +763,11 @@ export const PatientsPage: React.FC = () => {
                   </Field>
                   {patientFormMeta.duplicatePhone ? (
                     <p className="mt-2 text-xs font-medium text-[#b45309]" role="alert">
-                      {t("errors.patientExists")}
+                      {t("patients.errors.patientExists")}
                     </p>
                   ) : null}
                 </div>
-                <Field label={t("gender")}>
+                <Field label={t("patients.gender")}>
                   <select
                     value={formState.gender}
                     onChange={(e) =>
@@ -777,11 +778,11 @@ export const PatientsPage: React.FC = () => {
                     }
                     className={selectFieldClass}
                   >
-                    <option value="male">{t("male")}</option>
-                    <option value="female">{t("female")}</option>
+                    <option value="male">{t("patients.male")}</option>
+                    <option value="female">{t("patients.female")}</option>
                   </select>
                 </Field>
-                <Field label={t("birthDate")}>
+                <Field label={t("patients.birthDate")}>
                   <input
                     type="date"
                     value={formState.birthDate}
@@ -795,11 +796,11 @@ export const PatientsPage: React.FC = () => {
 
             <section className="border-t border-[#f1f5f9] pt-8">
               <h4 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#64748b]">
-                {t("sections.additional")}
+                {t("patients.sections.additional")}
               </h4>
               <div className="grid gap-4 sm:grid-cols-2">
                 {role !== "doctor" && role !== "nurse" ? (
-                  <Field label={t("source")}>
+                  <Field label={t("patients.sourceLabel")}>
                     <select
                       value={formState.source}
                       onChange={(e) =>
@@ -810,8 +811,8 @@ export const PatientsPage: React.FC = () => {
                       }
                       className={selectFieldClass}
                     >
-                      <option value="">{t("notSelected")}</option>
-                      {PATIENT_SOURCE_OPTIONS.map((opt) => (
+                      <option value="">{t("patients.notSelected")}</option>
+                      {patientSourceOptions.map((opt) => (
                         <option key={opt.value} value={opt.value}>
                           {opt.label}
                         </option>
@@ -820,12 +821,12 @@ export const PatientsPage: React.FC = () => {
                   </Field>
                 ) : null}
                 <div className="sm:col-span-2">
-                  <Field label={t("notes")}>
+                  <Field label={t("patients.notes")}>
                     <textarea
                       value={formState.notes}
                       onChange={(e) => setFormState((prev) => ({ ...prev, notes: e.target.value }))}
                       className={textareaFieldClass}
-                      placeholder={t("placeholders.notes")}
+                      placeholder={t("patients.placeholders.notes")}
                       rows={4}
                     />
                   </Field>
@@ -840,7 +841,7 @@ export const PatientsPage: React.FC = () => {
               onClick={closeModal}
               className="rounded-xl border border-[#e2e8f0] bg-white px-4 py-2.5 text-sm font-medium text-[#0f172a] shadow-sm transition hover:bg-[#f8fafc] hover:border-[#cbd5e1]"
             >
-              {t("cancel")}
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -848,7 +849,7 @@ export const PatientsPage: React.FC = () => {
               disabled={isSaving || !patientFormMeta.canSubmit}
               className="rounded-xl bg-[#16a34a] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#22c55e] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSaving ? t("saving") : t("save")}
+              {isSaving ? t("common.saving") : t("common.save")}
             </button>
           </div>
         </Modal>
@@ -863,7 +864,7 @@ export const PatientsPage: React.FC = () => {
           <div
               role="dialog"
               aria-modal="true"
-              aria-label={t("patientHistoryTitle", { name: historyPatient.fullName })}
+              aria-label={t("patients.patientHistoryTitle", { name: historyPatient.fullName })}
               style={{
                 boxShadow:
                   "0 42px 95px -30px rgba(15,23,42,0.45), 0 18px 40px -22px rgba(15,23,42,0.35)",
@@ -871,11 +872,11 @@ export const PatientsPage: React.FC = () => {
             >
             <div className="mb-4 flex items-start justify-between gap-3">
               <h3 className="text-lg font-semibold text-[#0f172a]">
-                {t("patientHistory")}: {historyPatient.fullName}
+                {t("patients.patientHistory")}: {historyPatient.fullName}
               </h3>
               <button
                 type="button"
-                aria-label={t("closeHistory")}
+                aria-label={t("patients.closeHistory")}
                 onClick={closeHistoryModal}
                 className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#e2e8f0] bg-white text-[#64748b] transition hover:bg-[#f8fafc] hover:text-[#0f172a]"
               >
@@ -883,9 +884,9 @@ export const PatientsPage: React.FC = () => {
               </button>
             </div>
             {historyLoading ? (
-              <p className="text-sm text-[#64748b]">{t("loadingHistory")}</p>
+              <p className="text-sm text-[#64748b]">{t("patients.loadingHistory")}</p>
             ) : visitHistory.length === 0 ? (
-              <p className="text-sm text-[#64748b]">{t("noVisits")}</p>
+              <p className="text-sm text-[#64748b]">{t("patients.noVisits")}</p>
             ) : (
               <div className="max-h-[60vh] space-y-2 overflow-auto pr-1">
                 {[...visitHistory]
@@ -923,43 +924,43 @@ export const PatientsPage: React.FC = () => {
                     const activeVisit =
                       visitHistory.find((visit) => visit.id === selectedVisitId) ??
                       [...visitHistory].sort((a, b) => b.startAt.localeCompare(a.startAt))[0];
-                    if (!activeVisit) return <div className="text-[#64748b]">{t("noData")}</div>;
+                    if (!activeVisit) return <div className="text-[#64748b]">{t("patients.noData")}</div>;
                     return (
                       <div className="space-y-3">
                         <div className="text-[#0f172a]">
-                          <span className="text-[#64748b]">{t("date")}: </span>
+                          <span className="text-[#64748b]">{t("patients.date")}: </span>
                           {formatDateTime(activeVisit.startAt)}
                         </div>
                         <div className="text-[#0f172a]">
-                          <span className="text-[#64748b]">{t("doctor")}: </span>
+                          <span className="text-[#64748b]">{t("patients.doctor")}: </span>
                           {doctorsMap[activeVisit.doctorId] ?? `#${activeVisit.doctorId}`}
                         </div>
                         <div className="text-[#0f172a]">
-                          <span className="text-[#64748b]">{t("service")}: </span>
+                          <span className="text-[#64748b]">{t("patients.service")}: </span>
                           {servicesMap[activeVisit.serviceId] ?? `#${activeVisit.serviceId}`}
                         </div>
                         {showVisitClinical ? (
                           <>
                             <div className="rounded-[14px] bg-[#f8fafc] p-4">
                               <div className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                                {t("diagnosis")}
+                                {t("patients.diagnosis")}
                               </div>
                               <p className="mt-2 whitespace-pre-wrap leading-relaxed text-[#0f172a]">
-                                {activeVisit.diagnosis ?? t("notSpecified")}
+                                {activeVisit.diagnosis ?? t("patients.notSpecified")}
                               </p>
                             </div>
                             <div className="rounded-[14px] bg-[#f8fafc] p-4">
                               <div className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                                {t("treatment")}
+                                {t("patients.treatment")}
                               </div>
                               <p className="mt-2 whitespace-pre-wrap leading-relaxed text-[#0f172a]">
-                                {activeVisit.treatment ?? t("notSpecified")}
+                                {activeVisit.treatment ?? t("patients.notSpecified")}
                               </p>
                             </div>
                             {activeVisit.notes && (
                               <div className="rounded-[14px] bg-[#f8fafc] p-4">
                                 <div className="text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-                                  {t("notes")}
+                                  {t("patients.notes")}
                                 </div>
                                 <p className="mt-2 whitespace-pre-wrap leading-relaxed text-[#374151]">
                                   {activeVisit.notes}
@@ -969,7 +970,7 @@ export const PatientsPage: React.FC = () => {
                           </>
                         ) : (
                           <p className="text-xs text-[#64748b]">
-                            {t("clinicalDataUnavailable")}
+                            {t("patients.clinicalDataUnavailable")}
                           </p>
                         )}
                       </div>

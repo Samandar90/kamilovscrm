@@ -299,7 +299,7 @@ export const InvoicesPage: React.FC = () => {
                       {t("billing.paid")}
                     </th>
                     <th className="whitespace-nowrap px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">
-                      {t("billing.status")}
+                      {t("billing.statusLabel")}
                     </th>
                     <th className="whitespace-nowrap px-5 py-3.5 text-right text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">
                       {t("billing.actions")}

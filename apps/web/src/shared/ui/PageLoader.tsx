@@ -7,8 +7,8 @@ type PageLoaderProps = {
 };
 
 export const PageLoader: React.FC<PageLoaderProps> = ({ label }) => {
-  const { t } = useTranslation("common");
-  const displayLabel = label ?? t("loading");
+  const { t } = useTranslation();
+  const displayLabel = label ?? t("common.loading");
 
   return (
     <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-gray-500">

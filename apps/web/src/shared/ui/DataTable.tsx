@@ -23,7 +23,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   emptySubtitle,
   children,
 }) => {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation();
   const finalEmptyTitle = emptyTitle ?? t("components.noData");
   const finalEmptySubtitle = emptySubtitle ?? t("components.empty");
 

@@ -22,25 +22,25 @@ export const ReportsInsights: React.FC<Props> = ({
   topService,
   loading,
 }) => {
-  const { t } = useTranslation("reports");
+  const { t } = useTranslation();
 
   const growthText =
     growthPct == null
-      ? t("insufficientHistory")
+      ? t("reports.insufficientHistory")
       : growthPct > 0
-        ? t("revenueGrowing", { pct: Math.round(growthPct) })
+        ? t("reports.revenueGrowing", { pct: Math.round(growthPct) })
         : growthPct < 0
-          ? t("revenueDeclining", { pct: Math.abs(Math.round(growthPct)) })
-          : t("revenueStable");
+          ? t("reports.revenueDeclining", { pct: Math.abs(Math.round(growthPct)) })
+          : t("reports.revenueStable");
 
-  const doctorText = topDoctor ? t("leadingDoctor", { name: topDoctor }) : t("noLeadingDoctor");
-  const serviceText = topService ? t("leadingService", { name: topService }) : t("noLeadingService");
+  const doctorText = topDoctor ? t("reports.leadingDoctor", { name: topDoctor }) : t("reports.noLeadingDoctor");
+  const serviceText = topService ? t("reports.leadingService", { name: topService }) : t("reports.noLeadingService");
 
   return (
     <section className="rounded-xl border border-slate-200/70 bg-white p-4 shadow-sm md:p-5">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-violet-500" />
-        <h3 className="text-base font-semibold text-slate-950">{t("insightsTitle")}</h3>
+        <h3 className="text-base font-semibold text-slate-950">{t("reports.insightsTitle")}</h3>
       </div>
       {loading ? (
         <div className="mt-4 h-28 animate-pulse rounded-xl bg-slate-100" />
@@ -48,7 +48,7 @@ export const ReportsInsights: React.FC<Props> = ({
         <div className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
           <p>{growthText}</p>
           <p>
-            {t("statsSummary", {
+            {t("reports.statsSummary", {
               revenue: formatSum(revenue),
               check: formatSum(averageCheck),
               count: paymentsCount

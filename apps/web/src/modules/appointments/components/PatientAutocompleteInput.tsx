@@ -21,7 +21,7 @@ function phoneLine(phone: string | null | undefined): string | null {
 function secondaryLine(p: Patient, t: any): string {
   const tel = phoneLine(p.phone);
   if (tel) return tel;
-  if (p.birthDate) return `${t("appointments:birthDate", { defaultValue: "Birth date" })}: ${p.birthDate}`;
+  if (p.birthDate) return `${t("appointments.birthDate", { defaultValue: "Birth date" })}: ${p.birthDate}`;
   return `ID · #${p.id}`;
 }
 
@@ -58,7 +58,7 @@ export const PatientAutocompleteInput: React.FC<PatientAutocompleteInputProps> =
   inputClassName,
   wrapperClassName,
 }) => {
-  const { t } = useTranslation("appointments");
+  const { t } = useTranslation();
   const [listOpen, setListOpen] = React.useState(false);
   /** Chrome/Edge часто игнорируют autoComplete="off" внутри <form>; readOnly до первого фокуса отключает подсказки браузера. */
   const [browserFillUnlocked, setBrowserFillUnlocked] = React.useState(false);
@@ -221,7 +221,7 @@ export const PatientAutocompleteInput: React.FC<PatientAutocompleteInputProps> =
                 role="status"
               >
                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-emerald-600" aria-hidden />
-                {t("searching")}
+                {t("appointments.searching")}
               </li>
             ) : null}
 
@@ -253,7 +253,7 @@ export const PatientAutocompleteInput: React.FC<PatientAutocompleteInputProps> =
             {!searchLoading && suggestions.length === 0 && queryTrim ? (
               <li role="presentation" className="pt-0.5">
                 <div className="mx-1 px-3 py-1.5 text-xs text-[#6b7280]" role="status">
-                  {t("noPatientsFound")}
+                  {t("appointments.noPatientsFound")}
                 </div>
                 {onCreateRequested ? (
                   <button
@@ -264,7 +264,7 @@ export const PatientAutocompleteInput: React.FC<PatientAutocompleteInputProps> =
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={pickCreateNew}
                   >
-                    <span className="font-semibold text-emerald-800">{t("createPatient")}</span>
+                    <span className="font-semibold text-emerald-800">{t("appointments.createPatient")}</span>
                     <span className="text-xs font-normal text-[#6b7280]">«{queryTrim}»</span>
                   </button>
                 ) : null}

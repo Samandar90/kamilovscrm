@@ -22,7 +22,7 @@ type DashboardDataState = {
 };
 
 export const useDashboardData = (role: UserRole | undefined): DashboardDataState => {
-  const { t } = useTranslation("dashboard");
+  const { t } = useTranslation();
   const [loading, setLoading] = React.useState(true);
   const [partialError, setPartialError] = React.useState<string | null>(null);
   const [appointments, setAppointments] = React.useState<Appointment[]>([]);

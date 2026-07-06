@@ -139,7 +139,7 @@ const CreateClinicForm: React.FC<CreateClinicFormProps> = ({ onCreated }) => {
           <div className="font-semibold">{t("platform.clinicCreated", { clinic: created.clinic })}</div>
           <div className="mt-1">
             {t("platform.accessCreated")}: {t("platform.login")} <code className="rounded bg-white px-1.5 py-0.5 font-mono">{created.username}</code>{" "}
-            {t("platform.password")} <code className="rounded bg-white px-1.5 py-0.5 font-mono">{created.password}</code>
+            {t("platform.passwordLabel")} <code className="rounded bg-white px-1.5 py-0.5 font-mono">{created.password}</code>
           </div>
           <div className="mt-1 text-xs text-emerald-600">{t("platform.savePassword")}</div>
         </div>
@@ -172,7 +172,7 @@ const CreateClinicForm: React.FC<CreateClinicFormProps> = ({ onCreated }) => {
             <input value={form.username} onChange={set("username")} autoComplete="off" className={inputCls} placeholder="shifo_admin" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">{t("platform.password")}</label>
+            <label className="mb-1 block text-xs font-medium text-slate-500">{t("platform.passwordLabel")}</label>
             <input value={form.password} onChange={set("password")} autoComplete="new-password" className={inputCls} placeholder="••••••" />
           </div>
           <div>

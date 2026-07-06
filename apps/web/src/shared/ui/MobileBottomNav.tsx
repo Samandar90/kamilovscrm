@@ -51,7 +51,7 @@ const iconWrap = (active: boolean) =>
   );
 
 export const MobileBottomNav: React.FC = () => {
-  const { t } = useTranslation("layout");
+  const { t } = useTranslation();
   const location = useLocation();
   const sections = useNavigation();
   const [moreOpen, setMoreOpen] = React.useState(false);
@@ -80,7 +80,7 @@ export const MobileBottomNav: React.FC = () => {
     <>
       <nav
         className="fixed bottom-0 left-0 right-0 z-[100] flex h-16 border-t border-slate-200/90 bg-white/90 shadow-[0_-1px_0_rgba(15,23,42,0.04)] backdrop-blur-md md:hidden"
-        aria-label={t("mainNav")}
+        aria-label={t("mobileNav.mainNav")}
       >
         <NavLink
           to="/dashboard"
@@ -91,7 +91,7 @@ export const MobileBottomNav: React.FC = () => {
               <span className={iconWrap(isActive || pathActive(pathname, "/dashboard"))}>
                 <LayoutDashboard className="h-5 w-5" strokeWidth={1.75} aria-hidden />
               </span>
-              <span className="max-w-[4.5rem] truncate">{t("home")}</span>
+              <span className="max-w-[4.5rem] truncate">{t("mobileNav.home")}</span>
             </>
           )}
         </NavLink>
@@ -104,7 +104,7 @@ export const MobileBottomNav: React.FC = () => {
               <span className={iconWrap(isActive || pathActive(pathname, "/appointments"))}>
                 <CalendarDays className="h-5 w-5" strokeWidth={1.75} aria-hidden />
               </span>
-              <span className="max-w-[4.5rem] truncate">{t("appointment")}</span>
+              <span className="max-w-[4.5rem] truncate">{t("mobileNav.appointment")}</span>
             </>
           )}
         </NavLink>
@@ -117,7 +117,7 @@ export const MobileBottomNav: React.FC = () => {
               <span className={iconWrap(isActive || pathActive(pathname, "/patients"))}>
                 <Users className="h-5 w-5" strokeWidth={1.75} aria-hidden />
               </span>
-              <span className="max-w-[4.5rem] truncate">{t("patient")}</span>
+              <span className="max-w-[4.5rem] truncate">{t("common.patient")}</span>
             </>
           )}
         </NavLink>
@@ -130,7 +130,7 @@ export const MobileBottomNav: React.FC = () => {
               <span className={iconWrap(isActive || pathActive(pathname, "/billing/cash-desk"))}>
                 <Landmark className="h-5 w-5" strokeWidth={1.75} aria-hidden />
               </span>
-              <span className="max-w-[4.5rem] truncate">{t("cash")}</span>
+              <span className="max-w-[4.5rem] truncate">{t("mobileNav.cash")}</span>
             </>
           )}
         </NavLink>
@@ -144,7 +144,7 @@ export const MobileBottomNav: React.FC = () => {
           <span className={iconWrap(moreOpen || moreRouteActive)}>
             <Menu className="h-5 w-5" strokeWidth={1.75} aria-hidden />
           </span>
-          <span className="max-w-[4.5rem] truncate">{t("more")}</span>
+          <span className="max-w-[4.5rem] truncate">{t("mobileNav.more")}</span>
         </button>
       </nav>
 
@@ -153,26 +153,26 @@ export const MobileBottomNav: React.FC = () => {
           <button
             type="button"
             className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
-            aria-label={t("closeMenu")}
+            aria-label={t("mobileNav.closeMenu")}
             onClick={() => setMoreOpen(false)}
           />
           <div className="absolute bottom-16 left-0 right-0 max-h-[min(72vh,calc(100vh-5rem))] overflow-hidden rounded-t-2xl border border-slate-200/90 bg-white shadow-[0_-12px_40px_-12px_rgba(15,23,42,0.2)]">
             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
               <h2 id="mobile-more-title" className="text-sm font-semibold text-slate-900">
-                {t("sections")}
+                {t("mobileNav.sections")}
               </h2>
               <button
                 type="button"
                 onClick={() => setMoreOpen(false)}
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
-                aria-label={t("close")}
+                aria-label={t("common.close")}
               >
                 <X className="h-5 w-5" strokeWidth={1.75} />
               </button>
             </div>
             <div className="max-h-[min(60vh,calc(100vh-11rem))] overflow-y-auto px-2 py-2 pb-4">
               {moreLinks.length === 0 ? (
-                <p className="px-3 py-6 text-center text-xs text-slate-500">{t("noSections")}</p>
+                <p className="px-3 py-6 text-center text-xs text-slate-500">{t("mobileNav.noSections")}</p>
               ) : (
                 <ul className="space-y-0.5">
                   {moreLinks.map(({ path, label, Icon }) => {

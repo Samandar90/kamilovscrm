@@ -405,7 +405,7 @@ export const InvoiceDetailsPage: React.FC = () => {
                   icon: Calendar,
                 },
                 {
-                  label: t("billing.status"),
+                  label: t("billing.statusLabel"),
                   value: null,
                   icon: null,
                   badge: invoice.status,
