@@ -1,3 +1,5 @@
+import i18n from "../i18n";
+
 /** Must match services/api PORT (see env.ts default 4000 and .env). */
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -18,23 +20,16 @@ type ErrorBody = {
   message?: string;
 };
 
-const readErrorMessage = (payload: unknown, status: number, t?: (key: string) => string): string => {
+const readErrorMessage = (payload: unknown, status: number): string => {
   if (payload && typeof payload === "object") {
     const p = payload as ErrorBody;
     if (typeof p.error === "string" && p.error.trim()) return p.error;
     if (typeof p.message === "string" && p.message.trim()) return p.message;
   }
-  // Fallback to translation keys if t is not provided (during module initialization)
-  if (!t) {
-    if (status === 403) return "http.forbidden";
-    if (status === 404) return "http.notFound";
-    if (status >= 500) return "http.serverError";
-    return "http.requestError";
-  }
-  if (status === 403) return t("http.forbidden");
-  if (status === 404) return t("http.notFound");
-  if (status >= 500) return t("http.serverError");
-  return t("http.requestError");
+  if (status === 403) return i18n.t("http.forbidden");
+  if (status === 404) return i18n.t("http.notFound");
+  if (status >= 500) return i18n.t("http.serverError");
+  return i18n.t("http.requestError");
 };
 
 export const requestJson = async <T>(

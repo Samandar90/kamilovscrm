@@ -10,14 +10,14 @@ type Params = {
   appointment: Appointment;
   canCreateInvoice: boolean;
   hasInvoice: boolean;
-  t?: (key: string) => string;
+  t: (key: string) => string;
 };
 
 export function buildUnifiedAppointmentActions({
   appointment,
   canCreateInvoice,
   hasInvoice,
-  t = (k) => k,
+  t,
 }: Params): UnifiedAppointmentAction[] {
   const actions: UnifiedAppointmentAction[] = [];
   const status = appointment.status;

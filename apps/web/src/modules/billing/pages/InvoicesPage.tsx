@@ -243,7 +243,7 @@ export const InvoicesPage: React.FC = () => {
                             {patientsMap[invoice.patientId] ?? `#${invoice.patientId}`}
                           </p>
                         </div>
-                        <StatusBadge tone={statusToneMap[invoice.status]}>{statusLabelMap[invoice.status]}</StatusBadge>
+                        <StatusBadge tone={statusToneMap[invoice.status]}>{t(statusLabelMap[invoice.status])}</StatusBadge>
                       </div>
                       <div className="mt-3 space-y-1.5 text-sm">
                         <p className="flex items-center justify-between text-[#64748b]">
@@ -335,7 +335,7 @@ export const InvoicesPage: React.FC = () => {
                           {formatSum(invoice.paidAmount)}
                         </td>
                         <td className="px-5 py-3.5">
-                          <StatusBadge tone={statusToneMap[invoice.status]}>{statusLabelMap[invoice.status]}</StatusBadge>
+                          <StatusBadge tone={statusToneMap[invoice.status]}>{t(statusLabelMap[invoice.status])}</StatusBadge>
                         </td>
                         <td className="px-5 py-3.5 text-right">
                           <ActionButtons>

@@ -449,7 +449,7 @@ export const ServicesPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm text-[#334155]">
-                {t("services.category")}
+                {t("services.categoryLabel")}
                 <select
                   className="mt-1 h-11 w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:bg-white focus:ring-1 focus:ring-[#16a34a]/25"
                   value={formState.category}

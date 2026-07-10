@@ -132,6 +132,7 @@ export const AppointmentCard: React.FC<Props> = ({
     appointment,
     canCreateInvoice,
     hasInvoice: Boolean(invoice),
+    t,
   });
   const onUnifiedAction = (key: string) => {
     if (key === "start") {

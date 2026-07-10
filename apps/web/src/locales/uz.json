@@ -605,7 +605,15 @@
   "services": {
     "title": "Xizmatlar",
     "name": "Nomi",
-    "category": "Kategoriya",
+    "category": {
+      "consultation": "Konsultatsiya",
+      "diagnostics": "Diagnostika",
+      "hygiene": "Gigiyena",
+      "treatment": "Davolash",
+      "surgery": "Jarrohlik",
+      "orthodontics": "Ortodontiya",
+      "other": "Boshqa"
+    },
     "price": "Narxi",
     "duration": "Davomiylik (min)",
     "active": "Faol",
@@ -664,7 +672,8 @@
     "saving": "Saqlanmoqda…",
     "searchDoctors": "Shifokorlarni qidirish…",
     "searchPlaceholder": "Xizmatlarni qidirish…",
-    "selectDoctors": "Shifokorlarni tanlash"
+    "selectDoctors": "Shifokorlarni tanlash",
+    "categoryLabel": "Kategoriya"
   },
   "billing": {
     "search": "Bemor qidirish…",
@@ -895,7 +904,8 @@
     "toPay": "To'lash kerak",
     "totalAmount": "Umumiy summa",
     "totalInvoices": "Jami hisoblar",
-    "statusLabel": "Status"
+    "statusLabel": "Status",
+    "invoiceTotal": "Hisob bo'yicha jami"
   },
   "reports": {
     "allDoctors": "Barcha shifokorlar",
@@ -1312,31 +1322,6 @@
     }
   },
   "aiAssistant": {
-    "actions": {
-      "doctorAppointments": "Shifokor bo'yicha uchrashuvlar",
-      "showDoctorsLoad": "Shifokorlarni ko'rsating",
-      "goToSection": "Bo'limga o'ting",
-      "openAppointments": "Uchrashuvlarni ochish",
-      "openDoctorsTooltip": "Shifokorlar spravochniki",
-      "doctorAppointmentsTooltip": "Taqvim",
-      "openReportsTooltip": "Hisobot bo'limigatgo'ing",
-      "showDoctorsTooltip": "Shifokorlar ro'yxati va ko'rsatkichlar",
-      "showDoctors": "Shifokorlarni ko'rsating",
-      "takePayment": "To'lovni qabul qiling",
-      "takePaymentTooltip": "Kassa — to'lovlarni qabul qilish",
-      "openAppointmentsTooltip": "Uchrashuvlar taqvimi",
-      "addPatientTooltip": "Bemorlar bo'limi — kartochka yaratish",
-      "addPatient": "Bemor qo'shish",
-      "openPatientsTooltip": "Bemorlar ro'yxati",
-      "showDoctorsLoadTooltip": "Yuk va spravochnik",
-      "patientsDebtTooltip": "Bemorlar ro'yxati",
-      "openReports": "Hisobotlarni ochish",
-      "openDoctors": "Shifokorlarni ochish",
-      "openInvoices": "Schyotlarni ochish",
-      "openPatients": "Bemorlarni ochish",
-      "patientsDebt": "Qarzli bemorlar",
-      "openInvoicesTooltip": "Schyotlar va to'lov holatlari"
-    },
     "aiOverview": "AI tomonidan sharh",
     "aiTyping": "AI yozmoqda…",
     "analysisDesc": "Tanlangan davr uchun klinika ma'lumotlari tahlili",

@@ -190,7 +190,7 @@ export const InvoiceDetailsPage: React.FC = () => {
       const html = buildReceiptHTML({
         clinicName: resolveReceiptClinicName(targetInvoice),
         logoUrl: clinic.logoUrl,
-        patient: patientName || `Пациент #${targetInvoice.patientId}`,
+        patient: patientName || t("common.patientWithId", { id: targetInvoice.patientId }),
         doctor: doctorName || null,
         invoiceId: targetInvoice.number,
         date: formatDateTimeRu(payment.createdAt),
@@ -198,13 +198,13 @@ export const InvoiceDetailsPage: React.FC = () => {
         total: targetInvoice.total,
         paid: payment.amount,
         items: targetInvoice.items.map((item) => ({
-          name: lineItemDisplayLabel(item.description),
+          name: lineItemDisplayLabel(item.description, t),
           price: item.lineTotal,
         })),
       });
       browserPrintReceipt(html);
     },
-    [doctorName, patientName]
+    [doctorName, patientName, t]
   );
 
   const printInvoiceReceipt = async () => {
@@ -277,7 +277,7 @@ export const InvoiceDetailsPage: React.FC = () => {
                 <ul className="mt-2 space-y-2">
                   {invoice.items.map((row) => (
                     <li key={row.id} className="flex items-start justify-between gap-3 text-sm">
-                      <span className="text-slate-700">{lineItemDisplayLabel(row.description)}</span>
+                      <span className="text-slate-700">{lineItemDisplayLabel(row.description, t)}</span>
                       <span className="shrink-0 font-medium tabular-nums text-slate-900">
                         {formatSum(row.lineTotal)}
                       </span>
@@ -467,7 +467,7 @@ export const InvoiceDetailsPage: React.FC = () => {
                         className="bg-white transition-[background-color] duration-150 ease-out hover:bg-[#f1f5f9]"
                       >
                         <td className="max-w-md px-5 py-3.5 font-medium leading-snug text-[#0f172a]">
-                          {lineItemDisplayLabel(row.description)}
+                          {lineItemDisplayLabel(row.description, t)}
                         </td>
                         <td className="whitespace-nowrap px-5 py-3.5 text-right tabular-nums text-[#64748b]">
                           {row.quantity}

@@ -66,22 +66,6 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
   card: "billing.terminal",
 };
 
-const INVOICE_STATUS_RECEIPT: Partial<Record<InvoiceStatus, string>> = {
-  draft: "billing.status.draft",
-  issued: "billing.status.issued",
-  partially_paid: "billing.status.partial",
-  paid: "billing.status.paid",
-  cancelled: "billing.status.cancelled",
-  refunded: "billing.status.refundedReceipt",
-};
-
-const receiptStatusLabel = (inv: InvoiceSummary | InvoiceDetail | undefined, t?: any): string | undefined => {
-  if (!inv) return undefined;
-  if (inv.paidAmount >= inv.total - 1e-9) return t?.("billing.paid") ?? "Оплачено";
-  const key = INVOICE_STATUS_RECEIPT[inv.status];
-  return key ? (t?.(key) ?? inv.status) : inv.status;
-};
-
 type EntryPreset = "all" | "today" | "yesterday" | "last7" | "custom";
 
 export const CashDeskPage: React.FC = () => {

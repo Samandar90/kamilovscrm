@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "check-i18n": "node scripts/check-i18n.cjs",
+    "prebuild": "node scripts/check-i18n.cjs",
     "build": "node node_modules/vite/bin/vite.js build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"

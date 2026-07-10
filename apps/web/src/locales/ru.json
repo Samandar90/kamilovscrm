@@ -605,7 +605,15 @@
   "services": {
     "title": "Услуги",
     "name": "Название",
-    "category": "Категория",
+    "category": {
+      "consultation": "Консультация",
+      "diagnostics": "Диагностика",
+      "hygiene": "Гигиена",
+      "treatment": "Лечение",
+      "surgery": "Хирургия",
+      "orthodontics": "Ортодонтия",
+      "other": "Другое"
+    },
     "price": "Цена",
     "duration": "Длительность (мин)",
     "active": "Активна",
@@ -664,7 +672,8 @@
     "saving": "Сохранение…",
     "searchDoctors": "Поиск врачей…",
     "searchPlaceholder": "Поиск услуг…",
-    "selectDoctors": "Выбор врачей"
+    "selectDoctors": "Выбор врачей",
+    "categoryLabel": "Категория"
   },
   "billing": {
     "search": "Поиск пациента…",
@@ -895,7 +904,8 @@
     "toPay": "К оплате",
     "totalAmount": "Общая сумма",
     "totalInvoices": "Всего счетов",
-    "statusLabel": "Статус"
+    "statusLabel": "Статус",
+    "invoiceTotal": "Итого по счёту"
   },
   "reports": {
     "allDoctors": "Все врачи",

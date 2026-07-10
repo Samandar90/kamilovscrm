@@ -18,26 +18,8 @@ export type SmartQuickChip = {
   domain: string;
 };
 
-/** Smart quick chips are translated via i18n, keys in ai.smartChips.* */
-export const SMART_QUICK_CHIPS: readonly SmartQuickChip[] = [
-  { text: "ai.smartChips.revenue", icon: "chart", domain: "ai.smartChips.analyticsDomain" },
-  { text: "ai.smartChips.unpaidInvoices", icon: "invoice", domain: "ai.smartChips.billingDomain" },
-  { text: "ai.smartChips.topDoctor", icon: "crown", domain: "ai.smartChips.crmDomain" },
-  { text: "ai.smartChips.doctorsAvailable", icon: "team", domain: "ai.smartChips.directoryDomain" },
-] as const;
-
 export type EmptyHeroAction = {
   prompt: string;
   subtitle: string;
   icon: AiChipVisual;
 };
-
-export const EMPTY_HERO_ACTIONS: readonly EmptyHeroAction[] = [
-  { prompt: "ai.emptyHero.revenue.prompt", subtitle: "ai.emptyHero.revenue.subtitle", icon: "chart" },
-  { prompt: "ai.emptyHero.invoices.prompt", subtitle: "ai.emptyHero.invoices.subtitle", icon: "invoice" },
-  { prompt: "ai.emptyHero.doctor.prompt", subtitle: "ai.emptyHero.doctor.subtitle", icon: "crown" },
-  { prompt: "ai.emptyHero.doctors.prompt", subtitle: "ai.emptyHero.doctors.subtitle", icon: "team" },
-] as const;
-
-/** Note: Component will call t() on these keys at render time */
-export const QUICK_PROMPT_LABELS = SMART_QUICK_CHIPS.map((c) => c.text);

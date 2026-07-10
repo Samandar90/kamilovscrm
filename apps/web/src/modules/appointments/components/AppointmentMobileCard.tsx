@@ -71,6 +71,7 @@ export const AppointmentMobileCard: React.FC<Props> = ({
     appointment,
     canCreateInvoice,
     hasInvoice,
+    t,
   });
   const mapActionClick = (key: string) => {
     if (key === "start") return onStart;
