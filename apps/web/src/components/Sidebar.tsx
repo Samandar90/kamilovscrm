@@ -117,7 +117,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
               aria-hidden
             />
           ) : null}
-          <span className="min-w-0 flex-1 truncate">{item.label}</span>
+          <span className="min-w-0 flex-1 truncate">{item.labelKey ? t(item.labelKey) : item.label}</span>
           {isBillingParent ? (
             <ChevronRight
               className={`h-4 w-4 shrink-0 text-[#94a3b8] transition-transform duration-300 ${isOpen ? "rotate-90" : ""}`}

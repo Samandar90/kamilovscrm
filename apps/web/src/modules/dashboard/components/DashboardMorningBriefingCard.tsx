@@ -42,21 +42,25 @@ function parseBriefingSections(raw: string): ParsedBriefing {
     idea: [] as string[],
   };
 
+  // The card renders its own lucide icon per section, so the leading emoji
+  // from the LLM text is stripped to avoid a doubled icon.
+  const stripEmoji = (line: string, emoji: string) => line.trim().slice(emoji.length).trimStart();
+
   for (const line of lines) {
     const t = line.trim();
     if (t.startsWith("📊")) {
       mode = "chart";
-      buffers.chart.push(line);
+      buffers.chart.push(stripEmoji(t, "📊"));
       continue;
     }
     if (t.startsWith("⚠️")) {
       mode = "warning";
-      buffers.warning.push(line);
+      buffers.warning.push(stripEmoji(t, "⚠️"));
       continue;
     }
     if (t.startsWith("💡")) {
       mode = "idea";
-      buffers.idea.push(line);
+      buffers.idea.push(stripEmoji(t, "💡"));
       continue;
     }
     buffers[mode].push(line);
