@@ -35,7 +35,7 @@ export const LanguageSwitcher: React.FC = () => {
               }}
               className={`block w-full text-left px-3 py-2 text-xs font-medium transition ${
                 i18n.language === lang.code
-                  ? "bg-blue-50 text-blue-700"
+                  ? "bg-primary-50 text-primary-700"
                   : "text-slate-700 hover:bg-slate-50"
               }`}
             >

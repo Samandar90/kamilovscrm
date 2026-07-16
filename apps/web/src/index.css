@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+/**
+ * Design tokens — the single source of the brand color.
+ * `primary` powers buttons, links, focus rings and active states across the app.
+ * Per-clinic theming: override these variables on :root at runtime to rebrand.
+ */
+@theme {
+  --color-primary-50: #f0fdf4;
+  --color-primary-100: #dcfce7;
+  --color-primary-200: #bbf7d0;
+  --color-primary-300: #86efac;
+  --color-primary-400: #4ade80;
+  --color-primary-500: #22c55e;
+  --color-primary-600: #16a34a;
+  --color-primary-700: #15803d;
+  --color-primary-800: #166534;
+}
+
 * {
   box-sizing: border-box;
 }

@@ -13,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { Logo } from "../../shared/ui/Logo";
+import { LanguageSwitcher } from "../../components/LanguageSwitcher";
 import { BRANDING, SALES_CONTACTS } from "../../shared/config/branding";
 
 const FEATURE_ICONS = [Users, CalendarDays, CreditCard, Printer, BarChart3, Bot];
@@ -51,12 +52,15 @@ export const LandingPage: React.FC = () => {
           <Logo size={34} />
           <span className="text-lg font-bold tracking-tight">{BRANDING.productName}</span>
         </div>
-        <Link
-          to="/login"
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-        >
-          {t("auth.login")}
-        </Link>
+        <div className="flex items-center gap-2.5">
+          <LanguageSwitcher />
+          <Link
+            to="/login"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+          >
+            {t("auth.login")}
+          </Link>
+        </div>
       </header>
 
       {/* Герой */}
@@ -73,7 +77,7 @@ export const LandingPage: React.FC = () => {
               href={SALES_CONTACTS.telegramHref}
               target="_blank"
               rel="noreferrer"
-              className="w-full rounded-xl bg-[#2563EB] px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-[#1D4ED8] sm:w-auto"
+              className="w-full rounded-xl bg-primary-600 px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-primary-600/20 transition hover:bg-primary-700 sm:w-auto"
             >
               {t("landing.cta")}
             </a>
@@ -108,7 +112,7 @@ export const LandingPage: React.FC = () => {
               transition={{ duration: 0.35, delay: i * 0.05 }}
               className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-[#2563EB]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-primary-600">
                 <f.icon size={22} strokeWidth={1.8} />
               </div>
               <h3 className="mt-4 font-semibold">{t(`landing.${f.keyPrefix}`)}</h3>
@@ -129,7 +133,7 @@ export const LandingPage: React.FC = () => {
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {steps.map((s) => (
               <div key={s.n} className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#2563EB] text-sm font-bold text-white">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-primary-600 text-sm font-bold text-white">
                   {s.n}
                 </div>
                 <h3 className="mt-4 font-semibold">{t(`landing.${s.keyPrefix}`)}</h3>
@@ -157,14 +161,14 @@ export const LandingPage: React.FC = () => {
             ))}
           </ul>
           <div className="mt-7 flex flex-col items-center justify-center gap-2 text-sm sm:flex-row sm:gap-6">
-            <a href={SALES_CONTACTS.phoneHref} className="font-semibold text-[#2563EB] hover:underline">
+            <a href={SALES_CONTACTS.phoneHref} className="font-semibold text-primary-600 hover:underline">
               {SALES_CONTACTS.phone}
             </a>
             <a
               href={SALES_CONTACTS.telegramHref}
               target="_blank"
               rel="noreferrer"
-              className="font-semibold text-[#2563EB] hover:underline"
+              className="font-semibold text-primary-600 hover:underline"
             >
               Telegram: {SALES_CONTACTS.telegram}
             </a>

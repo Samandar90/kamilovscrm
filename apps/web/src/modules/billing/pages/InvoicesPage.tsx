@@ -17,6 +17,7 @@ import {
   StatusBadge,
 } from "../../../shared/ui";
 import { Button } from "../../../ui/Button";
+import { shortInvoiceNumber } from "../components/invoice/formatInvoiceNumber";
 
 type InvoiceSummary = {
   id: number;
@@ -127,7 +128,13 @@ export const InvoicesPage: React.FC = () => {
       const rem = i.total - i.paidAmount;
       return rem > 1e-6 && i.status !== "cancelled" && i.status !== "refunded";
     }).length;
-    return { total, paidFull, awaiting };
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const createdToday = invoices.filter((i) => {
+      const d = new Date(i.createdAt.includes(" ") ? i.createdAt.replace(" ", "T") : i.createdAt);
+      return !Number.isNaN(d.getTime()) && d >= todayStart;
+    }).length;
+    return { total, paidFull, awaiting, createdToday };
   }, [invoices]);
 
   const hasAnyInvoices = invoices.length > 0;
@@ -154,7 +161,16 @@ export const InvoicesPage: React.FC = () => {
 
         {!loading && hasAnyInvoices && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <StatCard label={t("billing.totalInvoices")} value={String(stats.total)} trend={t("billing.inDatabase")} />
+            <StatCard
+              label={t("billing.totalInvoices")}
+              value={String(stats.total)}
+              tone={stats.createdToday > 0 ? "success" : undefined}
+              trend={
+                stats.createdToday > 0
+                  ? t("billing.todayNew", { count: stats.createdToday })
+                  : t("billing.inDatabase")
+              }
+            />
             <StatCard label={t("billing.paid")} value={String(stats.paidFull)} tone="success" trend={t("billing.fully")} />
             <StatCard label={t("billing.toPay")} value={String(stats.awaiting)} tone="warning" trend={t("billing.hasBalance")} />
           </div>
@@ -238,7 +254,9 @@ export const InvoicesPage: React.FC = () => {
                     <article key={invoice.id} className="rounded-2xl border border-[#e5e7eb] bg-white p-4 shadow-sm">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm font-semibold text-[#0f172a]">{invoice.number}</p>
+                          <p className="text-sm font-semibold text-[#0f172a]" title={invoice.number}>
+                            {shortInvoiceNumber(invoice.number)}
+                          </p>
                           <p className="mt-0.5 text-xs text-[#64748b]">
                             {patientsMap[invoice.patientId] ?? `#${invoice.patientId}`}
                           </p>
@@ -275,7 +293,7 @@ export const InvoicesPage: React.FC = () => {
               </div>
               <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[1100px] border-collapse bg-white text-left text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10">
                   <tr className="border-b border-[#e5e7eb] bg-[#f8fafc]">
                     <th className="whitespace-nowrap px-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-[#64748b]">
                       {t("billing.number")}
@@ -309,9 +327,16 @@ export const InvoicesPage: React.FC = () => {
                 <tbody className="divide-y divide-[#e5e7eb]">
                   {filtered.map((invoice) => {
                     return (
-                      <tr key={invoice.id} className="bg-white transition-[background-color] duration-150 ease-out hover:bg-[#f8fafc]">
-                        <td className="whitespace-nowrap px-5 py-3.5 font-semibold tabular-nums text-[#0f172a]">
-                          {invoice.number}
+                      <tr
+                        key={invoice.id}
+                        onClick={() => navigate(`/billing/invoices/${invoice.id}`)}
+                        className="cursor-pointer bg-white transition-[background-color] duration-150 ease-out hover:bg-[#f8fafc]"
+                      >
+                        <td
+                          className="whitespace-nowrap px-5 py-3.5 font-semibold tabular-nums text-[#0f172a]"
+                          title={invoice.number}
+                        >
+                          {shortInvoiceNumber(invoice.number)}
                         </td>
                         <td
                           className="max-w-[220px] truncate px-5 py-3.5 text-[#334155]"
@@ -343,7 +368,10 @@ export const InvoicesPage: React.FC = () => {
                               type="button"
                               variant="secondary"
                               size="sm"
-                              onClick={() => navigate(`/billing/invoices/${invoice.id}`)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/billing/invoices/${invoice.id}`);
+                              }}
                             >
                               {t("billing.open")}
                             </Button>

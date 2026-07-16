@@ -84,7 +84,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, 
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
                 placeholder="••••••"
                 disabled={loading}
               />
@@ -98,7 +98,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, 
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
                 placeholder="••••••"
                 disabled={loading}
               />
@@ -112,7 +112,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, 
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
                 placeholder="••••••"
                 disabled={loading}
               />
@@ -136,7 +136,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({ open, 
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+                className="flex-1 rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-primary-700 disabled:opacity-50"
               >
                 {loading ? `${t("common.save")}…` : t("common.save")}
               </button>

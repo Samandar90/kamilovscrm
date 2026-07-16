@@ -42,14 +42,14 @@ export const SubscriptionNotice: React.FC = () => {
           <div className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
             <div className="font-medium text-slate-900">{t("subscription.contactUs")}</div>
             <div className="mt-2 flex flex-col gap-1">
-              <a href={SALES_CONTACTS.phoneHref} className="font-semibold text-[#2563EB] hover:underline">
+              <a href={SALES_CONTACTS.phoneHref} className="font-semibold text-primary-600 hover:underline">
                 {SALES_CONTACTS.phone}
               </a>
               <a
                 href={SALES_CONTACTS.telegramHref}
                 target="_blank"
                 rel="noreferrer"
-                className="font-semibold text-[#2563EB] hover:underline"
+                className="font-semibold text-primary-600 hover:underline"
               >
                 {t("subscription.telegram")}: {SALES_CONTACTS.telegram}
               </a>

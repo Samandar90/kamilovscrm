@@ -604,8 +604,8 @@ export const PatientsPage: React.FC = () => {
 
           <div className="hidden overflow-x-auto rounded-xl border border-slate-100 bg-white shadow-sm md:block">
             <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b border-slate-100 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   <th className="whitespace-nowrap px-4 py-3">{t("patients.fullName")}</th>
                   <th className="whitespace-nowrap px-4 py-3">{t("patients.phone")}</th>
                   <th className="whitespace-nowrap px-4 py-3">{t("patients.birthDate")}</th>

@@ -9,7 +9,7 @@ type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 };
 
 const BASE_INPUT_CLASS =
-  "h-12 w-full rounded-[14px] border border-[#E2E8F0] bg-[rgba(255,255,255,0.90)] text-[15px] text-[#0f172a] shadow-sm outline-none transition duration-200 placeholder:text-[#94A3B8] hover:border-[#CBD5E1] focus:border-[#2563EB] focus:shadow-[0_0_0_4px_rgba(37,99,235,0.15)]";
+  "h-12 w-full rounded-[14px] border border-[#E2E8F0] bg-[rgba(255,255,255,0.90)] text-[15px] text-[#0f172a] shadow-sm outline-none transition duration-200 placeholder:text-[#94A3B8] hover:border-[#CBD5E1] focus:border-primary-600 focus:shadow-[0_0_0_4px_rgba(37,99,235,0.15)]";
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (

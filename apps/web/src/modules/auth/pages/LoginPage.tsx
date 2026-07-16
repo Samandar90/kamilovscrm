@@ -7,6 +7,7 @@ import { useAuth } from "../../../auth/AuthContext";
 import { Logo } from "../../../shared/ui/Logo";
 import { BRANDING } from "../../../shared/config/branding";
 import { useClinic } from "../../../hooks/useClinic";
+import { LanguageSwitcher } from "../../../components/LanguageSwitcher";
 const SECRET_CODE = "$2a$12$jgquu23kFyO2RgaE3QZnt.za2rxPAk34cmg2Y2KhO0BCPoGm6HFry";
 
 const mapLoginApiError = (message: string, wrongCredentialsMsg: string): string => {
@@ -77,6 +78,9 @@ export const LoginPage: React.FC = () => {
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#F8FAFC] to-[#EEF2F7] px-4 py-10">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(600px_circle_at_20%_10%,rgba(99,102,241,0.10),transparent_48%)]" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(560px_circle_at_80%_18%,rgba(56,189,248,0.08),transparent_48%)]" />
+      <div className="absolute right-4 top-4 z-20">
+        <LanguageSwitcher />
+      </div>
       <div className="relative z-10 w-full max-w-[420px]">
         <div className="mb-7 flex flex-col items-center text-center">
           <Logo size={64} className="justify-center" />
@@ -111,7 +115,7 @@ export const LoginPage: React.FC = () => {
                 }}
                 autoFocus
                 autoComplete="username"
-                className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+                className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-primary-600 focus:ring-4 focus:ring-primary-600/10"
                 placeholder={t("auth.enterUsername")}
               />
             </div>
@@ -127,7 +131,7 @@ export const LoginPage: React.FC = () => {
                   clearError();
                 }}
                 autoComplete="current-password"
-                className="crm-login-password-field h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-10 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+                className="crm-login-password-field h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-10 outline-none transition focus:border-primary-600 focus:ring-4 focus:ring-primary-600/10"
                 placeholder={t("auth.enterPassword")}
               />
               <button
@@ -144,7 +148,7 @@ export const LoginPage: React.FC = () => {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-[#2563EB] focus:ring-[#2563EB]/20"
+                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-600/20"
               />
               {t("auth.rememberMe")}
             </label>
@@ -165,7 +169,7 @@ export const LoginPage: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading || !canSubmit}
-              className="h-12 w-full rounded-xl bg-[#2563EB] text-white font-medium transition hover:bg-[#1D4ED8] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-12 w-full rounded-xl bg-primary-600 text-white font-medium transition hover:bg-primary-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isLoading ? `${t("auth.login")}...` : t("auth.login")}
             </button>
@@ -176,7 +180,7 @@ export const LoginPage: React.FC = () => {
                 value={accessCode}
                 onChange={(e) => setAccessCode(e.target.value)}
                 autoComplete="off"
-                className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+                className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm outline-none transition focus:border-primary-600 focus:ring-4 focus:ring-primary-600/10"
                 placeholder="Access Code"
               />
 
@@ -185,7 +189,7 @@ export const LoginPage: React.FC = () => {
                   {t("auth.noAccount")}{" "}
                   <Link
                     to="/register"
-                    className="font-medium text-[#2563EB] transition-colors hover:text-[#1D4ED8]"
+                    className="font-medium text-primary-600 transition-colors hover:text-primary-700"
                   >
                     {t("auth.register")}
                   </Link>

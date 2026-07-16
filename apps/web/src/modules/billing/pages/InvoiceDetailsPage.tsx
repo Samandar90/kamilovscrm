@@ -18,6 +18,7 @@ import { requestJson } from "../../../api/http";
 import { PaymentModal } from "../components/PaymentModal";
 import { InvoiceStatusBadge } from "../components/invoice/InvoiceStatusBadge";
 import { lineItemDisplayLabel } from "../components/invoice/lineItemLabel";
+import { shortInvoiceNumber } from "../components/invoice/formatInvoiceNumber";
 import { buildReceiptHTML } from "../../../shared/receipt/receiptTemplate";
 import { resolveReceiptClinicName } from "../../../shared/receipt/resolveReceiptClinicName";
 import { printReceipt as browserPrintReceipt } from "../../../shared/receipt/printReceipt";
@@ -316,8 +317,11 @@ export const InvoiceDetailsPage: React.FC = () => {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <div className="min-w-0 space-y-3">
                   <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="text-2xl font-semibold tracking-tight text-[#0f172a] md:text-3xl">
-                      Счёт {invoice.number}
+                    <h1
+                      className="text-2xl font-semibold tracking-tight text-[#0f172a] md:text-3xl"
+                      title={invoice.number}
+                    >
+                      {t("billing.invoiceLabel")} {shortInvoiceNumber(invoice.number)}
                     </h1>
                   <InvoiceStatusBadge status={effectiveStatus ?? invoice.status} />
                   </div>

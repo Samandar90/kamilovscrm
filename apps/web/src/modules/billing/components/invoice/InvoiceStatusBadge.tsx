@@ -21,6 +21,15 @@ const styles: Record<InvoiceStatus, string> = {
   refunded: "border border-violet-200 bg-violet-50 text-violet-900",
 };
 
+const dots: Record<InvoiceStatus, string> = {
+  draft: "bg-slate-400",
+  issued: "bg-amber-500",
+  partially_paid: "bg-sky-500",
+  paid: "bg-emerald-500",
+  cancelled: "bg-rose-500",
+  refunded: "bg-violet-500",
+};
+
 type Props = {
   status: InvoiceStatus;
   className?: string;
@@ -31,8 +40,9 @@ export const InvoiceStatusBadge: React.FC<Props> = ({ status, className = "" }) 
 
   return (
     <span
-      className={`inline-flex max-w-full items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium leading-tight tracking-wide transition-all duration-150 ease-out hover:opacity-90 ${styles[status]} ${className}`}
+      className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium leading-tight tracking-wide transition-all duration-150 ease-out hover:opacity-90 ${styles[status]} ${className}`}
     >
+      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dots[status]}`} aria-hidden />
       {t(LABEL_KEYS[status] ?? status)}
     </span>
   );

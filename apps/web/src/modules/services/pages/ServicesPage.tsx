@@ -283,7 +283,7 @@ export const ServicesPage: React.FC = () => {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t("services.searchPlaceholder")}
-              className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-9 text-sm text-[#0f172a] outline-none transition focus:ring-2 focus:ring-blue-500"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-9 text-sm text-[#0f172a] outline-none transition focus:ring-2 focus:ring-primary-500"
             />
             {search ? (
               <button

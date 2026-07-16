@@ -905,7 +905,8 @@
     "totalAmount": "Общая сумма",
     "totalInvoices": "Всего счетов",
     "statusLabel": "Статус",
-    "invoiceTotal": "Итого по счёту"
+    "invoiceTotal": "Итого по счёту",
+    "todayNew": "+{{count}} сегодня"
   },
   "reports": {
     "allDoctors": "Все врачи",

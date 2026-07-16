@@ -905,7 +905,8 @@
     "totalAmount": "Umumiy summa",
     "totalInvoices": "Jami hisoblar",
     "statusLabel": "Status",
-    "invoiceTotal": "Hisob bo'yicha jami"
+    "invoiceTotal": "Hisob bo'yicha jami",
+    "todayNew": "+{{count}} bugun"
   },
   "reports": {
     "allDoctors": "Barcha shifokorlar",

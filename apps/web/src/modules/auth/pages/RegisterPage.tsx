@@ -118,7 +118,7 @@ export const RegisterPage: React.FC = () => {
                 value={clinicName}
                 onChange={(e) => onClinicNameChange(e.target.value)}
                 autoFocus
-                className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+                className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-primary-600 focus:ring-4 focus:ring-primary-600/10"
                 placeholder={t("auth.clinicNamePlaceholder")}
               />
             </div>
@@ -131,7 +131,7 @@ export const RegisterPage: React.FC = () => {
                   setClinicSlug(slugify(e.target.value));
                   setError(null);
                 }}
-                className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+                className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-primary-600 focus:ring-4 focus:ring-primary-600/10"
                 placeholder={t("auth.slugPlaceholder")}
               />
             </div>
@@ -144,7 +144,7 @@ export const RegisterPage: React.FC = () => {
                   setFullName(e.target.value);
                   setError(null);
                 }}
-                className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+                className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-primary-600 focus:ring-4 focus:ring-primary-600/10"
                 placeholder={t("auth.yourNamePlaceholder")}
               />
             </div>
@@ -158,7 +158,7 @@ export const RegisterPage: React.FC = () => {
                   setError(null);
                 }}
                 autoComplete="username"
-                className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+                className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-4 outline-none transition focus:border-primary-600 focus:ring-4 focus:ring-primary-600/10"
                 placeholder={t("auth.username")}
               />
             </div>
@@ -173,7 +173,7 @@ export const RegisterPage: React.FC = () => {
                   setError(null);
                 }}
                 autoComplete="new-password"
-                className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-10 outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+                className="h-12 w-full rounded-xl border border-[#E5E7EB] bg-white pl-10 pr-10 outline-none transition focus:border-primary-600 focus:ring-4 focus:ring-primary-600/10"
                 placeholder={t("auth.passwordMinChars")}
               />
               <button
@@ -198,7 +198,7 @@ export const RegisterPage: React.FC = () => {
             <button
               type="submit"
               disabled={isSubmitting || !canSubmit}
-              className="h-12 w-full rounded-xl bg-[#2563EB] font-medium text-white transition hover:bg-[#1D4ED8] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+              className="h-12 w-full rounded-xl bg-primary-600 font-medium text-white transition hover:bg-primary-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? t("auth.creating") : t("auth.createClinic")}
             </button>
@@ -207,7 +207,7 @@ export const RegisterPage: React.FC = () => {
               {t("auth.alreadyHaveAccount")}{" "}
               <Link
                 to="/login"
-                className="font-medium text-[#2563EB] transition-colors hover:text-[#1D4ED8]"
+                className="font-medium text-primary-600 transition-colors hover:text-primary-700"
               >
                 {t("auth.login")}
               </Link>

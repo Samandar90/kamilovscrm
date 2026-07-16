@@ -12,7 +12,7 @@ type StatCardProps = {
 export const StatCard: React.FC<StatCardProps> = ({ label, value, trend, tone = "neutral" }) => (
   <SectionCard className="crm-stat-card-enter">
     <p className="text-xs font-semibold uppercase tracking-[0.08em] text-gray-500">{label}</p>
-    <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900">{value}</p>
+    <p className="mt-2 text-3xl font-semibold tabular-nums tracking-tight text-gray-900">{value}</p>
     {trend ? (
       <p
         className={cn(

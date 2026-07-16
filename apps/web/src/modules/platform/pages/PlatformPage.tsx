@@ -114,7 +114,7 @@ const CreateClinicForm: React.FC<CreateClinicFormProps> = ({ onCreated }) => {
   };
 
   const inputCls =
-    "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10";
+    "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-primary-600 focus:ring-4 focus:ring-primary-600/10";
 
   return (
     <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -128,7 +128,7 @@ const CreateClinicForm: React.FC<CreateClinicFormProps> = ({ onCreated }) => {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#1D4ED8]"
+          className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-700"
         >
           {open ? t("platform.hide") : t("platform.newClinic")}
         </button>
