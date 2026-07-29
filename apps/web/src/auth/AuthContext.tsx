@@ -1,5 +1,6 @@
 import React from "react";
 import { authApi } from "../api/authApi";
+import { clearImpersonation } from "./impersonation";
 import type { PublicUser } from "./types";
 
 const TOKEN_KEY = "crm_access_token";
@@ -66,6 +67,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!response.accessToken || !response.user) {
         throw new Error("Invalid auth response");
       }
+      // Свежий вход = новая личность: отложенный админский токен больше не актуален.
+      clearImpersonation();
       if (rememberMe) {
         localStorage.setItem(TOKEN_KEY, response.accessToken);
         sessionStorage.removeItem(TOKEN_KEY);
@@ -107,6 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       localStorage.removeItem(TOKEN_KEY);
       sessionStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(REMEMBER_KEY);
+      clearImpersonation();
       setState({
         token: null,
         user: null,

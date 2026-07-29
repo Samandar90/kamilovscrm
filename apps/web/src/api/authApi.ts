@@ -31,4 +31,10 @@ export const authApi = {
       method: "GET",
       token,
     }),
+
+  /** «Войти как»: токен целевого пользователя (только superadmin, аудит на сервере). */
+  impersonate: (userId: number) =>
+    requestJson<AuthResponse>(`/api/users/${userId}/impersonate`, {
+      method: "POST",
+    }),
 };

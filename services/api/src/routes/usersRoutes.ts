@@ -5,6 +5,7 @@ import {
   createUserController,
   deleteUserController,
   getUserByIdController,
+  impersonateUserController,
   listUsersController,
   toggleUserActiveController,
   updateUserController,
@@ -42,6 +43,12 @@ router.patch(
   checkPermission("users", "update"),
   validateUserIdParam,
   asyncHandler(toggleUserActiveController)
+);
+// Только superadmin — проверка внутри services.auth.impersonate (роль не выражается через матрицу permissions).
+router.post(
+  "/:id/impersonate",
+  validateUserIdParam,
+  asyncHandler(impersonateUserController)
 );
 router.patch(
   "/:id/password",

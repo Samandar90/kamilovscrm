@@ -164,6 +164,52 @@ export class AuthService {
     return response;
   }
 
+  /**
+   * «Войти как»: супер-админ получает токен другого пользователя своей клиники
+   * без знания и без смены его пароля. Каждый вход пишется в login_audit_logs
+   * с reason `impersonated_by:<username>#<userId>` — видно в журнале входов.
+   *
+   * Ограничения: только superadmin; только своя клиника; только активные;
+   * нельзя под другим superadmin и под самим собой.
+   * lastLoginAt цели намеренно не трогаем — это её статистика, не админа.
+   */
+  async impersonate(
+    auth: AuthTokenPayload,
+    targetUserId: number,
+    meta?: { ip?: string; userAgent?: string }
+  ): Promise<AuthResponse> {
+    if (auth.role !== "superadmin") {
+      throw new ApiError(403, "Войти под другим пользователем может только супер-админ");
+    }
+    if (targetUserId === auth.userId) {
+      throw new ApiError(400, "Вы уже вошли под этим пользователем");
+    }
+    const user = await this.usersRepository.findById(targetUserId);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+    if (user.clinicId !== auth.clinicId) {
+      throw new ApiError(403, "Пользователь принадлежит другой клинике");
+    }
+    if (user.role === "superadmin") {
+      throw new ApiError(403, "Нельзя войти под другим супер-админом");
+    }
+    if (!user.isActive) {
+      throw new ApiError(403, "Пользователь отключён — сначала активируйте его");
+    }
+
+    const response = await this.issueAccessResponse(user);
+    await this.logAudit({
+      userId: user.id,
+      username: user.username,
+      success: true,
+      ip: normalizeClientIp(meta?.ip),
+      userAgent: meta?.userAgent ?? null,
+      reason: `impersonated_by:${auth.username}#${auth.userId}`,
+    });
+    return response;
+  }
+
   private async buildTokenPayload(user: User): Promise<AuthTokenPayload> {
     if (!Number.isInteger(user.clinicId) || user.clinicId <= 0) {
       throw new ApiError(403, "User clinic is not configured");

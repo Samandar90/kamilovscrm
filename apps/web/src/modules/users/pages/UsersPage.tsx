@@ -1,6 +1,9 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { requestJson } from "../../../api/http";
+import { authApi } from "../../../api/authApi";
+import { useAuth } from "../../../auth/AuthContext";
+import { startImpersonation } from "../../../auth/impersonation";
 import type { UserRole } from "../../../auth/types";
 import { USER_ROLES } from "../../../auth/permissions";
 import { Modal } from "../../../components/ui/Modal";
@@ -77,7 +80,9 @@ const statusChipClass = (isActive: boolean): string =>
 
 export const UsersPage: React.FC = () => {
   const { t } = useTranslation();
+  const { user: me } = useAuth();
   const [users, setUsers] = React.useState<User[]>([]);
+  const [impersonatingId, setImpersonatingId] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
   const [togglingId, setTogglingId] = React.useState<number | null>(null);
@@ -317,6 +322,33 @@ export const UsersPage: React.FC = () => {
     }
   };
 
+  /**
+   * «Войти как»: сервер выдаёт токен цели, свой токен откладываем и
+   * перезагружаемся на дашборд уже под выбранным пользователем.
+   * Пароль цели не участвует и не меняется.
+   */
+  const canImpersonate = (user: User): boolean =>
+    me?.role === "superadmin" && user.id !== me.id && user.role !== "superadmin" && user.isActive;
+
+  const impersonate = async (user: User) => {
+    if (impersonatingId !== null) return;
+    setError(null);
+    setImpersonatingId(user.id);
+    try {
+      const response = await authApi.impersonate(user.id);
+      if (!response.accessToken) {
+        throw new Error(t("users.impersonateError"));
+      }
+      if (!startImpersonation(response.accessToken, me?.fullName ?? me?.username ?? "")) {
+        throw new Error(t("users.impersonateError"));
+      }
+      window.location.replace("/dashboard");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : t("users.impersonateError"));
+      setImpersonatingId(null);
+    }
+  };
+
   return (
     <div className="space-y-5 p-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -415,6 +447,20 @@ export const UsersPage: React.FC = () => {
                   <td className="px-3 py-2 text-[#64748b]">{formatLoginAt(user.lastLoginAt)}</td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-2">
+                      {canImpersonate(user) ? (
+                        <button
+                          className="rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700 hover:bg-violet-100"
+                          onClick={() => void impersonate(user)}
+                          disabled={
+                            isSaving ||
+                            deletingId !== null ||
+                            togglingId !== null ||
+                            impersonatingId !== null
+                          }
+                        >
+                          {impersonatingId === user.id ? "..." : t("users.impersonate")}
+                        </button>
+                      ) : null}
                       <button
                         className="rounded-md border border-[#e2e8f0] px-2 py-1 text-xs text-[#334155] hover:bg-[#f8fafc]"
                         onClick={() => openEdit(user)}

@@ -7,6 +7,7 @@ import { Button } from "../ui/Button";
 import { cn } from "../ui/utils/cn";
 import { MobileBottomNav } from "../shared/ui/MobileBottomNav";
 import { SubscriptionNotice } from "../components/SubscriptionNotice";
+import { ImpersonationBanner } from "../components/ImpersonationBanner";
 import { ChangePasswordModal } from "../components/ChangePasswordModal";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { Logo } from "@/shared/ui/Logo";
@@ -59,6 +60,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     <div className="flex h-screen min-w-0 overflow-x-hidden bg-[#f8fafc] text-[#0f172a]">
       <Sidebar />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <ImpersonationBanner />
         <SubscriptionNotice />
         <header
           className={cn(

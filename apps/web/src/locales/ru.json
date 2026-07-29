@@ -1039,7 +1039,9 @@
     "userDisabled": "Пользователь отключён",
     "userEnabled": "Пользователь включён",
     "userUpdated": "Пользователь обновлён",
-    "usernameRequired": "Укажите логин"
+    "usernameRequired": "Укажите логин",
+    "impersonate": "Войти как",
+    "impersonateError": "Не удалось войти под пользователем"
   },
   "forms": {
     "required": "Обязательное поле",
@@ -1608,5 +1610,9 @@
     "notFound": "Не найдено",
     "requestError": "Ошибка запроса",
     "serverError": "Ошибка сервера"
+  },
+  "impersonation": {
+    "banner": "Режим администратора ({{admin}}): вы работаете как {{name}}",
+    "return": "Вернуться в свой аккаунт"
   }
 }

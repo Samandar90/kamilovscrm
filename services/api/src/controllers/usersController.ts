@@ -104,3 +104,13 @@ export const changeUserPasswordController = async (req: Request, res: Response) 
   return res.status(200).json(updated);
 };
 
+
+/** «Войти как»: выдаёт токен целевого пользователя. Права проверяет services.auth.impersonate. */
+export const impersonateUserController = async (req: Request, res: Response) => {
+  const auth = getAuthPayload(req);
+  const result = await services.auth.impersonate(auth, Number(req.params.id), {
+    ip: req.ip,
+    userAgent: req.get("user-agent"),
+  });
+  return res.status(200).json(result);
+};

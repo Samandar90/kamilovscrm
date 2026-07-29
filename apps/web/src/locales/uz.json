@@ -1039,7 +1039,9 @@
     "userDisabled": "Foydalanuvchi o'chirildi",
     "userEnabled": "Foydalanuvchi yoqildi",
     "userUpdated": "Foydalanuvchi yangilandi",
-    "usernameRequired": "Loginni kiriting"
+    "usernameRequired": "Loginni kiriting",
+    "impersonate": "Nomidan kirish",
+    "impersonateError": "Foydalanuvchi nomidan kirib bo‘lmadi"
   },
   "forms": {
     "required": "Majburiy maydon",
@@ -1608,5 +1610,9 @@
     "clinical": {
       "chip3": "O'tkazib yuborilgan qabullar"
     }
+  },
+  "impersonation": {
+    "banner": "Administrator rejimi ({{admin}}): siz {{name}} sifatida ishlayapsiz",
+    "return": "O‘z hisobingizga qaytish"
   }
 }
