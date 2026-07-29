@@ -6,6 +6,7 @@ import { useAuth } from "../../../auth/AuthContext";
 import { appointmentsFlowApi, type Appointment, type Service } from "../../appointments/api/appointmentsFlowApi";
 import { cashDeskApi } from "../../billing/api/cashDeskApi";
 import { useClinic } from "../../../hooks/useClinic";
+import { UziProtocolPanel } from "../components/UziProtocolPanel";
 
 type WorkspaceForm = {
   diagnosis: string;
@@ -24,6 +25,7 @@ export const DoctorWorkspacePage: React.FC = () => {
   const { clinic } = useClinic();
   const [appointment, setAppointment] = React.useState<Appointment | null>(null);
   const [patientName, setPatientName] = React.useState(t("common.patient"));
+  const [patientBirthDate, setPatientBirthDate] = React.useState<string | null>(null);
   const [serviceName, setServiceName] = React.useState(t("common.service"));
   const [servicesCatalog, setServicesCatalog] = React.useState<Service[]>([]);
   const [assignedServiceIds, setAssignedServiceIds] = React.useState<number[]>([]);
@@ -68,6 +70,7 @@ export const DoctorWorkspacePage: React.FC = () => {
       setServicesCatalog(doctorServices);
       setAssignedServiceIds(assignedRows.map((row) => row.serviceId));
       setPatientName(patient?.fullName ?? t("common.patientWithId", { id: found.patientId }));
+      setPatientBirthDate(patient?.birthDate ?? null);
       setServiceName(service?.name ?? t("common.serviceWithId", { id: found.serviceId }));
       setSelectedServiceId("");
       setServicePickerOpen(false);
@@ -356,6 +359,21 @@ export const DoctorWorkspacePage: React.FC = () => {
             disabled={loading || submitting}
           />
         </section>
+
+        <div className="my-2 border-t border-slate-200" />
+
+        {appointment ? (
+          <UziProtocolPanel
+            token={token}
+            doctorId={appointment.doctorId}
+            appointmentId={appointment.id}
+            patientName={patientName}
+            patientBirth={patientBirthDate}
+            clinicName={clinicPrintName}
+            clinicLogoUrl={clinic.logoUrl}
+            primaryColor={clinic.primaryColor}
+          />
+        ) : null}
 
         <div className="my-2 border-t border-slate-200" />
 

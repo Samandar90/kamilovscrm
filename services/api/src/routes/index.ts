@@ -24,6 +24,7 @@ import { expensesRouter } from "./expensesRoutes";
 import { cashRegisterRouter } from "./cashRegisterRoutes";
 import { reportsRouter } from "./reportsRoutes";
 import { aiAssistantRouter } from "./aiAssistantRoutes";
+import { uziTemplatesRouter } from "./uziTemplatesRoutes";
 
 const router = Router();
 
@@ -68,6 +69,7 @@ router.use("/expenses", requireAuth, subscriptionGuard, expensesRouter);
 router.use("/cash-register", requireAuth, subscriptionGuard, cashRegisterRouter);
 router.use("/reports", requireAuth, subscriptionGuard, reportsRouter);
 router.use("/ai", requireAuth, subscriptionGuard, aiAssistantRouter);
+router.use("/uzi-templates", requireAuth, subscriptionGuard, uziTemplatesRouter);
 
 export { router as rootRouter };
 
