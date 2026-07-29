@@ -1,8 +1,0 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.loadBusinessInsightsMetrics = exports.generateBusinessInsights = void 0;
-var businessInsights_generate_1 = require("./businessInsights.generate");
-Object.defineProperty(exports, "generateBusinessInsights", { enumerable: true, get: function () { return businessInsights_generate_1.generateBusinessInsights; } });
-var businessInsights_metrics_1 = require("./businessInsights.metrics");
-Object.defineProperty(exports, "loadBusinessInsightsMetrics", { enumerable: true, get: function () { return businessInsights_metrics_1.loadBusinessInsightsMetrics; } });
-//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiQzovVXNlcnMvdXNlci9EZXNrdG9wL2NybSB2MS44L3NlcnZpY2VzL2FwaS9zcmMvc2VydmljZXMvYWkvYnVzaW5lc3NJbnNpZ2h0cy50cyIsInNvdXJjZXMiOlsiQzovVXNlcnMvdXNlci9EZXNrdG9wL2NybSB2MS44L3NlcnZpY2VzL2FwaS9zcmMvc2VydmljZXMvYWkvYnVzaW5lc3NJbnNpZ2h0cy50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7QUFBQSx5RUFBdUU7QUFBOUQscUlBQUEsd0JBQXdCLE9BQUE7QUFDakMsdUVBQXlFO0FBQWhFLHVJQUFBLDJCQUEyQixPQUFBIiwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IHsgZ2VuZXJhdGVCdXNpbmVzc0luc2lnaHRzIH0gZnJvbSBcIi4vYnVzaW5lc3NJbnNpZ2h0cy5nZW5lcmF0ZVwiO1xyXG5leHBvcnQgeyBsb2FkQnVzaW5lc3NJbnNpZ2h0c01ldHJpY3MgfSBmcm9tIFwiLi9idXNpbmVzc0luc2lnaHRzLm1ldHJpY3NcIjtcclxuZXhwb3J0IHR5cGUgeyBCdXNpbmVzc0luc2lnaHQsIEJ1c2luZXNzSW5zaWdodHNNZXRyaWNzIH0gZnJvbSBcIi4vYnVzaW5lc3NJbnNpZ2h0cy50eXBlc1wiO1xyXG4iXX0=
