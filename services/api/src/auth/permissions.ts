@@ -24,6 +24,8 @@ export const PERMISSION_MODULES = [
   "reports",
   "users",
   "ai",
+  // Посещаемость сотрудников: ролям не выдаётся — доступ только у superadmin (полный доступ по умолчанию).
+  "attendance",
 ] as const;
 
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];

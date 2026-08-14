@@ -224,7 +224,8 @@
     "aiAssistant": "AI-yordamchi",
     "users": "Foydalanuvchilar",
     "doctorWorkspace": "Shifokorning ish joyidagi",
-    "systemArchitecture": "Tizim arxitekturasi"
+    "systemArchitecture": "Tizim arxitekturasi",
+    "attendance": "Davomat"
   },
   "patients": {
     "source": {
@@ -1614,5 +1615,36 @@
   "impersonation": {
     "banner": "Administrator rejimi ({{admin}}): siz {{name}} sifatida ishlayapsiz",
     "return": "O‘z hisobingizga qaytish"
+  },
+  "attendance": {
+    "title": "Davomat",
+    "subtitle": "Xodimlar tabeli: belgilarni administrator qo‘yadi",
+    "viewDay": "Kun",
+    "viewMonth": "Oy (jamlanma)",
+    "today": "Bugun",
+    "prevDay": "Oldingi kun",
+    "nextDay": "Keyingi kun",
+    "employee": "Xodim",
+    "status": "Holat",
+    "checkIn": "Kelish",
+    "checkOut": "Ketish",
+    "note": "Izoh",
+    "notePlaceholder": "Izoh…",
+    "markedBy": "Belgiladi",
+    "actions": "Amallar",
+    "came": "Keldi",
+    "left": "Ketdi",
+    "reset": "Bekor qilish",
+    "noMark": "Belgi yo‘q",
+    "loadError": "Davomatni yuklab bo‘lmadi",
+    "saveError": "Belgini saqlab bo‘lmadi",
+    "statuses": {
+      "present": "Keldi",
+      "late": "Kechikdi",
+      "absent": "Kelmadi",
+      "sick": "Kasallik varaqasi",
+      "vacation": "Ta’til",
+      "dayOff": "Dam olish kuni"
+    }
   }
 }

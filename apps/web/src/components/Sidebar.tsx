@@ -205,7 +205,7 @@ export const Sidebar: React.FC = () => {
 
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-3 pt-1">
         {sections.map((section) => (
-          <div key={section.section}>
+          <div key={section.sectionKey ?? section.section}>
             <div
               className="crm-sidebar-enter mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94a3b8]"
               style={{ animationDelay: `${nextDelay()}ms` }}
@@ -215,7 +215,7 @@ export const Sidebar: React.FC = () => {
             <div className="space-y-0.5">
               {section.items.map((item) => (
                 <SidebarItem
-                  key={`${section.section}-${item.label}`}
+                  key={item.path ?? item.labelKey ?? item.label}
                   item={item}
                   pathname={location.pathname}
                   animationDelayMs={nextDelay()}

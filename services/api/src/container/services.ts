@@ -13,6 +13,7 @@ import { AIAssistantService } from "../services/aiAssistantService";
 import { AIRecommendationsService } from "../services/aiRecommendationsService";
 import { UsersService } from "../services/usersService";
 import { UziTemplatesService } from "../services/uziTemplatesService";
+import { AttendanceService } from "../services/attendanceService";
 import { repositories } from "./repositories";
 
 export const services = {
@@ -39,4 +40,5 @@ export const services = {
   aiService: new AIService(repositories.users),
   aiRecommendations: new AIRecommendationsService(repositories.reports),
   uziTemplates: new UziTemplatesService(repositories.doctors),
+  attendance: new AttendanceService(repositories.attendance, repositories.users),
 };

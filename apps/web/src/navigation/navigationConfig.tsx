@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
   Bot,
+  CalendarCheck,
   CalendarDays,
   CreditCard,
   DollarSign,
@@ -17,6 +18,7 @@ import {
 import type { UserRole } from "../auth/types";
 import {
   APPOINTMENTS_PAGE_ROUTE_ROLES,
+  ATTENDANCE_ROLES,
   BILLING_ROLES,
   CLINIC_STAFF,
   DASHBOARD_NAV_ROLES,
@@ -86,6 +88,7 @@ export const navigationConfig: NavigationSection[] = [
     sectionKey: "nav.admin",
     items: [
       { label: "", labelKey: "pages.users", path: "/users", roles: USERS_PAGE_ROLES, icon: UsersRound },
+      { label: "", labelKey: "pages.attendance", path: "/attendance", roles: ATTENDANCE_ROLES, icon: CalendarCheck },
       { label: "", labelKey: "pages.systemArchitecture", path: "/system/architecture", roles: SYSTEM_ARCH_ROLES, icon: Network },
     ],
   },

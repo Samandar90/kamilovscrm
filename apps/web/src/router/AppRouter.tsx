@@ -15,6 +15,7 @@ import { ArchitecturePage } from "../modules/system/pages/ArchitecturePage";
 import { PlatformPage } from "../modules/platform/pages/PlatformPage";
 import { LandingPage } from "../modules/landing/LandingPage";
 import { UsersPage } from "../modules/users/pages/UsersPage";
+import { AttendancePage } from "../modules/attendance/pages/AttendancePage";
 import { ServicesPage } from "../modules/services/pages/ServicesPage";
 import { DoctorsPage } from "../modules/doctors/pages/DoctorsPage";
 import { LoginPage } from "../modules/auth/pages/LoginPage";
@@ -33,6 +34,7 @@ import {
   EXPENSES_READ_ROLES,
   PATIENTS_PAGE_ROUTE_ROLES,
   PAYMENTS_READ_PAGE_ROLES,
+  ATTENDANCE_ROLES,
   REPORT_ROLES,
   SERVICES_DIRECTORY_ROLES,
   SYSTEM_ARCH_ROLES,
@@ -153,6 +155,14 @@ export const AppRouter: React.FC = () => {
           element={
             <RoleGuard roles={USERS_PAGE_ROLES}>
               <UsersPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/attendance"
+          element={
+            <RoleGuard roles={ATTENDANCE_ROLES}>
+              <AttendancePage />
             </RoleGuard>
           }
         />

@@ -224,7 +224,8 @@
     "aiAssistant": "AI Ассистент",
     "users": "Пользователи",
     "doctorWorkspace": "Рабочее место врача",
-    "systemArchitecture": "Архитектура системы"
+    "systemArchitecture": "Архитектура системы",
+    "attendance": "Посещаемость"
   },
   "patients": {
     "source": {
@@ -1614,5 +1615,36 @@
   "impersonation": {
     "banner": "Режим администратора ({{admin}}): вы работаете как {{name}}",
     "return": "Вернуться в свой аккаунт"
+  },
+  "attendance": {
+    "title": "Посещаемость",
+    "subtitle": "Табель сотрудников: отметки ставит администратор",
+    "viewDay": "День",
+    "viewMonth": "Месяц (сводка)",
+    "today": "Сегодня",
+    "prevDay": "Предыдущий день",
+    "nextDay": "Следующий день",
+    "employee": "Сотрудник",
+    "status": "Статус",
+    "checkIn": "Приход",
+    "checkOut": "Уход",
+    "note": "Заметка",
+    "notePlaceholder": "Комментарий…",
+    "markedBy": "Отметил",
+    "actions": "Действия",
+    "came": "Пришёл",
+    "left": "Ушёл",
+    "reset": "Сбросить",
+    "noMark": "Нет отметки",
+    "loadError": "Не удалось загрузить посещаемость",
+    "saveError": "Не удалось сохранить отметку",
+    "statuses": {
+      "present": "Пришёл",
+      "late": "Опоздал",
+      "absent": "Не пришёл",
+      "sick": "Больничный",
+      "vacation": "Отпуск",
+      "dayOff": "Выходной"
+    }
   }
 }

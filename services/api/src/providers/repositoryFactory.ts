@@ -10,6 +10,7 @@ import type { IReportsRepository } from "../repositories/interfaces/IReportsRepo
 import type { IServicesRepository } from "../repositories/interfaces/IServicesRepository";
 import type { INursesRepository } from "../repositories/interfaces/INursesRepository";
 import type { IUsersRepository } from "../repositories/interfaces/IUsersRepository";
+import type { IAttendanceRepository } from "../repositories/interfaces/IAttendanceRepository";
 import { MockAppointmentsRepository } from "../repositories/appointmentsRepository";
 import { MockCashRegisterRepository } from "../repositories/cashRegisterRepository";
 import { MockDoctorsRepository } from "../repositories/doctorsRepository";
@@ -21,6 +22,7 @@ import { MockReportsRepository } from "../repositories/reportsRepository";
 import { MockServicesRepository } from "../repositories/servicesRepository";
 import { MockNursesRepository } from "../repositories/nursesRepository";
 import { MockUsersRepository } from "../repositories/usersRepository";
+import { MockAttendanceRepository } from "../repositories/attendanceRepository";
 import { PostgresAppointmentsRepository } from "../repositories/postgres/PostgresAppointmentsRepository";
 import { PostgresCashRegisterRepository } from "../repositories/postgres/PostgresCashRegisterRepository";
 import { PostgresDoctorsRepository } from "../repositories/postgres/PostgresDoctorsRepository";
@@ -32,6 +34,7 @@ import { PostgresReportsRepository } from "../repositories/postgres/PostgresRepo
 import { PostgresServicesRepository } from "../repositories/postgres/PostgresServicesRepository";
 import { PostgresNursesRepository } from "../repositories/postgres/PostgresNursesRepository";
 import { PostgresUsersRepository } from "../repositories/postgres/PostgresUsersRepository";
+import { PostgresAttendanceRepository } from "../repositories/postgres/PostgresAttendanceRepository";
 
 export type CoreRepositories = {
   patients: IPatientsRepository;
@@ -44,6 +47,7 @@ export type CoreRepositories = {
   cashRegister: ICashRegisterRepository;
   reports: IReportsRepository;
   users: IUsersRepository;
+  attendance: IAttendanceRepository;
   nurses: INursesRepository;
 };
 
@@ -60,6 +64,7 @@ export const createRepositories = (): CoreRepositories => {
       cashRegister: new PostgresCashRegisterRepository(),
       reports: new PostgresReportsRepository(),
       users: new PostgresUsersRepository(),
+      attendance: new PostgresAttendanceRepository(),
       nurses: new PostgresNursesRepository(),
     };
   }
@@ -75,6 +80,7 @@ export const createRepositories = (): CoreRepositories => {
     cashRegister: new MockCashRegisterRepository(),
     reports: new MockReportsRepository(),
     users: new MockUsersRepository(),
+    attendance: new MockAttendanceRepository(),
     nurses: new MockNursesRepository(),
   };
 };
