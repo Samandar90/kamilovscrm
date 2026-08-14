@@ -225,7 +225,8 @@
     "users": "Foydalanuvchilar",
     "doctorWorkspace": "Shifokorning ish joyidagi",
     "systemArchitecture": "Tizim arxitekturasi",
-    "attendance": "Davomat"
+    "attendance": "Davomat",
+    "callCenter": "Call-markaz"
   },
   "patients": {
     "source": {
@@ -1645,6 +1646,39 @@
       "sick": "Kasallik varaqasi",
       "vacation": "Ta’til",
       "dayOff": "Dam olish kuni"
+    }
+  },
+  "callCenter": {
+    "title": "Call-markaz — eslatmalar",
+    "subtitle": "Klinika qoidalari bo‘yicha qabuldan oldin bemorlarga qo‘ng‘iroqlar",
+    "progress": "{{total}} tadan {{done}} tasi bajarildi",
+    "rulesTitle": "Eslatma qoidalari",
+    "rulesHintAdmin": "Har bir bemor nechta qo‘ng‘iroq oladi va qabuldan necha kun oldin. Kerakli nuqtalarni qo‘shing — navbat o‘zi tuziladi.",
+    "rulesHint": "Qoidalarni administrator sozlaydi.",
+    "noRules": "Qoidalar berilmagan — navbatda qo‘ng‘iroqlar bo‘lmaydi",
+    "ruleDaysBefore": "Qabuldan {{days}} kun oldin",
+    "ruleSameDay": "Qabul kunida",
+    "daysPlaceholder": "Kun",
+    "addRule": "Qo‘shish",
+    "removeRule": "Qoidani olib tashlash",
+    "ruleRangeError": "«Necha kun oldin» — 0 dan 30 gacha butun son",
+    "reminder": "Eslatma",
+    "patient": "Bemor",
+    "phone": "Telefon",
+    "noPhone": "telefon yo‘q",
+    "appointment": "Qabul",
+    "result": "Natija",
+    "markCall": "Qo‘ng‘iroqni belgilash",
+    "notCalled": "Qo‘ng‘iroq qilinmagan",
+    "emptyQueue": "Bu sanaga qo‘ng‘iroqlar yo‘q",
+    "noRulesQueue": "Avval eslatma qoidalarini belgilang",
+    "loadError": "Qo‘ng‘iroqlar navbatini yuklab bo‘lmadi",
+    "saveError": "Qo‘ng‘iroq natijasini saqlab bo‘lmadi",
+    "outcomes": {
+      "confirmed": "Tasdiqladi",
+      "noAnswer": "Javob bermadi",
+      "rescheduled": "Ko‘chirdi",
+      "cancelled": "Bekor qildi"
     }
   }
 }

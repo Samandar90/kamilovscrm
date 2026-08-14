@@ -58,6 +58,9 @@ export const SYSTEM_ARCH_ROLES = rolesWithPermission("users", "read");
 /** Табель посещаемости сотрудников — модуль attendance выдан только superadmin. */
 export const ATTENDANCE_ROLES = rolesWithPermission("attendance", "read");
 
+/** Колл-центр: очередь звонков-напоминаний (operator + superadmin). */
+export const CALL_CENTER_ROLES = rolesWithPermission("callcenter", "read");
+
 export const DOCTOR_WORKSPACE_ROLES: UserRole[] = ["superadmin", "manager", "doctor", "nurse"];
 
 export const canReadBilling = (role: UserRole | undefined | null): boolean =>

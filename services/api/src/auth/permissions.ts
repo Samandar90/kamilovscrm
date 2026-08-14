@@ -26,6 +26,8 @@ export const PERMISSION_MODULES = [
   "ai",
   // Посещаемость сотрудников: ролям не выдаётся — доступ только у superadmin (полный доступ по умолчанию).
   "attendance",
+  // Колл-центр: очередь звонков-напоминаний. Правила настраивает superadmin (проверка в сервисе).
+  "callcenter",
 ] as const;
 
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];
@@ -78,6 +80,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
   operator: {
     patients: ["read", "create"],
     appointments: ["read", "update"],
+    callcenter: ["read", "update"],
     ai: ["read", "create"],
   },
 

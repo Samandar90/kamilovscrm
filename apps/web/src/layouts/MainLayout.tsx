@@ -27,6 +27,7 @@ const getRouteKey = (path: string): string => {
     "/ai-assistant": "pages.aiAssistant",
     "/users": "pages.users",
     "/attendance": "pages.attendance",
+    "/call-center": "pages.callCenter",
     "/system/architecture": "pages.systemArchitecture",
   };
 

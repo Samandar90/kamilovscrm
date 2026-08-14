@@ -26,6 +26,7 @@ import { reportsRouter } from "./reportsRoutes";
 import { aiAssistantRouter } from "./aiAssistantRoutes";
 import { uziTemplatesRouter } from "./uziTemplatesRoutes";
 import { attendanceRouter } from "./attendanceRoutes";
+import { callCenterRouter } from "./callCenterRoutes";
 
 const router = Router();
 
@@ -72,6 +73,7 @@ router.use("/reports", requireAuth, subscriptionGuard, reportsRouter);
 router.use("/ai", requireAuth, subscriptionGuard, aiAssistantRouter);
 router.use("/uzi-templates", requireAuth, subscriptionGuard, uziTemplatesRouter);
 router.use("/attendance", requireAuth, subscriptionGuard, attendanceRouter);
+router.use("/call-center", requireAuth, subscriptionGuard, callCenterRouter);
 
 export { router as rootRouter };
 

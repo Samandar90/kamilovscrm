@@ -16,6 +16,7 @@ import { PlatformPage } from "../modules/platform/pages/PlatformPage";
 import { LandingPage } from "../modules/landing/LandingPage";
 import { UsersPage } from "../modules/users/pages/UsersPage";
 import { AttendancePage } from "../modules/attendance/pages/AttendancePage";
+import { CallCenterPage } from "../modules/call-center/pages/CallCenterPage";
 import { ServicesPage } from "../modules/services/pages/ServicesPage";
 import { DoctorsPage } from "../modules/doctors/pages/DoctorsPage";
 import { LoginPage } from "../modules/auth/pages/LoginPage";
@@ -35,6 +36,7 @@ import {
   PATIENTS_PAGE_ROUTE_ROLES,
   PAYMENTS_READ_PAGE_ROLES,
   ATTENDANCE_ROLES,
+  CALL_CENTER_ROLES,
   REPORT_ROLES,
   SERVICES_DIRECTORY_ROLES,
   SYSTEM_ARCH_ROLES,
@@ -163,6 +165,14 @@ export const AppRouter: React.FC = () => {
           element={
             <RoleGuard roles={ATTENDANCE_ROLES}>
               <AttendancePage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/call-center"
+          element={
+            <RoleGuard roles={CALL_CENTER_ROLES}>
+              <CallCenterPage />
             </RoleGuard>
           }
         />

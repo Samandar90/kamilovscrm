@@ -11,6 +11,7 @@ import type { IServicesRepository } from "../repositories/interfaces/IServicesRe
 import type { INursesRepository } from "../repositories/interfaces/INursesRepository";
 import type { IUsersRepository } from "../repositories/interfaces/IUsersRepository";
 import type { IAttendanceRepository } from "../repositories/interfaces/IAttendanceRepository";
+import type { ICallCenterRepository } from "../repositories/interfaces/ICallCenterRepository";
 import { MockAppointmentsRepository } from "../repositories/appointmentsRepository";
 import { MockCashRegisterRepository } from "../repositories/cashRegisterRepository";
 import { MockDoctorsRepository } from "../repositories/doctorsRepository";
@@ -23,6 +24,7 @@ import { MockServicesRepository } from "../repositories/servicesRepository";
 import { MockNursesRepository } from "../repositories/nursesRepository";
 import { MockUsersRepository } from "../repositories/usersRepository";
 import { MockAttendanceRepository } from "../repositories/attendanceRepository";
+import { MockCallCenterRepository } from "../repositories/callCenterRepository";
 import { PostgresAppointmentsRepository } from "../repositories/postgres/PostgresAppointmentsRepository";
 import { PostgresCashRegisterRepository } from "../repositories/postgres/PostgresCashRegisterRepository";
 import { PostgresDoctorsRepository } from "../repositories/postgres/PostgresDoctorsRepository";
@@ -35,6 +37,7 @@ import { PostgresServicesRepository } from "../repositories/postgres/PostgresSer
 import { PostgresNursesRepository } from "../repositories/postgres/PostgresNursesRepository";
 import { PostgresUsersRepository } from "../repositories/postgres/PostgresUsersRepository";
 import { PostgresAttendanceRepository } from "../repositories/postgres/PostgresAttendanceRepository";
+import { PostgresCallCenterRepository } from "../repositories/postgres/PostgresCallCenterRepository";
 
 export type CoreRepositories = {
   patients: IPatientsRepository;
@@ -48,6 +51,7 @@ export type CoreRepositories = {
   reports: IReportsRepository;
   users: IUsersRepository;
   attendance: IAttendanceRepository;
+  callCenter: ICallCenterRepository;
   nurses: INursesRepository;
 };
 
@@ -65,6 +69,7 @@ export const createRepositories = (): CoreRepositories => {
       reports: new PostgresReportsRepository(),
       users: new PostgresUsersRepository(),
       attendance: new PostgresAttendanceRepository(),
+      callCenter: new PostgresCallCenterRepository(),
       nurses: new PostgresNursesRepository(),
     };
   }
@@ -81,6 +86,7 @@ export const createRepositories = (): CoreRepositories => {
     reports: new MockReportsRepository(),
     users: new MockUsersRepository(),
     attendance: new MockAttendanceRepository(),
+    callCenter: new MockCallCenterRepository(),
     nurses: new MockNursesRepository(),
   };
 };

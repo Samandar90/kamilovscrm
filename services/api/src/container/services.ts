@@ -14,6 +14,7 @@ import { AIRecommendationsService } from "../services/aiRecommendationsService";
 import { UsersService } from "../services/usersService";
 import { UziTemplatesService } from "../services/uziTemplatesService";
 import { AttendanceService } from "../services/attendanceService";
+import { CallCenterService } from "../services/callCenterService";
 import { repositories } from "./repositories";
 
 export const services = {
@@ -41,4 +42,5 @@ export const services = {
   aiRecommendations: new AIRecommendationsService(repositories.reports),
   uziTemplates: new UziTemplatesService(repositories.doctors),
   attendance: new AttendanceService(repositories.attendance, repositories.users),
+  callCenter: new CallCenterService(repositories.callCenter),
 };
