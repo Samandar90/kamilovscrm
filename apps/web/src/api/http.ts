@@ -8,6 +8,14 @@ if (!API_BASE) {
 }
 const TOKEN_KEY = "crm_access_token";
 
+/** Preserve definitive server rejections so callers can distinguish them from an unknown network outcome. */
+export class HttpError extends Error {
+  constructor(message: string, public readonly status: number) {
+    super(message);
+    this.name = "HttpError";
+  }
+}
+
 type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   token?: string | null;
@@ -74,7 +82,7 @@ export const requestJson = async <T>(
         window.location.assign("/login");
       }
     }
-    throw new Error(readErrorMessage(payload, response.status));
+    throw new HttpError(readErrorMessage(payload, response.status), response.status);
   }
 
   // 402 = subscription expired/suspended: SubscriptionNotice shows blocking screen.
@@ -87,7 +95,7 @@ export const requestJson = async <T>(
   }
 
   if (!response.ok) {
-    throw new Error(readErrorMessage(payload, response.status));
+    throw new HttpError(readErrorMessage(payload, response.status), response.status);
   }
 
   return payload as T;
