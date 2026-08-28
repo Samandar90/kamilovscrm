@@ -94,6 +94,7 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
       createdByUserId: input.createdByUserId ?? null,
       diagnosis: input.diagnosis ?? null,
       treatment: input.treatment ?? null,
+      recommendedReturnDate: input.recommendedReturnDate ?? null,
       notes: input.notes ?? null,
       createdAt: now,
       updatedAt: now,

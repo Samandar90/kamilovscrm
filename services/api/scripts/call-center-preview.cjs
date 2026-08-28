@@ -49,7 +49,7 @@ async function main() {
     CREATE TABLE doctors(id bigint primary key, clinic_id bigint not null, full_name text, active boolean default true, deleted_at timestamptz);
     CREATE TABLE users(id bigint primary key, clinic_id bigint not null, full_name text, role text, is_active boolean default true, deleted_at timestamptz);
     CREATE TABLE appointments(id bigint primary key, clinic_id bigint not null, patient_id bigint, doctor_id bigint, start_at timestamptz, status text, deleted_at timestamptz);`);
-  for (const filename of ["031_call_reminders.sql", "032_call_center_workspace.sql"]) await db.exec(fs.readFileSync(path.join(migrations, filename), "utf8"));
+  for (const filename of ["031_call_reminders.sql", "032_call_center_workspace.sql", "033_call_center_daily_workflow.sql"]) await db.exec(fs.readFileSync(path.join(migrations, filename), "utf8"));
   await db.exec(`INSERT INTO clinics VALUES(1),(2);
     INSERT INTO doctors(id,clinic_id,full_name) VALUES(1,1,'Дилшод Каримов'),(2,1,'Нилуфар Ахмедова'),(9,2,'Чужой врач');
     INSERT INTO users(id,clinic_id,full_name,role) VALUES(1,1,'Администратор','superadmin'),(2,1,'Саида — оператор','operator'),(3,1,'Мадина — оператор','operator'),(9,2,'Чужой оператор','operator');
@@ -58,13 +58,16 @@ async function main() {
       (3,1,'Зебо Юлдашева','+998 93 333 44 55'),(4,1,'Бекзод Алиев',null),
       (5,1,'Малика Усманова','+998 94 555 66 77'),(6,1,'Рустам Саидов','+998 97 666 77 88'),(99,2,'Чужой пациент','+998 99 999 99 99');
     INSERT INTO patients(id,clinic_id,full_name,phone) SELECT id,1,'Пациент тестовый '||lpad(id::text,2,'0'),'+998 90 700 '||id||' 00' FROM generate_series(7,38) id;
-    INSERT INTO appointments VALUES
+    INSERT INTO appointments(id,clinic_id,patient_id,doctor_id,start_at,status,deleted_at) VALUES
       (101,1,1,1,((now() AT TIME ZONE 'Asia/Tashkent')-interval '130 days') AT TIME ZONE 'UTC','completed',null),
       (102,1,2,2,((now() AT TIME ZONE 'Asia/Tashkent')-interval '5 days') AT TIME ZONE 'UTC','completed',null),
       (103,1,3,2,((now() AT TIME ZONE 'Asia/Tashkent')-interval '4 days') AT TIME ZONE 'UTC','completed',null),
       (105,1,5,1,((now() AT TIME ZONE 'Asia/Tashkent')-interval '1 day') AT TIME ZONE 'UTC','completed',null),
       (106,1,6,1,((now() AT TIME ZONE 'Asia/Tashkent')-interval '190 days') AT TIME ZONE 'UTC','completed',null),
       (202,1,2,2,((date_trunc('day',now() AT TIME ZONE 'Asia/Tashkent'))+interval '1 day 11 hours') AT TIME ZONE 'UTC','confirmed',null);
+    UPDATE appointments SET recommended_return_date=(now() AT TIME ZONE 'Asia/Tashkent')::date+3 WHERE id=101;
+    INSERT INTO call_center_patient_preferences(clinic_id,patient_id,do_not_call,preferred_language,updated_by) VALUES
+      (1,2,false,'uz',1),(1,7,true,'ru',1);
     INSERT INTO call_center_tasks(clinic_id,patient_id,campaign,episode_key,status,due_at,attempts,assigned_to) VALUES
       (1,3,'followup','visit:103','callback',now()-interval '30 minutes',1,2),
       (1,6,'recall','visit:106','done',null,1,2);

@@ -20,7 +20,7 @@
 .cc-tabs>button{display:flex;align-items:center;gap:8px;padding:0 0 13px;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--cc-muted);font-weight:500;white-space:nowrap}
 .cc-tabs>button.is-active{border-color:var(--cc-accent);color:var(--cc-accent);font-weight:650}
 .cc-tabs-caption{margin-left:auto;align-self:flex-start;color:#91a298;font-size:11px;padding-top:2px}
-.cc-segments{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:22px}
+.cc-segments{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;margin-bottom:22px}
 .cc-segments>button{padding:16px 18px;background:#fff;border:1px solid var(--cc-line);border-radius:12px;text-align:left;transition:background .15s,border-color .15s;min-width:0}
 .cc-segments>button:hover{border-color:#a5cdb9}
 .cc-segments>button.is-active{border-color:#83bda3;background:#edf7f1;box-shadow:inset 0 3px 0 var(--cc-accent)}
@@ -167,6 +167,29 @@
 .cc-settings-footer>div{display:flex;gap:8px;flex-shrink:0}
 .cc-settings>.cc-error,.cc-settings>.cc-success{margin:0 24px 18px}
 .cc-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.cc-daily-progress{display:flex;align-items:center;justify-content:space-between;gap:20px;border:1px solid var(--cc-line);border-radius:12px;padding:16px 20px;margin-bottom:16px;background:#f5faf7}
+.cc-daily-progress>div>strong{font-size:14px;font-weight:650}
+.cc-daily-progress small{display:block;color:var(--cc-muted);font-size:11px;margin-top:5px;line-height:1.5}
+.cc-daily-progress dl{display:flex;gap:32px;margin:0}
+.cc-daily-progress dt{color:var(--cc-muted);font-size:11px}
+.cc-daily-progress dd{font-size:24px;font-weight:650;margin:4px 0 0;font-variant-numeric:tabular-nums}
+.cc-patient-reason,.cc-preference-summary{margin:12px 17px;color:var(--cc-muted);font-size:11px;line-height:1.7;overflow-wrap:anywhere}
+.cc-patient-reason{color:var(--cc-accent);font-weight:600}
+.cc-patient-reason>span,.cc-preference-summary>span{display:block;font-weight:400}
+.cc-table small.cc-reason{color:#477c60;white-space:normal;max-width:240px;line-height:1.5}
+.cc-table small.cc-contact-block{color:#a07833;white-space:normal;max-width:220px;line-height:1.5}
+.cc-contact-block svg,.cc-lock-note svg{flex-shrink:0}
+.cc-preferences{margin:16px 17px;border:1px solid var(--cc-line);border-radius:8px;padding:12px}
+.cc-preferences summary{font-size:12px;font-weight:600;cursor:pointer}
+.cc-preference-toggle{display:flex;align-items:center;gap:8px;margin:14px 0;color:var(--cc-ink);font-size:11px;line-height:1.5}
+.cc-preference-toggle input{accent-color:var(--cc-accent)}
+.cc-preferences .cc-btn{width:100%;margin-top:12px;font-size:11px}
+.cc-preferences .cc-field :is(input,select){min-width:0;padding:8px 5px;font-size:11px}
+.cc-next-patient{margin:14px 17px}
+.cc-next-patient .cc-btn{width:100%}
+.cc-workspace button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:1250px) and (min-width:1051px){.cc-segments{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:600px){.cc-daily-progress{align-items:stretch;flex-direction:column;padding:14px;gap:12px}.cc-daily-progress dl{justify-content:space-between;gap:16px}.cc-daily-progress dd{font-size:21px}}
 @keyframes cc-spin{to{transform:rotate(360deg)}}.cc-spin{animation:cc-spin 1s linear infinite}
 @keyframes cc-pulse{50%{opacity:.5}}
 @media(min-width:1600px){.cc-desk{grid-template-columns:minmax(0,1fr) 390px}.cc-table td{padding-top:19px;padding-bottom:19px}.cc-table-patient{gap:13px}.cc-patient-name{font-size:13px}.cc-table-date{font-size:12px}}

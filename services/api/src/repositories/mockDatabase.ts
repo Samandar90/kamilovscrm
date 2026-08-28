@@ -72,6 +72,7 @@ export type AppointmentRecord = {
   createdByUserId?: number | null;
   diagnosis: string | null;
   treatment: string | null;
+  recommendedReturnDate?: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;

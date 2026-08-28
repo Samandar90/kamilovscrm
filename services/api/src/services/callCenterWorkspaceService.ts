@@ -1,8 +1,8 @@
 import { ApiError } from "../middleware/errorHandler";
 import type { AuthTokenPayload } from "../repositories/interfaces/userTypes";
 import type { ICallCenterWorkspaceRepository } from "../repositories/interfaces/ICallCenterWorkspaceRepository";
-import { WORKSPACE_CAMPAIGNS, WORKSPACE_OUTCOMES } from "../repositories/interfaces/callCenterWorkspaceTypes";
-import type { WorkspaceCampaign, WorkspaceFilters, WorkspaceOutcome, WorkspaceSettings } from "../repositories/interfaces/callCenterWorkspaceTypes";
+import { DEFAULT_WORKSPACE_SETTINGS, WORKSPACE_CAMPAIGNS, WORKSPACE_OUTCOMES } from "../repositories/interfaces/callCenterWorkspaceTypes";
+import type { ContactPreferences, WorkspaceCampaign, WorkspaceFilters, WorkspaceOutcome, WorkspaceSettings } from "../repositories/interfaces/callCenterWorkspaceTypes";
 
 type Body = Record<string, unknown>;
 const integer = (value: unknown, field: string, min = 1, max = Number.MAX_SAFE_INTEGER): number => {
@@ -20,7 +20,11 @@ const worker = (auth: AuthTokenPayload) => {
 
 export function parseWorkspaceSettings(raw: unknown): WorkspaceSettings {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new ApiError(400, "Требуются настройки");
-  const body = raw as Body;
+  const body: Body = {
+    followupMaxDays: DEFAULT_WORKSPACE_SETTINGS.followupMaxDays, returnLeadDays: DEFAULT_WORKSPACE_SETTINGS.returnLeadDays,
+    maxCallsPerDay: DEFAULT_WORKSPACE_SETTINGS.maxCallsPerDay, minContactIntervalMinutes: DEFAULT_WORKSPACE_SETTINGS.minContactIntervalMinutes,
+    ...raw as Body,
+  };
   for (const field of ["recallEnabled", "followupEnabled", "reminderEnabled"])
     if (typeof body[field] !== "boolean") throw new ApiError(400, `${field}: требуется boolean`);
   for (const field of ["workStart", "workEnd"])
@@ -30,6 +34,10 @@ export function parseWorkspaceSettings(raw: unknown): WorkspaceSettings {
   return {
     recallEnabled: body.recallEnabled as boolean, recallDays: integer(body.recallDays, "recallDays", 1, 3650),
     followupEnabled: body.followupEnabled as boolean, followupDays: integer(body.followupDays, "followupDays", 1, 365),
+    followupMaxDays: integer(body.followupMaxDays, "followupMaxDays", integer(body.followupDays, "followupDays", 1, 365), 365),
+    returnLeadDays: integer(body.returnLeadDays, "returnLeadDays", 0, 365),
+    maxCallsPerDay: integer(body.maxCallsPerDay, "maxCallsPerDay", 1, 20),
+    minContactIntervalMinutes: integer(body.minContactIntervalMinutes, "minContactIntervalMinutes", 0, 10080),
     reminderEnabled: body.reminderEnabled as boolean, reminderDays: integer(body.reminderDays, "reminderDays", 0, 365),
     workStart: body.workStart as string, workEnd: body.workEnd as string,
     retryMinutes: integer(body.retryMinutes, "retryMinutes", 5, 10080), maxAttempts: integer(body.maxAttempts, "maxAttempts", 1, 20), script: body.script,
@@ -59,12 +67,24 @@ export function nextRetryAt(now: Date, settings: WorkspaceSettings, timeZone: st
 export class CallCenterWorkspaceService {
   constructor(private readonly repository: ICallCenterWorkspaceRepository) {}
   async getSettings(auth: AuthTokenPayload) { worker(auth); return this.repository.getSettings(); }
+  async savePreferences(auth: AuthTokenPayload, patientId: unknown, raw: unknown) {
+    worker(auth);
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new ApiError(400, "Требуются предпочтения пациента");
+    const body = raw as Body;
+    if (typeof body.doNotCall !== "boolean" || ![null, "ru", "uz"].includes(body.preferredLanguage as string | null)) throw new ApiError(400, "Некорректные предпочтения пациента");
+    const start = body.preferredCallStart, end = body.preferredCallEnd;
+    if (!(start === null && end === null) && !(typeof start === "string" && typeof end === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(start) && /^([01]\d|2[0-3]):[0-5]\d$/.test(end) && start < end)) throw new ApiError(400, "Укажите обе границы HH:mm: начало раньше окончания");
+    return this.repository.savePreferences(integer(patientId, "patientId"), {
+      doNotCall: body.doNotCall, preferredLanguage: body.preferredLanguage as ContactPreferences["preferredLanguage"],
+      preferredCallStart: start as string | null, preferredCallEnd: end as string | null,
+    }, auth.userId);
+  }
   async saveSettings(auth: AuthTokenPayload, body: unknown) { admin(auth); return this.repository.saveSettings(parseWorkspaceSettings(body)); }
   async preview(auth: AuthTokenPayload, body: unknown) { admin(auth); return this.repository.preview(parseWorkspaceSettings(body)); }
   async workspace(auth: AuthTokenPayload, query: Body) {
     worker(auth);
-    const segment = String(query.segment ?? "base");
-    if (![...WORKSPACE_CAMPAIGNS, "callbacks"].includes(segment)) throw new ApiError(400, "Неизвестный сегмент");
+    const segment = String(query.segment ?? "today");
+    if (![...WORKSPACE_CAMPAIGNS, "callbacks", "today", "archive"].includes(segment)) throw new ApiError(400, "Неизвестный сегмент");
     const status = String(query.status ?? "all");
     if (!["all", "new", "callback", "overdue", "done"].includes(status)) throw new ApiError(400, "Неизвестный статус");
     const search = String(query.search ?? "").trim();

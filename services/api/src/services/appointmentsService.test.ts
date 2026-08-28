@@ -12,6 +12,8 @@ const repository = new MockAppointmentsRepository();
 const service = new AppointmentsService(repository);
 const input = { patientId: 1, doctorId: 2, serviceId: 3, startAt: "2099-08-27 10:00:00", endAt: "", status: "scheduled" as const, diagnosis: null, treatment: null, notes: null };
 const createdAt = "2026-01-01T00:00:00.000Z";
+const admin = { ...operator, role: "superadmin" as const };
+const doctor = { ...operator, role: "doctor" as const, doctorId: 2 };
 
 beforeEach(() => {
   const db = getMockDb();
@@ -21,6 +23,35 @@ beforeEach(() => {
   db.doctorServices = [{ doctorId: 2, serviceId: 3 }];
   db.appointments = [];
   db.appointmentServices = [];
+});
+
+describe("recommended return date", () => {
+  it("persists a clinician-supplied date and allows clearing it", async () => {
+    const saved = await service.create(admin, { ...input, recommendedReturnDate: "2099-09-10" });
+    expect(saved).toMatchObject({ recommendedReturnDate: "2099-09-10" });
+    const changed = await service.update(doctor, saved.id, { recommendedReturnDate: "2099-10-01" });
+    expect(changed).toMatchObject({ recommendedReturnDate: "2099-10-01" });
+    expect(await service.update(doctor, saved.id, { recommendedReturnDate: null })).toMatchObject({ recommendedReturnDate: null });
+  });
+  it.each(["2099-02-30", "2099-08-27", "2099-08-26", "10.09.2099", 123])("rejects invalid or non-later return date %s without writing", async value => {
+    const saved = await service.create(admin, input);
+    await expect(service.update(doctor, saved.id, { recommendedReturnDate: value as string })).rejects.toMatchObject({ status: 400 });
+    expect((await repository.findById(saved.id))).not.toMatchObject({ recommendedReturnDate: value });
+  });
+  it("denies an operator setting or clearing the clinical recommendation", async () => {
+    await expect(service.create(operator, { ...input, recommendedReturnDate: "2099-09-10" })).rejects.toMatchObject({ status: 403 });
+    const saved = await service.create(admin, input);
+    await expect(service.update(operator, saved.id, { recommendedReturnDate: "2099-09-10" })).rejects.toMatchObject({ status: 403 });
+    await expect(service.update(operator, saved.id, { recommendedReturnDate: null })).rejects.toMatchObject({ status: 403 });
+  });
+  it("does not allow another doctor to modify the recommendation", async () => {
+    const saved = await service.create(admin, input);
+    expect(await service.update({ ...doctor, doctorId: 99 }, saved.id, { recommendedReturnDate: "2099-09-10" })).toBeNull();
+  });
+  it("preserves the date when completing the visit and changing unrelated fields", async () => {
+    const saved = await service.create(admin, { ...input, status: "confirmed", recommendedReturnDate: "2099-09-10" });
+    expect(await service.update(doctor, saved.id, { status: "completed", diagnosis: "Diagnosis", treatment: "Treatment", recommendedReturnDate: undefined })).toMatchObject({ recommendedReturnDate: "2099-09-10", status: "completed" });
+  });
 });
 
 describe("operator appointment booking boundary", () => {

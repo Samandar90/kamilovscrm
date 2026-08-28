@@ -18,3 +18,4 @@ export const claimWorkspaceController = async (req: Request, res: Response) => r
 export const releaseWorkspaceController = async (req: Request, res: Response) => res.json(await workspace().release(getAuthPayload(req), req.body ?? {}));
 export const workspaceAttemptController = async (req: Request, res: Response) => res.json(await workspace().attempt(getAuthPayload(req), req.body ?? {}));
 export const assignWorkspaceController = async (req: Request, res: Response) => res.json(await workspace().assign(getAuthPayload(req), req.body ?? {}));
+export const savePatientPreferencesController = async (req: Request, res: Response) => res.json(await workspace().savePreferences(getAuthPayload(req), req.params.patientId, req.body));

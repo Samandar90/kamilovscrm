@@ -265,6 +265,7 @@ export const completeAppointmentController = async (req: Request, res: Response)
     status: "completed",
     diagnosis: req.body?.diagnosis,
     treatment: req.body?.treatment,
+    recommendedReturnDate: req.body?.recommendedReturnDate,
     notes: req.body?.notes,
   });
   if (!updated) {
