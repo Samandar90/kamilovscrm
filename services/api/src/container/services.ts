@@ -15,6 +15,10 @@ import { UsersService } from "../services/usersService";
 import { UziTemplatesService } from "../services/uziTemplatesService";
 import { AttendanceService } from "../services/attendanceService";
 import { CallCenterService } from "../services/callCenterService";
+import { CallCenterWorkspaceService } from "../services/callCenterWorkspaceService";
+import { PostgresCallCenterWorkspaceRepository } from "../repositories/postgres/PostgresCallCenterWorkspaceRepository";
+import { dbPool } from "../config/database";
+import { env } from "../config/env";
 import { repositories } from "./repositories";
 
 export const services = {
@@ -43,4 +47,5 @@ export const services = {
   uziTemplates: new UziTemplatesService(repositories.doctors),
   attendance: new AttendanceService(repositories.attendance, repositories.users),
   callCenter: new CallCenterService(repositories.callCenter),
+  callCenterWorkspace: new CallCenterWorkspaceService(new PostgresCallCenterWorkspaceRepository(dbPool, env.reportsTimezone)),
 };

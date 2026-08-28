@@ -16,7 +16,8 @@ import { PlatformPage } from "../modules/platform/pages/PlatformPage";
 import { LandingPage } from "../modules/landing/LandingPage";
 import { UsersPage } from "../modules/users/pages/UsersPage";
 import { AttendancePage } from "../modules/attendance/pages/AttendancePage";
-import { CallCenterPage } from "../modules/call-center/pages/CallCenterPage";
+import { PageLoader } from "../shared/ui/PageLoader";
+const CallCenterPage = React.lazy(() => import("../modules/call-center/pages/CallCenterPage").then((module) => ({ default: module.CallCenterPage })));
 import { ServicesPage } from "../modules/services/pages/ServicesPage";
 import { DoctorsPage } from "../modules/doctors/pages/DoctorsPage";
 import { LoginPage } from "../modules/auth/pages/LoginPage";
@@ -172,7 +173,7 @@ export const AppRouter: React.FC = () => {
           path="/call-center"
           element={
             <RoleGuard roles={CALL_CENTER_ROLES}>
-              <CallCenterPage />
+              <React.Suspense fallback={<PageLoader />}><CallCenterPage /></React.Suspense>
             </RoleGuard>
           }
         />
@@ -254,4 +255,3 @@ export const AppRouter: React.FC = () => {
     </Routes>
   );
 };
-

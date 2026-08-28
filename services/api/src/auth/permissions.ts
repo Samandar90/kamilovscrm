@@ -76,10 +76,10 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     ai: ["read", "create"],
   },
 
-  /** Оператор колл-центра: расписание без доступа к карточкам пациентов и без создания записей. */
+  /** Оператор колл-центра: создание и изменение записей без финансов и клинических полей. */
   operator: {
     patients: ["read", "create"],
-    appointments: ["read", "update"],
+    appointments: ["read", "create", "update"],
     callcenter: ["read", "update"],
     ai: ["read", "create"],
   },

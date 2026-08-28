@@ -412,6 +412,21 @@ export class AppointmentsService {
       throw new ApiError(400, "Service price is invalid");
     }
 
+    if (auth.role === "operator") {
+      // Booking access does not grant commercial-price access. Ignore client prices
+      // (including normal catalog values sent by the form) and derive every fee.
+      normalizedPayload.price = Math.round(servicePrice);
+      if (normalizedPayload.serviceLines?.length) {
+        normalizedPayload.serviceLines = await Promise.all(normalizedPayload.serviceLines.map(async line => {
+          const catalogPrice = line.serviceId === normalizedPayload.serviceId
+            ? servicePrice
+            : await this.appointmentsRepository.getServicePrice(line.serviceId);
+          if (catalogPrice === null || catalogPrice < 0) throw new ApiError(400, "Service price is invalid");
+          return { ...line, price: Math.round(catalogPrice) };
+        }));
+      }
+    }
+
     const payloadToCreate: AppointmentCreateInput = {
       ...normalizedPayload,
       price: normalizedPayload.price ?? Math.round(servicePrice),

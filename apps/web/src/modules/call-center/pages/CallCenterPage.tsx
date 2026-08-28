@@ -1,343 +1,99 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { CalendarDays, ChevronLeft, ChevronRight, Phone, Plus, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Clock3, Headphones, History, ListFilter, PhoneCall, RefreshCw, Search, Settings2, Users, UserRoundCheck, CalendarClock, RotateCcw, LockKeyhole } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
-import {
-  callCenterApi,
-  CALL_OUTCOMES,
-  type CallOutcome,
-  type CallQueueItem,
-  type CallReminderRule,
-} from "../api/callCenterApi";
+import { workspaceApi, type Segment, type WorkspacePatient, type WorkspaceResponse } from "../api/workspaceApi";
+import { PatientCallPanel } from "../components/PatientCallPanel";
+import { WorkspaceSettingsPanel } from "../components/WorkspaceSettingsPanel";
+import { ContactHistory } from "../components/ContactHistory";
+import { formatContact, formatVisit, patientKey } from "../workspaceUtils";
+import "../workspace.css";
 
-/** Локальная (настенная) дата клиники. */
-const localDate = (d = new Date()): string => {
-  const pad = (n: number): string => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
-
-const shiftDate = (date: string, days: number): string => {
-  const d = new Date(`${date}T12:00:00`);
-  d.setDate(d.getDate() + days);
-  return localDate(d);
-};
-
-const formatDate = (iso: string): string => {
-  const d = new Date(`${iso}T12:00:00`);
-  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" });
-};
-
-const OUTCOME_CHIP: Record<CallOutcome, string> = {
-  confirmed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  no_answer: "bg-amber-50 text-amber-700 border-amber-200",
-  rescheduled: "bg-sky-50 text-sky-700 border-sky-200",
-  cancelled: "bg-rose-50 text-rose-700 border-rose-200",
-};
-
-const outcomeKey = (outcome: CallOutcome): string =>
-  `callCenter.outcomes.${outcome === "no_answer" ? "noAnswer" : outcome}`;
-
-const itemKey = (item: Pick<CallQueueItem, "appointmentId" | "daysBefore">): string =>
-  `${item.appointmentId}:${item.daysBefore}`;
-
+const segments: { id: Segment; icon: typeof Users }[] = [
+  { id: "base", icon: Users }, { id: "recall", icon: RotateCcw }, { id: "followup", icon: UserRoundCheck },
+  { id: "reminder", icon: CalendarClock }, { id: "callbacks", icon: Clock3 },
+];
 export const CallCenterPage: React.FC = () => {
-  const { t } = useTranslation();
-  const { user: me } = useAuth();
-  const isAdmin = me?.role === "superadmin";
-
-  const [rules, setRules] = React.useState<CallReminderRule[]>([]);
-  const [newDays, setNewDays] = React.useState<string>("");
-  const [queue, setQueue] = React.useState<CallQueueItem[]>([]);
-  const [date, setDate] = React.useState<string>(localDate());
+  const { t, i18n } = useTranslation();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "superadmin";
+  const [tab, setTab] = React.useState<"workspace" | "history" | "settings">("workspace");
+  const [segment, setSegment] = React.useState<Segment>("base");
+  const [search, setSearch] = React.useState("");
+  const [debouncedSearch, setDebouncedSearch] = React.useState("");
+  const [status, setStatus] = React.useState("all");
+  const [doctorId, setDoctorId] = React.useState("");
+  const [operatorId, setOperatorId] = React.useState("");
+  const [page, setPage] = React.useState(1);
+  const [data, setData] = React.useState<WorkspaceResponse | null>(null);
+  const [selected, setSelected] = React.useState<WorkspacePatient | null>(null);
+  const [dirty, setDirty] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
-  const [savingKey, setSavingKey] = React.useState<string | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
-  const [notes, setNotes] = React.useState<Map<string, string>>(new Map());
-
-  const loadRules = React.useCallback(async () => {
-    try {
-      setRules(await callCenterApi.listRules());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("callCenter.loadError"));
-    }
-  }, []);
-
-  const loadQueue = React.useCallback(async (targetDate: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const rows = await callCenterApi.queue(targetDate);
-      setQueue(rows);
-      setNotes(new Map(rows.map((r) => [itemKey(r), r.log?.note ?? ""])));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("callCenter.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
+  const [error, setError] = React.useState("");
+  const [success, setSuccess] = React.useState(false);
+  const [revision, setRevision] = React.useState(0);
+  React.useEffect(() => { const timer = window.setTimeout(() => { setDebouncedSearch(search); setPage(1); }, 300); return () => window.clearTimeout(timer); }, [search]);
   React.useEffect(() => {
-    void loadRules();
-  }, [loadRules]);
-
+    const controller = new AbortController();
+    setLoading(true); setError("");
+    workspaceApi.list({ segment, search: debouncedSearch, page, status, doctorId, operatorId }, controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        setData(result);
+        setSelected((current) => current ? result.items.find((item) => patientKey(item) === patientKey(current)) ?? current : null);
+      })
+      .catch((e: unknown) => { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : t("callWorkspace.loadError")); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [segment, debouncedSearch, page, status, doctorId, operatorId, revision, t]);
   React.useEffect(() => {
-    void loadQueue(date);
-  }, [date, loadQueue]);
-
-  const addRule = async () => {
-    const days = Number(newDays);
-    if (!Number.isInteger(days) || days < 0 || days > 30) {
-      setError(t("callCenter.ruleRangeError"));
-      return;
-    }
-    setError(null);
-    try {
-      await callCenterApi.addRule(days);
-      setNewDays("");
-      await loadRules();
-      await loadQueue(date);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("callCenter.saveError"));
-    }
+    if (!dirty) return;
+    const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", guard); return () => window.removeEventListener("beforeunload", guard);
+  }, [dirty]);
+  const mayLeave = () => !dirty || window.confirm(t("callWorkspace.leaveDraft"));
+  const switchTab = (next: typeof tab) => { if (next !== tab && mayLeave()) { setSelected(null); setDirty(false); setTab(next); } };
+  const choose = (patient: WorkspacePatient | null) => { if (selected && patient && patientKey(selected) === patientKey(patient)) return; if (mayLeave()) { setDirty(false); setSelected(patient); setSuccess(false); } };
+  const switchSegment = (next: Segment) => { if (next !== segment && mayLeave()) { setDirty(false); setSelected(null); setSegment(next); setStatus("all"); setPage(1); } };
+  const saved = () => {
+    const index = data?.items.findIndex((p) => selected && patientKey(p) === patientKey(selected)) ?? -1;
+    setSelected(index >= 0 ? data?.items[index + 1] ?? null : null);
+    setDirty(false); setSuccess(true); setRevision((r) => r + 1);
   };
-
-  const removeRule = async (rule: CallReminderRule) => {
-    setError(null);
-    try {
-      await callCenterApi.removeRule(rule.id);
-      await loadRules();
-      await loadQueue(date);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("callCenter.saveError"));
-    }
-  };
-
-  const mark = async (item: CallQueueItem, outcome: CallOutcome) => {
-    const key = itemKey(item);
-    setSavingKey(key);
-    setError(null);
-    try {
-      const log = await callCenterApi.mark({
-        appointmentId: item.appointmentId,
-        daysBefore: item.daysBefore,
-        outcome,
-        note: notes.get(key)?.trim() || null,
-      });
-      setQueue((prev) =>
-        prev.map((row) => (itemKey(row) === key ? { ...row, log } : row))
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("callCenter.saveError"));
-    } finally {
-      setSavingKey(null);
-    }
-  };
-
-  const total = queue.length;
-  const done = queue.filter((item) => item.log !== null).length;
-
-  return (
-    <div className="space-y-4 p-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-[#0f172a]">{t("callCenter.title")}</h1>
-          <p className="text-sm text-[#64748b]">{t("callCenter.subtitle")}</p>
-        </div>
-        <div className="text-sm text-[#64748b]">
-          {t("callCenter.progress", { done, total })}
-        </div>
-      </header>
-
-      <section className="rounded-2xl border border-[#eef2f7] bg-white p-4">
-        <h2 className="text-sm font-semibold text-[#0f172a]">{t("callCenter.rulesTitle")}</h2>
-        <p className="mb-3 text-xs text-[#64748b]">
-          {isAdmin ? t("callCenter.rulesHintAdmin") : t("callCenter.rulesHint")}
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          {rules.length === 0 ? (
-            <span className="text-sm text-[#94a3b8]">{t("callCenter.noRules")}</span>
-          ) : (
-            rules.map((rule) => (
-              <span
-                key={rule.id}
-                className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700"
-              >
-                {rule.daysBefore === 0
-                  ? t("callCenter.ruleSameDay")
-                  : t("callCenter.ruleDaysBefore", { days: rule.daysBefore })}
-                {isAdmin ? (
-                  <button
-                    type="button"
-                    onClick={() => void removeRule(rule)}
-                    aria-label={t("callCenter.removeRule")}
-                    className="text-violet-400 transition hover:text-violet-700"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                ) : null}
-              </span>
-            ))
-          )}
-          {isAdmin ? (
-            <span className="inline-flex items-center gap-1.5">
-              <input
-                type="number"
-                min={0}
-                max={30}
-                value={newDays}
-                onChange={(e) => setNewDays(e.target.value)}
-                placeholder={t("callCenter.daysPlaceholder")}
-                className="w-24 rounded-lg border border-[#e2e8f0] bg-white px-2 py-1 text-xs text-[#0f172a]"
-              />
-              <button
-                type="button"
-                onClick={() => void addRule()}
-                className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
-              >
-                <Plus className="h-3 w-3" />
-                {t("callCenter.addRule")}
-              </button>
-            </span>
-          ) : null}
-        </div>
-      </section>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          className="rounded-lg border border-[#e2e8f0] bg-white p-2 text-[#334155] hover:bg-[#f8fafc]"
-          onClick={() => setDate((d) => shiftDate(d, -1))}
-          aria-label={t("attendance.prevDay")}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => e.target.value && setDate(e.target.value)}
-          className="rounded-lg border border-[#e2e8f0] bg-white px-3 py-1.5 text-sm text-[#0f172a]"
-        />
-        <button
-          className="rounded-lg border border-[#e2e8f0] bg-white p-2 text-[#334155] hover:bg-[#f8fafc]"
-          onClick={() => setDate((d) => shiftDate(d, 1))}
-          aria-label={t("attendance.nextDay")}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-        <button
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[#e2e8f0] bg-white px-3 py-1.5 text-sm text-[#334155] hover:bg-[#f8fafc]"
-          onClick={() => setDate(localDate())}
-        >
-          <CalendarDays className="h-4 w-4" />
-          {t("attendance.today")}
-        </button>
+  const pageCount = Math.max(1, Math.ceil((data?.total ?? 0) / (data?.pageSize || 30)));
+  const filterActive = Boolean(search || doctorId || operatorId || status !== "all");
+  return <div className="cc-workspace">
+    <header className="cc-header"><div className="cc-heading"><span className="cc-heading-icon"><Headphones size={24} /></span><div><h1>{t("callWorkspace.title")}</h1><p>{t("callWorkspace.subtitle")}</p></div></div><div className="cc-header-actions"><span className="cc-timezone"><Clock3 size={14} />{t("callWorkspace.timezoneShort")}</span><button type="button" className="cc-icon-btn" disabled={loading} onClick={() => setRevision((r) => r + 1)} aria-label={t("callWorkspace.refresh")}><RefreshCw size={17} className={loading ? "cc-spin" : ""} /></button></div></header>
+    <nav className="cc-tabs" aria-label={t("callWorkspace.navigation")}>
+      {([{ id: "workspace", icon: PhoneCall }, { id: "history", icon: History }, ...(isAdmin ? [{ id: "settings", icon: Settings2 }] : [])] as const).map(({ id, icon: Icon }) => <button type="button" key={id} aria-current={tab === id ? "page" : undefined} className={tab === id ? "is-active" : ""} onClick={() => switchTab(id as typeof tab)}><Icon size={16} />{t("callWorkspace." + id)}</button>)}
+      <span className="cc-tabs-caption">{t("callWorkspace.noAutoCalls")}</span>
+    </nav>
+    {success && <div className="cc-success" role="status"><Check size={17} />{t("callWorkspace.callSaved")}</div>}
+    {error && <div className="cc-error" role="alert"><span>{error}</span><button type="button" onClick={() => setRevision((r) => r + 1)}>{t("callWorkspace.retry")}</button></div>}
+    {tab === "settings" ? data ? <WorkspaceSettingsPanel settings={data.settings} onDirty={setDirty} onSaved={(settings) => { setData((d) => d ? { ...d, settings } : d); setDirty(false); setRevision((r) => r + 1); }} /> : <div className="cc-empty" role="status">{t("callWorkspace.loading")}</div> : tab === "history" ? <div className="cc-history-page"><header className="cc-section-heading"><div><h2>{t("callWorkspace.history")}</h2><p>{t("callWorkspace.historyHint")}</p></div><History size={24} /></header><ContactHistory revision={revision} /></div> : <>
+      <nav className="cc-segments" aria-label={t("callWorkspace.campaigns")}>{segments.map(({ id, icon: Icon }) => <button type="button" key={id} className={segment === id ? "is-active" : ""} aria-pressed={segment === id} onClick={() => switchSegment(id)}><span className="cc-segment-top"><Icon size={18} /><strong>{data?.counts[id] ?? "—"}</strong></span><span>{t(`callWorkspace.segments.${id}`)}</span><small>{t(`callWorkspace.segmentDescriptions.${id}`)}</small></button>)}</nav>
+      <div className={"cc-desk" + (selected ? " has-selection" : "")}>
+        <section className="cc-patient-list" aria-label={t(`callWorkspace.segments.${segment}`)}>
+          <header className="cc-list-heading"><div><h2>{t(`callWorkspace.segments.${segment}`)}<span className="cc-count">{data?.total ?? "—"}</span></h2><p>{t(`callWorkspace.listHints.${segment}`)}</p></div><ListFilter size={18} /></header>
+          <div className="cc-filters"><label className="cc-search"><Search size={17} /><span className="cc-sr-only">{t("callWorkspace.search")}</span><input type="search" placeholder={t("callWorkspace.search")} value={search} onChange={(e) => setSearch(e.target.value)} /></label><div className="cc-select-filters">
+            <select aria-label={t("callWorkspace.status")} value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}><option value="all">{t("callWorkspace.allStatuses")}</option>{["new", "callback", "overdue", "done"].map((s) => <option value={s} key={s}>{t(`callWorkspace.statuses.${s}`)}</option>)}</select>
+            <select aria-label={t("callWorkspace.doctor")} value={doctorId} onChange={(e) => { setDoctorId(e.target.value); setPage(1); }}><option value="">{t("callWorkspace.allDoctors")}</option>{data?.doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}</select>
+            <select aria-label={t("callWorkspace.operator")} value={operatorId} onChange={(e) => { setOperatorId(e.target.value); setPage(1); }}><option value="">{t("callWorkspace.allOperators")}</option>{data?.operators.map((operator) => <option key={operator.id} value={operator.id}>{operator.name}</option>)}</select>
+          </div></div>
+          {loading ? <div className="cc-loading" role="status"><div className="cc-skeleton" /><div className="cc-skeleton" /><div className="cc-skeleton" /><p>{t("callWorkspace.loading")}</p></div> : error ? <div className="cc-empty"><p>{t("callWorkspace.retryLoad")}</p></div> : !data?.items.length ? <div className="cc-empty"><Users size={32} /><h3>{t(filterActive ? "callWorkspace.noMatches" : "callWorkspace.emptyTitle")}</h3><p>{t(filterActive ? "callWorkspace.noMatchesHint" : `callWorkspace.emptyHints.${segment}`)}</p>{filterActive ? <button className="cc-btn" onClick={() => { setSearch(""); setStatus("all"); setDoctorId(""); setOperatorId(""); setPage(1); }}>{t("callWorkspace.resetFilters")}</button> : segment !== "base" && <button className="cc-btn" onClick={() => switchSegment("base")}>{t("callWorkspace.openBase")}</button>}</div> : <div className="cc-table-scroll"><table className="cc-table"><thead><tr><th>{t("callWorkspace.patient")}</th><th>{t(segment === "reminder" ? "callWorkspace.nextVisit" : "callWorkspace.lastVisit")}</th><th>{t("callWorkspace.contact")}</th><th><span className="cc-sr-only">{t("callWorkspace.openPatient")}</span></th></tr></thead><tbody>{data.items.map((patient) => {
+            const overdue = patient.status === "callback" && patient.dueAt && Date.parse(patient.dueAt) < Date.now();
+            const locked = patient.claimedBy !== null && Date.parse(patient.claimExpiresAt || "") > Date.now();
+            return <tr key={patientKey(patient)} className={selected && patientKey(selected) === patientKey(patient) ? "is-selected" : ""} onClick={() => choose(patient)}>
+              <td><div className="cc-table-patient"><span className="cc-avatar">{patient.patientName.trim().split(/\s+/).slice(0, 2).map((s) => s[0]).join("")}</span><div><button type="button" className="cc-patient-name" onClick={(e) => { e.stopPropagation(); choose(patient); }}>{patient.patientName}</button><span className="cc-table-phone">{patient.phone || t("callWorkspace.noPhone")}</span></div></div></td>
+              <td><span className="cc-table-date">{formatVisit(segment === "reminder" ? patient.nextVisitAt : patient.lastVisitAt)}</span><small>{segment === "reminder" ? patient.nextDoctorName || "—" : patient.lastDoctorName || t("callWorkspace.noCompletedVisits")}</small></td>
+              <td><span className={"cc-status cc-status-" + (overdue ? "overdue" : patient.status)}>{t(`callWorkspace.statuses.${overdue ? "overdue" : patient.status}`)}</span><small>{locked ? <><LockKeyhole size={11} />{patient.claimedByName}</> : patient.dueAt ? formatContact(patient.dueAt, i18n.language) : patient.lastContactAt ? formatContact(patient.lastContactAt, i18n.language) : t("callWorkspace.noContact")}</small></td>
+              <td><ChevronRight size={16} /></td>
+            </tr>;
+          })}</tbody></table></div>}
+          <footer className="cc-list-footer"><span>{t("callWorkspace.totalPatients", { count: data?.total ?? 0 })}</span><div className="cc-pagination"><button type="button" className="cc-icon-btn" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)} aria-label={t("callWorkspace.prev")}><ChevronLeft size={16} /></button><span>{page} / {pageCount}</span><button type="button" className="cc-icon-btn" disabled={page >= pageCount || loading} onClick={() => setPage((p) => p + 1)} aria-label={t("callWorkspace.next")}><ChevronRight size={16} /></button></div></footer>
+        </section>
+        {selected && data ? <PatientCallPanel key={patientKey(selected)} patient={selected} settings={data.settings} operators={data.operators} userId={user?.id ?? 0} isAdmin={isAdmin} onClose={() => choose(null)} onSaved={saved} onDirty={setDirty} /> : <aside className="cc-desk-guide"><div className="cc-guide-mark"><PhoneCall size={34} /></div><h2>{t("callWorkspace.guideTitle")}</h2><p>{t("callWorkspace.guideHint")}</p><ol><li><Users size={17} /><span>{t("callWorkspace.guidePick")}</span></li><li><PhoneCall size={17} /><span>{t("callWorkspace.guideCall")}</span></li><li><Check size={17} /><span>{t("callWorkspace.guideSave")}</span></li></ol><div className="cc-guide-note"><LockKeyhole size={16} /><span>{t("callWorkspace.guideLock")}</span></div></aside>}
       </div>
-
-      {error ? <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
-
-      <div className="overflow-x-auto rounded-2xl border border-[#eef2f7] bg-white">
-        {loading ? (
-          <p className="px-4 py-6 text-sm text-[#64748b]">{t("common.states.loading")}</p>
-        ) : queue.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-[#64748b]">
-            {rules.length === 0 ? t("callCenter.noRulesQueue") : t("callCenter.emptyQueue")}
-          </p>
-        ) : (
-          <table className="w-full min-w-[960px] text-left text-sm">
-            <thead className="bg-[#f8fafc] text-xs uppercase tracking-wide text-[#64748b]">
-              <tr>
-                <th className="px-4 py-3">{t("callCenter.reminder")}</th>
-                <th className="px-3 py-2">{t("callCenter.patient")}</th>
-                <th className="px-3 py-2">{t("callCenter.phone")}</th>
-                <th className="px-3 py-2">{t("callCenter.appointment")}</th>
-                <th className="px-3 py-2">{t("callCenter.result")}</th>
-                <th className="px-3 py-2">{t("attendance.note")}</th>
-                <th className="px-3 py-2">{t("callCenter.markCall")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {queue.map((item) => {
-                const key = itemKey(item);
-                const rowBusy = savingKey === key;
-                return (
-                  <tr key={key} className="border-t border-[#eef2f7]">
-                    <td className="px-4 py-3">
-                      <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
-                        {item.daysBefore === 0
-                          ? t("callCenter.ruleSameDay")
-                          : t("callCenter.ruleDaysBefore", { days: item.daysBefore })}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 font-medium text-[#0f172a]">{item.patientName}</td>
-                    <td className="px-3 py-2">
-                      {item.patientPhone ? (
-                        <a
-                          href={`tel:${item.patientPhone}`}
-                          className="inline-flex items-center gap-1 text-emerald-700 hover:underline"
-                        >
-                          <Phone className="h-3.5 w-3.5" />
-                          {item.patientPhone}
-                        </a>
-                      ) : (
-                        <span className="text-xs text-[#94a3b8]">{t("callCenter.noPhone")}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-[#334155]">
-                      {formatDate(item.appointmentDate)} · {item.appointmentTime}
-                      <div className="text-xs text-[#64748b]">{item.doctorName}</div>
-                    </td>
-                    <td className="px-3 py-2">
-                      {item.log ? (
-                        <div>
-                          <span
-                            className={`rounded-full border px-2 py-0.5 text-xs font-medium ${OUTCOME_CHIP[item.log.outcome]}`}
-                          >
-                            {t(outcomeKey(item.log.outcome))}
-                          </span>
-                          <div className="mt-1 text-xs text-[#94a3b8]">
-                            {item.log.calledByName ?? ""}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-[#94a3b8]">{t("callCenter.notCalled")}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        type="text"
-                        value={notes.get(key) ?? ""}
-                        placeholder={t("attendance.notePlaceholder")}
-                        onChange={(e) =>
-                          setNotes((prev) => new Map(prev).set(key, e.target.value))
-                        }
-                        className="w-36 rounded-lg border border-[#e2e8f0] bg-white px-2 py-1 text-xs text-[#0f172a]"
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex flex-wrap gap-1.5">
-                        {CALL_OUTCOMES.map((outcome) => (
-                          <button
-                            key={outcome}
-                            type="button"
-                            onClick={() => void mark(item, outcome)}
-                            disabled={savingKey !== null}
-                            className={`rounded-md border px-2 py-1 text-xs font-medium transition disabled:opacity-50 ${
-                              item.log?.outcome === outcome
-                                ? OUTCOME_CHIP[outcome]
-                                : "border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc]"
-                            }`}
-                          >
-                            {rowBusy ? "…" : t(outcomeKey(outcome))}
-                          </button>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-  );
+    </>}
+  </div>;
 };

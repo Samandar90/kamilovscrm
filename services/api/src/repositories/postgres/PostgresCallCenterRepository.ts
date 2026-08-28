@@ -1,5 +1,6 @@
 import { dbPool } from "../../config/database";
 import { requireClinicId } from "../../tenancy/clinicContext";
+import { ApiError } from "../../middleware/errorHandler";
 import type { ICallCenterRepository } from "../interfaces/ICallCenterRepository";
 import type {
   CallMarkInput,
@@ -89,11 +90,11 @@ export class PostgresCallCenterRepository implements ICallCenterRepository {
           AND a.deleted_at IS NULL
           AND a.status IN ('scheduled', 'confirmed')
           AND (a.start_at AT TIME ZONE 'UTC')::date = $2::date + r.days_before
-        JOIN patients p ON p.id = a.patient_id
-        JOIN doctors d ON d.id = a.doctor_id
+        JOIN patients p ON p.id = a.patient_id AND p.clinic_id = $1 AND p.deleted_at IS NULL
+        JOIN doctors d ON d.id = a.doctor_id AND d.clinic_id = $1
         LEFT JOIN call_reminder_logs l
-          ON l.appointment_id = a.id AND l.days_before = r.days_before
-        LEFT JOIN users cu ON cu.id = l.called_by
+          ON l.appointment_id = a.id AND l.days_before = r.days_before AND l.clinic_id = $1
+        LEFT JOIN users cu ON cu.id = l.called_by AND cu.clinic_id = $1
         WHERE r.clinic_id = $1
         ORDER BY r.days_before DESC, a.start_at, a.id
       `,
@@ -132,20 +133,25 @@ export class PostgresCallCenterRepository implements ICallCenterRepository {
       `
         INSERT INTO call_reminder_logs
           (clinic_id, appointment_id, days_before, outcome, note, called_by)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        SELECT $1, a.id, $3, $4, $5, $6 FROM appointments a
+        JOIN patients p ON p.id=a.patient_id AND p.clinic_id=$1 AND p.deleted_at IS NULL
+        JOIN users actor ON actor.id=$6 AND actor.clinic_id=$1 AND actor.deleted_at IS NULL
+        WHERE a.id=$2 AND a.clinic_id=$1 AND a.deleted_at IS NULL
         ON CONFLICT (appointment_id, days_before) DO UPDATE SET
           outcome = EXCLUDED.outcome,
           note = EXCLUDED.note,
           called_by = EXCLUDED.called_by,
           called_at = now()
+        WHERE call_reminder_logs.clinic_id = EXCLUDED.clinic_id
         RETURNING outcome, note, called_by, called_at
       `,
       [clinicId, input.appointmentId, input.daysBefore, input.outcome, input.note, input.calledBy]
     );
     const row = result.rows[0];
+    if (!row) throw new ApiError(404, "Запись не найдена в этой клинике");
     const nameResult = await dbPool.query<{ full_name: string | null }>(
-      `SELECT full_name FROM users WHERE id = $1 LIMIT 1`,
-      [input.calledBy]
+      `SELECT full_name FROM users WHERE id = $1 AND clinic_id = $2 LIMIT 1`,
+      [input.calledBy, clinicId]
     );
     return {
       outcome: row.outcome,
