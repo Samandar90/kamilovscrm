@@ -88,6 +88,18 @@ const normalizeOptionalPrice = (
   return Math.round(parsed);
 };
 
+/** A calendar date, never an instant: use the appointment's wall-clock date. */
+const validateRecommendedReturnDate = (value: unknown, startAt: string): void => {
+  if (value === undefined || value === null) return;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith("0000")) {
+    throw new ApiError(400, "Дата повторного приёма должна иметь формат YYYY-MM-DD");
+  }
+  const date = new Date(`${value}T00:00:00Z`);
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value || value <= startAt.slice(0, 10)) {
+    throw new ApiError(400, "Дата повторного приёма должна существовать и быть позже даты визита");
+  }
+};
+
 const normalizeOptionalQuantity = (value: unknown): number | undefined => {
   if (value === undefined || value === null) return undefined;
   const parsed = parseNumericInput(value);
@@ -271,6 +283,9 @@ const normalizeUpdateInput = (
   payload: AppointmentUpdateInput
 ): AppointmentUpdateInput => {
   const normalized: AppointmentUpdateInput = { ...payload };
+  // Complete-route payloads may carry an explicit undefined; preserve saved dates
+  // consistently with SQL, whose optional column updates already ignore it.
+  if (payload.recommendedReturnDate === undefined) delete normalized.recommendedReturnDate;
   if (payload.price !== undefined) {
     normalized.price = normalizeOptionalPrice(payload.price);
   }
@@ -357,8 +372,10 @@ export class AppointmentsService {
     assertAppointmentClinicalWriteAllowed(auth, {
       diagnosis: normalizedPayload.diagnosis ?? undefined,
       treatment: normalizedPayload.treatment ?? undefined,
+      recommendedReturnDate: normalizedPayload.recommendedReturnDate,
       notes: normalizedPayload.notes ?? undefined,
     });
+    validateRecommendedReturnDate(normalizedPayload.recommendedReturnDate, normalizedPayload.startAt);
     enforceDoctorSelfScopeOnWrite(auth, normalizedPayload.doctorId);
 
     if (auth.role === "doctor") {
@@ -476,8 +493,13 @@ export class AppointmentsService {
     assertAppointmentClinicalWriteAllowed(auth, {
       diagnosis: normalizedPayload.diagnosis,
       treatment: normalizedPayload.treatment,
+      recommendedReturnDate: normalizedPayload.recommendedReturnDate,
       notes: normalizedPayload.notes,
     });
+    validateRecommendedReturnDate(
+      normalizedPayload.recommendedReturnDate === undefined ? current.recommendedReturnDate : normalizedPayload.recommendedReturnDate,
+      normalizedPayload.startAt ?? current.startAt
+    );
 
     const isClinicalStaff = isDoctorScopedRole(auth.role);
     if (isClinicalStaff) {

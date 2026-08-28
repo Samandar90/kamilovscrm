@@ -38,6 +38,7 @@ type AppointmentRow = {
   created_by_user_id: number | null;
   diagnosis: string | null;
   treatment: string | null;
+  recommended_return_date: string | null;
   notes: string | null;
   created_at: string | Date;
   updated_at: string | Date;
@@ -114,6 +115,7 @@ const mapAppointmentRow = (row: AppointmentRow): Appointment => ({
     row.created_by_user_id != null ? Number(row.created_by_user_id) : null,
   diagnosis: row.diagnosis,
   treatment: row.treatment,
+  recommendedReturnDate: row.recommended_return_date ?? null,
   notes: row.notes,
   createdAt: toIsoUtc(row.created_at),
   updatedAt: toIsoUtc(row.updated_at),
@@ -190,6 +192,7 @@ const SELECT_LIST = `
   created_by_user_id,
   diagnosis,
   treatment,
+  to_char(recommended_return_date, 'YYYY-MM-DD') AS recommended_return_date,
   notes,
   created_at,
   updated_at
@@ -443,9 +446,10 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
           treatment,
           notes,
           created_by_doctor_id,
-          created_by_user_id
+          created_by_user_id,
+          recommended_return_date
         )
-        VALUES ($1, $2, $3, $4, $5, $6::timestamptz, $7::timestamptz, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        VALUES ($1, $2, $3, $4, $5, $6::timestamptz, $7::timestamptz, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::date)
         RETURNING ${SELECT_LIST}
       `,
         [
@@ -466,6 +470,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
           data.notes ?? null,
           data.createdByDoctorId ?? null,
           data.createdByUserId ?? null,
+          data.recommendedReturnDate ?? null,
         ]
       );
 
@@ -564,6 +569,10 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     if (data.treatment !== undefined) {
       values.push(data.treatment);
       setClauses.push(`treatment = $${values.length}`);
+    }
+    if (data.recommendedReturnDate !== undefined) {
+      values.push(data.recommendedReturnDate);
+      setClauses.push(`recommended_return_date = $${values.length}::date`);
     }
     if (data.notes !== undefined) {
       values.push(data.notes);

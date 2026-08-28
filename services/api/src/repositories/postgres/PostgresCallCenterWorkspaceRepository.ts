@@ -3,7 +3,7 @@ import { requireClinicId } from "../../tenancy/clinicContext";
 import { nextRetryAt } from "../../services/callCenterWorkspaceService";
 import type { ICallCenterWorkspaceRepository } from "../interfaces/ICallCenterWorkspaceRepository";
 import { DEFAULT_WORKSPACE_SETTINGS } from "../interfaces/callCenterWorkspaceTypes";
-import type { ContactAttempt, WorkspaceAttemptInput, WorkspaceClaim, WorkspaceCounts, WorkspaceFilters, WorkspacePatient, WorkspaceResult, WorkspaceSettings } from "../interfaces/callCenterWorkspaceTypes";
+import type { ContactAttempt, ContactPreferences, WorkspaceAttemptInput, WorkspaceClaim, WorkspaceCounts, WorkspaceFilters, WorkspacePatient, WorkspaceResult, WorkspaceSettings } from "../interfaces/callCenterWorkspaceTypes";
 
 // Inject the pool so SQL tests can execute real PostgreSQL without loading application credentials.
 export interface WorkspaceQueryClient { query(sql: string, params?: unknown[]): Promise<{ rows: any[] }> }
@@ -22,10 +22,22 @@ const WORKSPACE_CTE = `WITH config AS (SELECT $2::jsonb AS s),
     SELECT p.id AS patient_id, p.full_name AS patient_name, p.phone,
       lv.id AS last_appointment_id, lv.start_at AS last_visit_at, lv.doctor_id AS last_doctor_id,
       lv.doctor_name AS last_doctor_name, COALESCE(lv.visits_count, 0) AS visits_count,
-      nv.id AS next_appointment_id, nv.start_at AS next_visit_at, nv.doctor_id AS next_doctor_id, nv.doctor_name AS next_doctor_name
-    FROM patients p
+      lv.recommended_return_date,
+      nv.id AS next_appointment_id, nv.start_at AS next_visit_at, nv.doctor_id AS next_doctor_id, nv.doctor_name AS next_doctor_name,
+      COALESCE(pref.do_not_call,false) AS do_not_call,pref.preferred_language,
+      to_char(pref.preferred_call_start,'HH24:MI') AS preferred_call_start,to_char(pref.preferred_call_end,'HH24:MI') AS preferred_call_end,
+      contact.calls_today,contact.last_contact_at,
+      CASE WHEN COALESCE(pref.do_not_call,false) THEN 'do_not_call'
+        WHEN NULLIF(btrim(p.phone),'') IS NULL THEN 'no_phone'
+        WHEN (now() AT TIME ZONE $3)::time < GREATEST((s->>'workStart')::time,COALESCE(pref.preferred_call_start,(s->>'workStart')::time))
+          OR (now() AT TIME ZONE $3)::time >= LEAST((s->>'workEnd')::time,COALESCE(pref.preferred_call_end,(s->>'workEnd')::time)) THEN 'outside_hours'
+        WHEN contact.calls_today >= (s->>'maxCallsPerDay')::int THEN 'daily_limit'
+        WHEN contact.last_contact_at > now()-(s->>'minContactIntervalMinutes')::int*interval '1 minute' THEN 'cooldown'
+        ELSE NULL END AS policy_block
+    FROM patients p CROSS JOIN config
+    LEFT JOIN call_center_patient_preferences pref ON pref.patient_id=p.id AND pref.clinic_id=$1
     LEFT JOIN LATERAL (
-      SELECT a.id, a.start_at, a.doctor_id, d.full_name AS doctor_name, count(*) OVER () AS visits_count
+      SELECT a.id, a.start_at, a.doctor_id, a.recommended_return_date, d.full_name AS doctor_name, count(*) OVER () AS visits_count
       FROM appointments a LEFT JOIN doctors d ON d.id=a.doctor_id AND d.clinic_id=$1
       WHERE a.patient_id=p.id AND a.clinic_id=$1 AND a.deleted_at IS NULL AND a.status='completed'
         AND (a.start_at AT TIME ZONE 'UTC') <= (now() AT TIME ZONE $3)
@@ -39,32 +51,65 @@ const WORKSPACE_CTE = `WITH config AS (SELECT $2::jsonb AS s),
         AND (a.start_at AT TIME ZONE 'UTC') > (now() AT TIME ZONE $3)
       ORDER BY a.start_at, a.id LIMIT 1
     ) nv ON true
+    LEFT JOIN LATERAL (
+      SELECT count(*) FILTER (WHERE (a.called_at AT TIME ZONE $3)::date=(now() AT TIME ZONE $3)::date) AS calls_today,
+        max(a.called_at) AS last_contact_at
+      FROM call_contact_attempts a WHERE a.patient_id=p.id AND a.clinic_id=$1
+    ) contact ON true
     WHERE p.clinic_id=$1 AND p.deleted_at IS NULL
   ), candidates AS (
-    SELECT patient_id, 'base'::text AS campaign, 'patient:' || patient_id AS episode_key, NULL::timestamptz AS default_due FROM patient_facts
+    SELECT patient_id, 'base'::text AS campaign, 'patient:' || patient_id AS episode_key, NULL::timestamptz AS default_due,
+      'base'::text AS segment,'base'::text AS reason FROM patient_facts
     UNION ALL
     SELECT f.patient_id, 'recall', 'visit:' || f.last_appointment_id,
-      ((f.last_visit_at AT TIME ZONE 'UTC') + (s->>'recallDays')::int * interval '1 day') AT TIME ZONE $3
+      CASE WHEN f.recommended_return_date IS NOT NULL THEN (f.recommended_return_date-(s->>'returnLeadDays')::int)::timestamp AT TIME ZONE $3
+        ELSE ((f.last_visit_at AT TIME ZONE 'UTC') + (s->>'recallDays')::int * interval '1 day') AT TIME ZONE $3 END,
+      'recall',CASE WHEN f.recommended_return_date IS NOT NULL THEN 'recommended_return' ELSE 'recall' END
     FROM patient_facts f CROSS JOIN config WHERE (s->>'recallEnabled')::boolean AND f.next_appointment_id IS NULL
-      AND (f.last_visit_at AT TIME ZONE 'UTC') <= (now() AT TIME ZONE $3) - (s->>'recallDays')::int * interval '1 day'
+      AND CASE WHEN f.recommended_return_date IS NOT NULL THEN f.recommended_return_date-(s->>'returnLeadDays')::int <= (now() AT TIME ZONE $3)::date
+        ELSE (f.last_visit_at AT TIME ZONE 'UTC') <= (now() AT TIME ZONE $3) - (s->>'recallDays')::int * interval '1 day' END
     UNION ALL
-    SELECT f.patient_id, 'followup', 'visit:' || f.last_appointment_id,
-      ((f.last_visit_at AT TIME ZONE 'UTC') + (s->>'followupDays')::int * interval '1 day') AT TIME ZONE $3
+    SELECT f.patient_id,
+      CASE WHEN (now() AT TIME ZONE $3)::date-(f.last_visit_at AT TIME ZONE 'UTC')::date > (s->>'followupMaxDays')::int THEN 'base' ELSE 'followup' END,
+      CASE WHEN (now() AT TIME ZONE $3)::date-(f.last_visit_at AT TIME ZONE 'UTC')::date > (s->>'followupMaxDays')::int THEN 'patient:' || f.patient_id ELSE 'visit:' || f.last_appointment_id END,
+      ((f.last_visit_at AT TIME ZONE 'UTC') + (s->>'followupDays')::int * interval '1 day') AT TIME ZONE $3,
+      CASE WHEN (now() AT TIME ZONE $3)::date-(f.last_visit_at AT TIME ZONE 'UTC')::date > (s->>'followupMaxDays')::int THEN 'archive' ELSE 'followup' END,'followup'
     FROM patient_facts f CROSS JOIN config WHERE (s->>'followupEnabled')::boolean
-      AND (f.last_visit_at AT TIME ZONE 'UTC') <= (now() AT TIME ZONE $3) - (s->>'followupDays')::int * interval '1 day'
+      AND (now() AT TIME ZONE $3)::date-(f.last_visit_at AT TIME ZONE 'UTC')::date >= (s->>'followupDays')::int
     UNION ALL
     SELECT f.patient_id, 'reminder', 'appointment:' || f.next_appointment_id,
-      ((f.next_visit_at AT TIME ZONE 'UTC') - (s->>'reminderDays')::int * interval '1 day') AT TIME ZONE $3
+      ((f.next_visit_at AT TIME ZONE 'UTC') - (s->>'reminderDays')::int * interval '1 day') AT TIME ZONE $3,'reminder','reminder'
     FROM patient_facts f CROSS JOIN config WHERE (s->>'reminderEnabled')::boolean
       AND (f.next_visit_at AT TIME ZONE 'UTC')::date <= (now() AT TIME ZONE $3)::date + (s->>'reminderDays')::int
+  ), pending_callbacks AS (
+    SELECT t.*,row_number() OVER(PARTITION BY t.patient_id ORDER BY t.due_at,t.id) AS callback_rank
+    FROM call_center_tasks t JOIN patient_facts p ON p.patient_id=t.patient_id
+    WHERE t.clinic_id=$1 AND t.status='callback' AND NOT(t.campaign='recall' AND p.next_appointment_id IS NOT NULL)
+  ), regular_work AS (
+    SELECT c.patient_id,c.campaign,c.episode_key,c.segment,t.id AS task_id,
+      COALESCE(t.status,'new') AS status,COALESCE(t.due_at,c.default_due) AS due_at,
+      COALESCE(t.attempts,0) AS attempts,t.assigned_to,
+      CASE WHEN t.status='callback' THEN 'callback' ELSE c.reason END AS reason
+    FROM candidates c JOIN patient_facts p ON p.patient_id=c.patient_id
+    LEFT JOIN call_center_tasks t ON t.clinic_id=$1 AND t.patient_id=c.patient_id AND t.campaign=c.campaign AND t.episode_key=c.episode_key
+    LEFT JOIN pending_callbacks cb ON cb.patient_id=c.patient_id AND cb.callback_rank=1
+    WHERE c.segment IN ('base','archive') OR
+      (NOT p.do_not_call AND NULLIF(btrim(p.phone),'') IS NOT NULL AND (cb.id IS NULL OR cb.id=t.id))
+  ), callback_work AS (
+    SELECT t.patient_id,t.campaign,t.episode_key,'callbacks'::text AS segment,t.id AS task_id,t.status,t.due_at,t.attempts,t.assigned_to,'callback'::text AS reason
+    FROM pending_callbacks t JOIN patient_facts p ON p.patient_id=t.patient_id
+    WHERE t.callback_rank=1 AND NOT p.do_not_call AND NULLIF(btrim(p.phone),'') IS NOT NULL
+  ), today_ranked AS (
+    SELECT w.*,row_number() OVER(PARTITION BY w.patient_id ORDER BY
+      CASE WHEN w.reason='callback' AND w.due_at<=now() THEN 0 WHEN w.reason='reminder' THEN 1
+        WHEN w.reason='recommended_return' THEN 2 WHEN w.reason='recall' THEN 3 WHEN w.reason='followup' THEN 4 ELSE 5 END,
+      w.due_at,w.task_id) AS day_rank
+    FROM (SELECT rw.* FROM regular_work rw JOIN patient_facts p ON p.patient_id=rw.patient_id
+        WHERE rw.segment NOT IN ('base','archive') AND rw.status='new' AND p.calls_today=0
+      UNION ALL SELECT * FROM callback_work WHERE due_at < ((now() AT TIME ZONE $3)::date+1)::timestamp AT TIME ZONE $3) w
   ), work AS (
-    SELECT c.patient_id, c.campaign, c.episode_key, c.campaign AS segment, t.id AS task_id,
-      COALESCE(t.status,'new') AS status, COALESCE(t.due_at,c.default_due) AS due_at,
-      COALESCE(t.attempts,0) AS attempts, t.assigned_to
-    FROM candidates c LEFT JOIN call_center_tasks t ON t.clinic_id=$1 AND t.patient_id=c.patient_id AND t.campaign=c.campaign AND t.episode_key=c.episode_key
-    UNION ALL
-    SELECT t.patient_id,t.campaign,t.episode_key,'callbacks',t.id,t.status,t.due_at,t.attempts,t.assigned_to
-    FROM call_center_tasks t JOIN patient_facts p ON p.patient_id=t.patient_id WHERE t.clinic_id=$1 AND t.status='callback'
+    SELECT * FROM regular_work UNION ALL SELECT * FROM callback_work
+    UNION ALL SELECT patient_id,campaign,episode_key,'today',task_id,status,due_at,attempts,assigned_to,reason FROM today_ranked WHERE day_rank=1
   )`;
 
 export class PostgresCallCenterWorkspaceRepository implements ICallCenterWorkspaceRepository {
@@ -72,9 +117,24 @@ export class PostgresCallCenterWorkspaceRepository implements ICallCenterWorkspa
 
   private async settings(client: WorkspaceQueryClient): Promise<WorkspaceSettings> {
     const result = await client.query("SELECT settings FROM call_center_settings WHERE clinic_id=$1", [requireClinicId()]);
-    return { ...DEFAULT_WORKSPACE_SETTINGS, ...result.rows[0]?.settings };
+    const settings = { ...DEFAULT_WORKSPACE_SETTINGS, ...result.rows[0]?.settings };
+    // Pre-upgrade settings may have a followup age beyond the new default upper bound.
+    if (result.rows[0]?.settings.followupMaxDays == null) settings.followupMaxDays = Math.max(settings.followupDays,settings.followupMaxDays);
+    return settings;
   }
   getSettings() { return this.settings(this.pool); }
+  async savePreferences(patientId: number, preferences: ContactPreferences, operatorId: number): Promise<ContactPreferences> {
+    return this.transaction(async client => {
+      await this.patient(client, patientId);
+      await this.operator(client, operatorId);
+      await client.query(`INSERT INTO call_center_patient_preferences(clinic_id,patient_id,do_not_call,preferred_language,preferred_call_start,preferred_call_end,updated_by)
+        VALUES($1,$2,$3,$4,$5::time,$6::time,$7) ON CONFLICT(clinic_id,patient_id) DO UPDATE SET
+          do_not_call=EXCLUDED.do_not_call,preferred_language=EXCLUDED.preferred_language,
+          preferred_call_start=EXCLUDED.preferred_call_start,preferred_call_end=EXCLUDED.preferred_call_end,updated_by=EXCLUDED.updated_by,updated_at=now()`,
+      [requireClinicId(),patientId,preferences.doNotCall,preferences.preferredLanguage,preferences.preferredCallStart,preferences.preferredCallEnd,operatorId]);
+      return preferences;
+    });
+  }
   async saveSettings(settings: WorkspaceSettings) {
     await this.pool.query(`INSERT INTO call_center_settings(clinic_id,settings) VALUES($1,$2::jsonb)
       ON CONFLICT(clinic_id) DO UPDATE SET settings=EXCLUDED.settings,updated_at=now()`, [requireClinicId(), JSON.stringify(settings)]);
@@ -87,16 +147,18 @@ export class PostgresCallCenterWorkspaceRepository implements ICallCenterWorkspa
       count(*) FILTER(WHERE segment='recall' AND status IN ('new','callback')) AS recall,
       count(*) FILTER(WHERE segment='followup' AND status IN ('new','callback')) AS followup,
       count(*) FILTER(WHERE segment='reminder' AND status IN ('new','callback')) AS reminder,
-      count(*) FILTER(WHERE segment='callbacks') AS callbacks FROM work`, this.params(settings));
+      count(*) FILTER(WHERE segment='callbacks') AS callbacks,
+      count(*) FILTER(WHERE segment='today') AS today,
+      count(*) FILTER(WHERE segment='archive') AS archive FROM work`, this.params(settings));
     const r = result.rows[0];
-    return { base: Number(r.base), recall: Number(r.recall), followup: Number(r.followup), reminder: Number(r.reminder), callbacks: Number(r.callbacks) };
+    return { base: Number(r.base), recall: Number(r.recall), followup: Number(r.followup), reminder: Number(r.reminder), callbacks: Number(r.callbacks), today: Number(r.today), archive: Number(r.archive) };
   }
   async workspace(filters: WorkspaceFilters): Promise<WorkspaceResult> {
     const settings = await this.getSettings();
     const params = [...this.params(settings), filters.segment, filters.status, `%${filters.search.replace(/[\\%_]/g, "\\$&")}%`, filters.doctorId, filters.operatorId];
     const filterSql = `FROM work w JOIN patient_facts p ON p.patient_id=w.patient_id WHERE w.segment=$4
       AND CASE $5::text
-        WHEN 'all' THEN (w.segment='base' OR w.status IN ('new','callback'))
+        WHEN 'all' THEN (w.segment IN ('base','archive') OR w.status IN ('new','callback'))
         WHEN 'new' THEN w.status='new'
         WHEN 'callback' THEN w.status='callback'
         WHEN 'overdue' THEN w.status IN ('new','callback') AND w.due_at < now()
@@ -104,10 +166,13 @@ export class PostgresCallCenterWorkspaceRepository implements ICallCenterWorkspa
       AND (p.patient_name ILIKE $6 OR COALESCE(p.phone,'') ILIKE $6)
       AND ($7::bigint IS NULL OR p.last_doctor_id=$7 OR p.next_doctor_id=$7)
       AND ($8::bigint IS NULL OR w.assigned_to=$8)`;
-    const [total, rows, counts, doctors, operators] = await Promise.all([
+    const order = `CASE WHEN $4='today' THEN CASE WHEN reason='callback' AND due_at<=now() THEN 0 WHEN reason='reminder' THEN 1 WHEN reason='recommended_return' THEN 2 WHEN reason='recall' THEN 3 WHEN reason='followup' THEN 4 ELSE 5 END ELSE 0 END,due_at ASC NULLS LAST,patient_name,patient_id,task_id`;
+    const [total, rows, counts, doctors, operators, progress] = await Promise.all([
       this.pool.query(`${WORKSPACE_CTE} SELECT count(*) AS total ${filterSql}`, params),
-      this.pool.query(`${WORKSPACE_CTE}, filtered AS (SELECT w.*, p.patient_name,p.phone,p.last_visit_at,p.last_doctor_id,p.last_doctor_name,p.visits_count,p.next_appointment_id,p.next_visit_at,p.next_doctor_name ${filterSql}
-        ORDER BY w.due_at ASC NULLS LAST,p.patient_name,p.patient_id,w.task_id LIMIT 30 OFFSET $9)
+      this.pool.query(`${WORKSPACE_CTE}, filtered AS (SELECT w.*, p.patient_name,p.phone,p.last_visit_at,p.last_doctor_id,p.last_doctor_name,p.visits_count,p.next_appointment_id,p.next_visit_at,p.next_doctor_name,
+          to_char(p.recommended_return_date,'YYYY-MM-DD') AS recommended_return_date,p.do_not_call,p.preferred_language,p.preferred_call_start,p.preferred_call_end,p.policy_block,
+          CASE WHEN EXISTS(SELECT 1 FROM pending_callbacks cb WHERE cb.patient_id=w.patient_id AND cb.callback_rank=1 AND (cb.id IS DISTINCT FROM w.task_id OR cb.due_at>now())) THEN 'callback_scheduled' ELSE NULL END AS callback_block ${filterSql}
+        ORDER BY ${order} LIMIT 30 OFFSET $9)
         SELECT f.*, au.full_name AS assigned_to_name, l.claimed_by, cu.full_name AS claimed_by_name,l.expires_at AS claim_expires_at,
           contact.outcome AS last_outcome,contact.called_at AS last_contact_at
         FROM filtered f
@@ -116,14 +181,19 @@ export class PostgresCallCenterWorkspaceRepository implements ICallCenterWorkspa
         LEFT JOIN users cu ON cu.id=l.claimed_by AND cu.clinic_id=$1
         LEFT JOIN LATERAL (SELECT a.outcome,a.called_at FROM call_contact_attempts a WHERE a.clinic_id=$1 AND a.patient_id=f.patient_id
           AND (f.campaign='base' OR a.task_id=f.task_id) ORDER BY a.called_at DESC,a.id DESC LIMIT 1) contact ON true
-        ORDER BY f.due_at ASC NULLS LAST,f.patient_name,f.patient_id,f.task_id`, [...params, (filters.page - 1) * 30]),
+        ORDER BY ${order}`, [...params, (filters.page - 1) * 30]),
       this.preview(settings),
       this.pool.query("SELECT id,full_name AS name FROM doctors WHERE clinic_id=$1 AND deleted_at IS NULL AND active=true ORDER BY full_name,id", [requireClinicId()]),
       this.pool.query("SELECT id,full_name AS name FROM users WHERE clinic_id=$1 AND deleted_at IS NULL AND is_active=true AND role IN ('operator','superadmin') ORDER BY full_name,id", [requireClinicId()]),
+      this.pool.query(`${WORKSPACE_CTE} SELECT (SELECT count(*) FROM patient_facts WHERE calls_today>0) AS completed,
+        (SELECT count(*) FROM work WHERE segment='today') AS pending`, this.params(settings)),
     ]);
     return {
       items: rows.rows.map((r): WorkspacePatient => ({
         patientId: Number(r.patient_id), patientName: r.patient_name, phone: r.phone,
+        contactPreferences: { doNotCall: r.do_not_call, preferredLanguage: r.preferred_language, preferredCallStart: r.preferred_call_start, preferredCallEnd: r.preferred_call_end },
+        recommendedReturnDate: r.recommended_return_date,
+        reason: r.reason, contactBlockReason: r.policy_block ?? r.callback_block,
         lastVisitAt: iso(r.last_visit_at), lastDoctorId: numberOrNull(r.last_doctor_id), lastDoctorName: r.last_doctor_name,
         nextAppointmentId: numberOrNull(r.next_appointment_id), nextVisitAt: iso(r.next_visit_at), nextDoctorName: r.next_doctor_name, visitsCount: Number(r.visits_count),
         taskId: numberOrNull(r.task_id), episodeKey: r.episode_key, campaign: r.campaign, dueAt: iso(r.due_at), status: r.status, attempts: Number(r.attempts),
@@ -131,6 +201,7 @@ export class PostgresCallCenterWorkspaceRepository implements ICallCenterWorkspa
         claimedBy: numberOrNull(r.claimed_by), claimedByName: r.claimed_by_name, claimExpiresAt: iso(r.claim_expires_at),
         lastOutcome: r.last_outcome, lastContactAt: iso(r.last_contact_at),
       })), total: Number(total.rows[0].total), page: filters.page, pageSize: 30, counts,
+      dailyProgress: { completed: Number(progress.rows[0].completed), pending: Number(progress.rows[0].pending) },
       doctors: doctors.rows.map(r => ({ id: Number(r.id), name: r.name })), operators: operators.rows.map(r => ({ id: Number(r.id), name: r.name })), settings,
     };
   }
@@ -178,20 +249,37 @@ export class PostgresCallCenterWorkspaceRepository implements ICallCenterWorkspa
     if (!result.rows[0]) throw new ApiError(400, "Оператор не найден в этой клинике");
     return result.rows[0];
   }
+  private async contactPolicy(client: WorkspaceQueryClient, patientId: number, settings: WorkspaceSettings, claiming: boolean) {
+    const result = await client.query(`${WORKSPACE_CTE} SELECT p.*,
+      CASE WHEN p.do_not_call THEN 'do_not_call'
+        WHEN NULLIF(btrim(p.phone),'') IS NULL THEN 'no_phone'
+        WHEN p.calls_today >= (s->>'maxCallsPerDay')::int THEN 'daily_limit'
+        WHEN p.last_contact_at > now()-(s->>'minContactIntervalMinutes')::int*interval '1 minute' THEN 'cooldown' ELSE NULL END AS attempt_block,
+      cb.id AS callback_id,cb.campaign AS callback_campaign,cb.episode_key AS callback_episode,cb.due_at>now() AS callback_future
+      FROM patient_facts p CROSS JOIN config LEFT JOIN pending_callbacks cb ON cb.patient_id=p.patient_id AND cb.callback_rank=1
+      WHERE p.patient_id=$4`, [...this.params(settings),patientId]);
+    const facts = result.rows[0];
+    const blocked = claiming ? facts.policy_block : facts.attempt_block;
+    if (blocked) throw new ApiError(409, blocked);
+    return facts;
+  }
   async claim(input: WorkspaceClaim): Promise<{ taskId: number }> {
     return this.transaction(async client => {
       const clinicId = requireClinicId();
       // Every claim/attempt locks the same clinic patient before reading the lease.
       await this.patient(client, input.patientId);
       await this.operator(client, input.operatorId);
+      const settings = await this.settings(client);
+      const facts = await this.contactPolicy(client, input.patientId, settings, true);
+      if (facts.callback_id != null && (facts.callback_future || facts.callback_campaign !== input.campaign || facts.callback_episode !== input.episodeKey)) throw new ApiError(409, "callback_scheduled");
+      if (input.campaign === "recall" && facts.next_appointment_id != null) throw new ApiError(409, "Пациент уже записан на прием");
       const lease = await client.query("SELECT claimed_by FROM call_patient_leases WHERE clinic_id=$1 AND patient_id=$2 AND expires_at>now()", [clinicId, input.patientId]);
       if (lease.rows[0] && Number(lease.rows[0].claimed_by) !== input.operatorId) throw new ApiError(409, "Пациент уже в работе у другого оператора");
       const existing = await client.query("SELECT * FROM call_center_tasks WHERE clinic_id=$1 AND patient_id=$2 AND campaign=$3 AND episode_key=$4 FOR UPDATE", [clinicId, input.patientId, input.campaign, input.episodeKey]);
       let task = existing.rows[0];
       if (task && task.status !== "callback" && input.campaign !== "base" && ["done", "exhausted"].includes(task.status)) throw new ApiError(409, "Задача уже завершена");
       if (!task || task.status !== "callback") {
-        const settings = await this.settings(client);
-        const valid = await client.query(`${WORKSPACE_CTE} SELECT * FROM candidates WHERE patient_id=$4 AND campaign=$5 AND episode_key=$6`, [...this.params(settings), input.patientId, input.campaign, input.episodeKey]);
+        const valid = await client.query(`${WORKSPACE_CTE} SELECT * FROM candidates WHERE patient_id=$4 AND campaign=$5 AND episode_key=$6 AND segment<>'archive'`, [...this.params(settings), input.patientId, input.campaign, input.episodeKey]);
         if (!valid.rows[0]) throw new ApiError(409, "Эпизод устарел. Обновите список пациентов");
         if (!task) {
           const created = await client.query(`INSERT INTO call_center_tasks(clinic_id,patient_id,campaign,episode_key,due_at) VALUES($1,$2,$3,$4,$5) RETURNING *`, [clinicId,input.patientId,input.campaign,input.episodeKey,valid.rows[0].default_due]);
@@ -230,9 +318,11 @@ export class PostgresCallCenterWorkspaceRepository implements ICallCenterWorkspa
       const lease = await client.query("SELECT task_id FROM call_patient_leases WHERE clinic_id=$1 AND patient_id=$2 AND task_id=$3 AND claimed_by=$4 AND expires_at>now()", [clinicId,patientId,input.taskId,input.operatorId]);
       if (!lease.rows[0]) throw new ApiError(409, "Сначала возьмите пациента в работу: блокировка отсутствует или истекла");
       const settings = await this.settings(client);
+      await this.contactPolicy(client, patientId, settings, false);
       const attempts = Number(task.attempts) + 1;
       const retry = input.outcome === "no_answer" && attempts < settings.maxAttempts;
-      const callbackAt = input.outcome === "callback" ? input.callbackAt : retry ? nextRetryAt(new Date(),settings,this.timeZone) : null;
+      const now = retry ? new Date((await client.query("SELECT now() AS now")).rows[0].now) : null;
+      const callbackAt = input.outcome === "callback" ? input.callbackAt : retry ? nextRetryAt(now!,settings,this.timeZone) : null;
       const status = input.outcome === "callback" || retry ? "callback" : input.outcome === "no_answer" ? "exhausted" : "done";
       const saved = await client.query(`INSERT INTO call_contact_attempts(clinic_id,task_id,patient_id,patient_name,campaign,outcome,note,called_by,called_by_name,callback_at,request_id)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`, [clinicId,input.taskId,patientId,patient.full_name,task.campaign,input.outcome,input.note,input.operatorId,user.full_name,callbackAt,input.requestId]);

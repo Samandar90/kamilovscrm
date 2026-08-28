@@ -18,13 +18,20 @@ export function WorkspaceSettingsPanel({ settings, onSaved, onDirty }: {
   const change = <K extends keyof WorkspaceSettings>(key: K, value: WorkspaceSettings[K]) => {
     setDraft((d) => ({ ...d, [key]: value })); setPreview(null); setSaved(false);
   };
+  const validate = () => {
+    if (!Number.isInteger(draft.followupMaxDays) || draft.followupMaxDays < draft.followupDays) {
+      setError(t("callWorkspace.invalidFollowupRange")); return false;
+    }
+    return true;
+  };
   const submit = async (event: React.FormEvent) => {
-    event.preventDefault(); setBusy(true); setError("");
+    event.preventDefault(); if (busy || !validate()) return; setBusy(true); setError("");
     try { const value = await workspaceApi.saveSettings(draft); setDraft(value); onSaved(value); setSaved(true); }
     catch (e) { setError(e instanceof Error ? e.message : t("callWorkspace.saveError")); }
     finally { setBusy(false); }
   };
   const showPreview = async () => {
+    if (busy || !validate()) return;
     setBusy(true); setError("");
     try { setPreview(await workspaceApi.preview(draft)); }
     catch (e) { setError(e instanceof Error ? e.message : t("callWorkspace.saveError")); }
@@ -42,6 +49,8 @@ export function WorkspaceSettingsPanel({ settings, onSaved, onDirty }: {
             <label className="cc-switch"><input type="checkbox" checked={draft[enabledKey]} onChange={(e) => change(enabledKey, e.target.checked)} aria-label={t(`callWorkspace.segments.${campaign}`)} /><span /></label>
           </div><p>{t(`callWorkspace.campaignHints.${campaign}`)}</p>
           <label className="cc-field"><span>{t(`callWorkspace.dayLabels.${campaign}`)}</span><input type="number" min={campaign === "reminder" ? 0 : 1} max={campaign === "recall" ? 3650 : 365} required value={Number.isNaN(draft[daysKey]) ? "" : draft[daysKey]} onChange={(e) => change(daysKey, e.target.value === "" ? NaN : Number(e.target.value))} /></label>
+          {campaign === "followup" && <label className="cc-field"><span>{t("callWorkspace.followupMaxDays")}</span><input type="number" min={draft.followupDays} max={365} required value={Number.isNaN(draft.followupMaxDays) ? "" : draft.followupMaxDays} onChange={(e) => change("followupMaxDays", e.target.value === "" ? NaN : Number(e.target.value))} /><small>{t("callWorkspace.followupMaxDaysHint")}</small></label>}
+          {campaign === "recall" && <label className="cc-field"><span>{t("callWorkspace.returnLeadDays")}</span><input type="number" min={0} max={365} required value={Number.isNaN(draft.returnLeadDays) ? "" : draft.returnLeadDays} onChange={(e) => change("returnLeadDays", e.target.value === "" ? NaN : Number(e.target.value))} /><small>{t("callWorkspace.returnLeadDaysHint")}</small></label>}
           {preview && <div className="cc-preview-count"><strong>{preview[campaign]}</strong> {t("callWorkspace.matches")}</div>}
         </section>;
       })}</div>
@@ -53,6 +62,8 @@ export function WorkspaceSettingsPanel({ settings, onSaved, onDirty }: {
           <label className="cc-field"><span>{t("callWorkspace.workEnd")}</span><input type="time" required value={draft.workEnd} onChange={(e) => change("workEnd", e.target.value)} /></label>
           <label className="cc-field"><span>{t("callWorkspace.retryMinutes")}</span><input type="number" min={5} max={10080} required value={Number.isNaN(draft.retryMinutes) ? "" : draft.retryMinutes} onChange={(e) => change("retryMinutes", e.target.value === "" ? NaN : Number(e.target.value))} /></label>
           <label className="cc-field"><span>{t("callWorkspace.maxAttempts")}</span><input type="number" min={1} max={20} required value={Number.isNaN(draft.maxAttempts) ? "" : draft.maxAttempts} onChange={(e) => change("maxAttempts", e.target.value === "" ? NaN : Number(e.target.value))} /></label>
+          <label className="cc-field"><span>{t("callWorkspace.maxCallsPerDay")}</span><input type="number" min={1} max={20} required value={Number.isNaN(draft.maxCallsPerDay) ? "" : draft.maxCallsPerDay} onChange={(e) => change("maxCallsPerDay", e.target.value === "" ? NaN : Number(e.target.value))} /></label>
+          <label className="cc-field"><span>{t("callWorkspace.minContactIntervalMinutes")}</span><input type="number" min={0} max={10080} required value={Number.isNaN(draft.minContactIntervalMinutes) ? "" : draft.minContactIntervalMinutes} onChange={(e) => change("minContactIntervalMinutes", e.target.value === "" ? NaN : Number(e.target.value))} /></label>
         </div><p className="cc-help">{t("callWorkspace.timezone")}</p>
       </fieldset>
       <fieldset disabled={busy}><legend>{t("callWorkspace.script")}</legend><p className="cc-muted">{t("callWorkspace.scriptHint")}</p>

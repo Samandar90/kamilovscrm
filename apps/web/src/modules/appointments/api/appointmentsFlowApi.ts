@@ -35,6 +35,7 @@ export type Appointment = {
   cancelledBy: number | null;
   diagnosis: string | null;
   treatment: string | null;
+  recommendedReturnDate?: string | null;
   notes: string | null;
   services?: Array<{
     serviceId: number;
@@ -242,7 +243,7 @@ export const appointmentsFlowApi = {
     token: string,
     appointmentId: number,
     payload: Partial<
-      Pick<Appointment, "status" | "diagnosis" | "treatment" | "notes" | "startAt">
+      Pick<Appointment, "status" | "diagnosis" | "treatment" | "notes" | "startAt" | "recommendedReturnDate">
     >
   ) =>
     requestJson<Appointment>(`/api/appointments/${appointmentId}`, {
@@ -254,7 +255,7 @@ export const appointmentsFlowApi = {
   completeAppointment: (
     token: string,
     appointmentId: number,
-    payload: Partial<Pick<Appointment, "diagnosis" | "treatment" | "notes">>
+    payload: Partial<Pick<Appointment, "diagnosis" | "treatment" | "notes" | "recommendedReturnDate">>
   ) =>
     requestJson<Appointment>(`/api/appointments/${appointmentId}/complete`, {
       method: "PATCH",

@@ -1,15 +1,20 @@
 import { requestJson } from "../../../api/http";
 
 export type Campaign = "base" | "recall" | "followup" | "reminder";
-export type Segment = Campaign | "callbacks";
+export type Segment = Campaign | "callbacks" | "today" | "archive";
 export type Outcome = "contacted" | "confirmed" | "no_answer" | "callback" | "declined" | "wrong_number";
 export type WorkspaceSettings = {
   recallEnabled: boolean; recallDays: number;
   followupEnabled: boolean; followupDays: number;
+  followupMaxDays: number; returnLeadDays: number; maxCallsPerDay: number; minContactIntervalMinutes: number;
   reminderEnabled: boolean; reminderDays: number;
   workStart: string; workEnd: string; retryMinutes: number; maxAttempts: number; script: string;
 };
 export type NamedOption = { id: number; name: string };
+export type ContactPreferences = {
+  doNotCall: boolean; preferredLanguage: "ru" | "uz" | null;
+  preferredCallStart: string | null; preferredCallEnd: string | null;
+};
 export type WorkspacePatient = {
   patientId: number; patientName: string; phone: string | null;
   lastVisitAt: string | null; lastDoctorName: string | null; lastDoctorId: number | null;
@@ -19,6 +24,9 @@ export type WorkspacePatient = {
   assignedTo: number | null; assignedToName: string | null;
   claimedBy: number | null; claimedByName: string | null; claimExpiresAt: string | null;
   lastOutcome: string | null; lastContactAt: string | null;
+  contactPreferences: ContactPreferences; recommendedReturnDate: string | null;
+  reason: "base" | "callback" | "reminder" | "recommended_return" | "recall" | "followup";
+  contactBlockReason: "do_not_call" | "no_phone" | "outside_hours" | "daily_limit" | "cooldown" | "callback_scheduled" | null;
 };
 export type ContactAttempt = {
   id: number; patientId: number; patientName: string; campaign: string; outcome: string;
@@ -28,6 +36,7 @@ export type Counts = Record<Segment, number>;
 export type WorkspaceResponse = {
   items: WorkspacePatient[]; total: number; page: number; pageSize: number; counts: Counts;
   doctors: NamedOption[]; operators: NamedOption[]; settings: WorkspaceSettings;
+  dailyProgress: { completed: number; pending: number };
 };
 export type WorkspaceFilters = {
   segment: Segment; search: string; page: number; status: string; doctorId: string; operatorId: string;
@@ -40,6 +49,7 @@ export const workspaceApi = {
     return requestJson<WorkspaceResponse>(`${base}/workspace?${query}`, { signal });
   },
   settings: () => requestJson<WorkspaceSettings>(`${base}/settings`),
+  savePreferences: (patientId: number, body: ContactPreferences) => requestJson<ContactPreferences>(`${base}/patients/${patientId}/preferences`, { method: "PUT", body }),
   saveSettings: (body: WorkspaceSettings) => requestJson<WorkspaceSettings>(`${base}/settings`, { method: "PUT", body }),
   preview: (body: WorkspaceSettings) => requestJson<Counts>(`${base}/preview`, { method: "POST", body }),
   history: (patientId?: number, page = 1, signal?: AbortSignal) =>

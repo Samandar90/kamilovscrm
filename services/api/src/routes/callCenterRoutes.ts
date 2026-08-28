@@ -12,7 +12,7 @@ import {
 import {
   getWorkspaceController, getWorkspaceSettingsController, saveWorkspaceSettingsController,
   previewWorkspaceController, workspaceHistoryController, claimWorkspaceController,
-  releaseWorkspaceController, workspaceAttemptController, assignWorkspaceController,
+  releaseWorkspaceController, workspaceAttemptController, assignWorkspaceController, savePatientPreferencesController,
 } from "../controllers/callCenterWorkspaceController";
 
 const router = Router();
@@ -27,6 +27,7 @@ router.post("/claim", checkPermission("callcenter", "update"), asyncHandler(clai
 router.post("/release", checkPermission("callcenter", "update"), asyncHandler(releaseWorkspaceController));
 router.post("/attempts", checkPermission("callcenter", "update"), asyncHandler(workspaceAttemptController));
 router.post("/assign", checkPermission("callcenter", "update"), asyncHandler(assignWorkspaceController));
+router.put("/patients/:patientId/preferences", checkPermission("callcenter", "update"), asyncHandler(savePatientPreferencesController));
 // Очередь и отметки — модуль callcenter (operator + superadmin).
 router.get("/rules", checkPermission("callcenter", "read"), asyncHandler(listCallRulesController));
 router.get("/queue", checkPermission("callcenter", "read"), asyncHandler(callQueueController));

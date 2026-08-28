@@ -119,6 +119,7 @@ export type Appointment = {
   createdByUserId?: number | null;
   diagnosis: string | null;
   treatment: string | null;
+  recommendedReturnDate?: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -181,6 +182,7 @@ export type AppointmentCreateInput = {
   cancelReason?: string | null;
   diagnosis: string | null;
   treatment: string | null;
+  recommendedReturnDate?: string | null;
   notes: string | null;
   createdByDoctorId?: number | null;
   createdByUserId?: number | null;

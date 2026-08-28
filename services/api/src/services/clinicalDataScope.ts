@@ -87,12 +87,13 @@ export function redactAppointmentClinicalFields(appointment: Appointment): Appoi
 export function assertAppointmentClinicalWriteAllowed(
   auth: AuthTokenPayload,
   payload: Partial<
-    Pick<AppointmentUpdateInput, "diagnosis" | "treatment" | "notes">
+    Pick<AppointmentUpdateInput, "diagnosis" | "treatment" | "notes" | "recommendedReturnDate">
   >
 ): void {
   if (
     payload.diagnosis === undefined &&
     payload.treatment === undefined &&
+    payload.recommendedReturnDate === undefined &&
     payload.notes === undefined
   ) {
     return;

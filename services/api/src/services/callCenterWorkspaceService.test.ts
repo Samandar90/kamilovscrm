@@ -17,6 +17,7 @@ describe("call center workspace validation", () => {
     { recallDays: 0 }, { followupDays: 1.5 }, { reminderDays: 366 }, { maxAttempts: 0 },
     { retryMinutes: 0 }, { recallEnabled: "true" }, { workStart: "19:00" }, { workEnd: "25:00" },
     { script: "x".repeat(5001) },
+    { followupMaxDays: 2 }, { followupMaxDays: 366 }, { returnLeadDays: -1 }, { maxCallsPerDay: 0 }, { minContactIntervalMinutes: -1 },
   ])("rejects invalid configuration %j", (patch) => {
     expect(() => parseWorkspaceSettings({ ...DEFAULT_WORKSPACE_SETTINGS, ...patch })).toThrow();
   });

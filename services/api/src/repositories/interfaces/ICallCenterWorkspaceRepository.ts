@@ -1,7 +1,8 @@
-import type { ContactAttempt, WorkspaceAttemptInput, WorkspaceClaim, WorkspaceCounts, WorkspaceFilters, WorkspaceResult, WorkspaceSettings } from "./callCenterWorkspaceTypes";
+import type { ContactAttempt, ContactPreferences, WorkspaceAttemptInput, WorkspaceClaim, WorkspaceCounts, WorkspaceFilters, WorkspaceResult, WorkspaceSettings } from "./callCenterWorkspaceTypes";
 
 export interface ICallCenterWorkspaceRepository {
   getSettings(): Promise<WorkspaceSettings>;
+  savePreferences(patientId: number, preferences: ContactPreferences, operatorId: number): Promise<ContactPreferences>;
   saveSettings(settings: WorkspaceSettings): Promise<WorkspaceSettings>;
   workspace(filters: WorkspaceFilters): Promise<WorkspaceResult>;
   preview(settings: WorkspaceSettings): Promise<WorkspaceCounts>;

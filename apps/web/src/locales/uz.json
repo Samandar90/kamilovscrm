@@ -1282,6 +1282,8 @@
     "noItems": "Belgilangan xizmatlar yo'q"
   },
   "doctorWorkspace": {
+    "returnDate": "Tavsiya etilgan qayta tashrif sanasi",
+    "returnDateHint": "Joriy qabul sanasidan keyin. Qo‘ng‘iroq markazi taklifni oldindan ko‘radi; maydonni bo‘sh qoldirish mumkin.",
     "errors": {
       "appointmentNotFound": "Qabul topilmadi",
       "invalidAppointmentId": "Noto'g'ri qabul ID",
@@ -1682,6 +1684,49 @@
     }
   },
   "callWorkspace": {
+    "dailyProgress": "Bugungi ishlar",
+    "dailyClinicScope": "Butun klinika · bugun · filtrlardan qat’i nazar",
+    "dailyCompleted": "Ishlov berilgan bemorlar",
+    "dailyPending": "Navbatda qolganlar",
+    "nextPatient": "Keyingi bemor",
+    "nextPatientHint": "O‘tish qo‘ng‘iroqni boshlamaydi. Saqlanmagan o‘zgarishlar bo‘lsa, tasdiqlash so‘raladi.",
+    "endOfPage": "Ro‘yxat tugadi. Navbatni yangilang yoki boshqa kampaniyani tanlang.",
+    "returnDate": "Shifokor tavsiyasiga ko‘ra qayta tashrif",
+    "contactPreferences": "Bog‘lanish istaklari",
+    "doNotCall": "Bemorga qo‘ng‘iroq qilmaslik",
+    "preferredLanguage": "Muloqot tili",
+    "notSpecified": "Ko‘rsatilmagan",
+    "preferredCallStart": "Qo‘ng‘iroq uchun qulay vaqt, dan",
+    "preferredCallEnd": "Gacha",
+    "preferredHoursHint": "Toshkent vaqti (UTC+5), klinika ish soatlari ichida. Ikkala maydonni to‘ldiring yoki ikkalasini tozalang.",
+    "savePreferences": "Istaklarni saqlash",
+    "savePreferencesFirst": "Avval bog‘lanish istaklaridagi o‘zgarishlarni saqlang.",
+    "preferencesSaved": "Bog‘lanish istaklari saqlandi.",
+    "invalidPreferredHours": "Ikkala vaqtni SS:DD formatida kiriting; boshlanish tugashdan oldin bo‘lishi kerak.",
+    "followupMaxDays": "Tashrifdan keyin eng kech, kun",
+    "followupMaxDaysHint": "Eski tashriflar arxivda qoladi va bugungi navbatga kirmaydi.",
+    "returnLeadDays": "Qayta tashrifdan necha kun oldin taklif qilish",
+    "returnLeadDaysHint": "Shifokor sanasi ustuvor. Umumiy qaytish muddati faqat tavsiya bo‘lmaganda qo‘llanadi.",
+    "maxCallsPerDay": "Bemorga bir kundagi qo‘ng‘iroqlar limiti",
+    "minContactIntervalMinutes": "Bemorga qo‘ng‘iroqlar oralig‘i, daqiqa",
+    "invalidFollowupRange": "Tashrifdan keyingi yuqori muddat quyi muddatdan kam bo‘lmasligi kerak.",
+    "languages": { "ru": "Ruscha", "uz": "O‘zbekcha" },
+    "reasons": {
+      "base": "Bemorlar bazasi",
+      "callback": "Qayta qo‘ng‘iroq belgilangan",
+      "reminder": "Qabul haqida eslatma",
+      "recommended_return": "Shifokor tavsiyasiga ko‘ra qayta tashrif",
+      "recall": "Anchadan beri tashrif bo‘lmagan",
+      "followup": "Tashrifdan keyingi aloqa"
+    },
+    "contactBlocks": {
+      "do_not_call": "Bemor qo‘ng‘iroq qilmaslikni so‘radi",
+      "no_phone": "Mos telefon raqami yo‘q",
+      "outside_hours": "Hozir qulay vaqt yoki klinika ish soatlaridan tashqari. Navbatni keyinroq yangilang.",
+      "daily_limit": "Bemorga bir kunlik qo‘ng‘iroqlar limitiga yetildi",
+      "cooldown": "Qo‘ng‘iroqlar orasidagi minimal vaqt hali o‘tmadi. Navbatni keyinroq yangilang.",
+      "callback_scheduled": "Qayta qo‘ng‘iroq keyinroq belgilangan. Belgilangan vaqtda navbatni yangilang."
+    },
     "title": "Qo‘ng‘iroq markazi",
     "subtitle": "Bemorlar, qo‘ng‘iroqlar va qayta tashriflar — bitta ish oynasida",
     "workspace": "Ish joyi",
@@ -1693,6 +1738,8 @@
     "refresh": "Yangilash",
     "noAutoCalls": "Qo‘ng‘iroqlarni operator bajaradi",
     "segments": {
+      "today": "Bugun",
+      "archive": "Arxiv",
       "base": "Bemorlar bazasi",
       "recall": "Bemorlarni qaytarish",
       "followup": "Tashrifdan so‘ng",
@@ -1700,6 +1747,8 @@
       "callbacks": "Qayta qo‘ng‘iroq"
     },
     "segmentDescriptions": {
+      "today": "Kunning ustuvor navbati",
+      "archive": "Eski tashriflar",
       "base": "Klinikaning barcha bemorlari",
       "recall": "Ancha vaqtdan beri kelmagan",
       "followup": "Ahvolini so‘rash",
@@ -1707,6 +1756,8 @@
       "callbacks": "Belgilangan qo‘ng‘iroqlar"
     },
     "listHints": {
+      "today": "Bir bemor — bir qator. Avval qayta qo‘ng‘iroqlar va qabullar, keyin shifokor tavsiyalari va boshqa vazifalar.",
+      "archive": "Aloqa muddati o‘tgan tashriflar. Qo‘ng‘iroq cheklovlari saqlanadi.",
       "base": "Baza darhol ochiq. Suhbatni boshlash uchun bemorni tanlang.",
       "recall": "Oxirgi tashrifdan belgilangan muddat o‘tgan, yangi yozuv yo‘q.",
       "followup": "Tugallangan qabuldan keyingi bemorlar bilan aloqa.",
@@ -1750,6 +1801,8 @@
     "resetFilters": "Filtrlarni tozalash",
     "openBase": "Bemorlar bazasini ochish",
     "emptyHints": {
+      "today": "Bugungi vazifalar tugadi. Bemorlarning to‘liq bazasi yonidagi bo‘limda mavjud.",
+      "archive": "Belgilangan aloqa muddatidan tashqaridagi tashriflar yo‘q.",
       "base": "«Bemorlar» bo‘limida bemorni ro‘yxatdan o‘tkazing — u shu yerda paydo bo‘ladi.",
       "recall": "Sozlamalarda qaytarish muddatini va kampaniya yoqilganini tekshiring.",
       "followup": "Bemorlar tugallangan qabullardan so‘ng paydo bo‘ladi. Muddat sozlamalarda belgilanadi.",
@@ -1818,7 +1871,7 @@
     },
     "matches": "qo‘ng‘iroq uchun mos",
     "retrySettings": "Takroriy qo‘ng‘iroqlar",
-    "retryHint": "«Bog‘lanib bo‘lmadi» keyingi urinishni ish vaqtiga belgilaydi.",
+    "retryHint": "«Bog‘lanib bo‘lmadi» keyingi urinishni ish vaqtiga belgilaydi. Kunlik limit va oraliq bemor uchun barcha kampaniya va operatorlarda amal qiladi.",
     "workStart": "Ish kuni boshlanishi",
     "workEnd": "Ish kuni tugashi",
     "retryMinutes": "Takrorlash oralig‘i, daqiqa",

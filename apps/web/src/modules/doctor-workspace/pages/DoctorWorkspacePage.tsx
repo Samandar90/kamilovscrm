@@ -12,6 +12,7 @@ type WorkspaceForm = {
   diagnosis: string;
   treatment: string;
   notes: string;
+  recommendedReturnDate: string;
 };
 
 const fieldClass =
@@ -35,6 +36,7 @@ export const DoctorWorkspacePage: React.FC = () => {
     diagnosis: "",
     treatment: "",
     notes: "",
+    recommendedReturnDate: "",
   });
   const [loading, setLoading] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);
@@ -78,6 +80,7 @@ export const DoctorWorkspacePage: React.FC = () => {
         diagnosis: found.diagnosis ?? "",
         treatment: found.treatment ?? "",
         notes: found.notes ?? "",
+        recommendedReturnDate: found.recommendedReturnDate ?? "",
       });
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t("common.errors.loadError"));
@@ -105,6 +108,7 @@ export const DoctorWorkspacePage: React.FC = () => {
         diagnosis: form.diagnosis.trim() || null,
         treatment: form.treatment.trim() || null,
         notes: form.notes.trim() || null,
+        recommendedReturnDate: form.recommendedReturnDate || null,
       });
       setAppointment(updated);
       setNotice(t("common.actions.saved"));
@@ -128,6 +132,7 @@ export const DoctorWorkspacePage: React.FC = () => {
         diagnosis: form.diagnosis.trim() || null,
         treatment: form.treatment.trim() || null,
         notes: form.notes.trim() || null,
+        recommendedReturnDate: form.recommendedReturnDate || null,
       });
       navigate("/appointments");
     } catch (requestError) {
@@ -358,6 +363,14 @@ export const DoctorWorkspacePage: React.FC = () => {
             placeholder={t("doctorWorkspace.form.prescriptionPlaceholder")}
             disabled={loading || submitting}
           />
+        </section>
+
+        <section className="space-y-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
+          <label htmlFor="recommended-return-date" className="text-sm font-semibold text-slate-800">{t("doctorWorkspace.returnDate")}</label>
+          <input id="recommended-return-date" type="date" value={form.recommendedReturnDate}
+            onChange={(e) => setForm((prev) => ({ ...prev, recommendedReturnDate: e.target.value }))}
+            className={fieldClass} disabled={loading || submitting || !appointment} />
+          <p className="text-xs text-slate-600">{t("doctorWorkspace.returnDateHint")}</p>
         </section>
 
         <div className="my-2 border-t border-slate-200" />
