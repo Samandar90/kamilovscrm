@@ -47,10 +47,7 @@ export const useNavigation = (): NavigationSection[] => {
           .map((item) => filterItemByRole(item, user.role))
           .filter((item): item is NavigationItem => item !== null);
 
-        return {
-          section: section.section,
-          items,
-        };
+        return { ...section, items };
       })
       .filter((section) => section.items.length > 0);
   }, [user]);

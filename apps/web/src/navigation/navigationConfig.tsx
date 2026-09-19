@@ -44,14 +44,13 @@ export type NavigationItem = {
 };
 
 export type NavigationSection = {
-  section: string;
-  sectionKey?: string;
+  /** i18n key of the section heading; also its React key, so it must be unique. */
+  sectionKey: string;
   items: NavigationItem[];
 };
 
 export const navigationConfig: NavigationSection[] = [
   {
-    section: "",
     sectionKey: "nav.main",
     items: [
       { label: "", labelKey: "pages.dashboard", path: "/dashboard", roles: DASHBOARD_NAV_ROLES, icon: LayoutDashboard },
@@ -64,12 +63,10 @@ export const navigationConfig: NavigationSection[] = [
     ],
   },
   {
-    section: "",
     sectionKey: "nav.reports",
     items: [{ label: "", labelKey: "pages.reports", path: "/reports", roles: REPORT_ROLES, icon: BarChart3 }],
   },
   {
-    section: "",
     sectionKey: "nav.billing",
     items: [
       {
@@ -87,7 +84,6 @@ export const navigationConfig: NavigationSection[] = [
     ],
   },
   {
-    section: "",
     sectionKey: "nav.admin",
     items: [
       { label: "", labelKey: "pages.users", path: "/users", roles: USERS_PAGE_ROLES, icon: UsersRound },

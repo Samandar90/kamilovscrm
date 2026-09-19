@@ -205,12 +205,12 @@ export const Sidebar: React.FC = () => {
 
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-3 pt-1">
         {sections.map((section) => (
-          <div key={section.sectionKey ?? section.section}>
+          <div key={section.sectionKey}>
             <div
               className="crm-sidebar-enter mb-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#94a3b8]"
               style={{ animationDelay: `${nextDelay()}ms` }}
             >
-              {section.sectionKey ? t(section.sectionKey) : section.section}
+              {t(section.sectionKey)}
             </div>
             <div className="space-y-0.5">
               {section.items.map((item) => (
