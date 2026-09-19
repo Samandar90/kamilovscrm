@@ -12,4 +12,8 @@ export interface IServicesRepository {
   update(id: number, data: ServiceUpdateInput): Promise<Service | null>;
   delete(id: number): Promise<boolean>;
   isServiceAssignedToDoctor(serviceId: number, doctorId: number): Promise<boolean>;
+  /** Links an existing service of the clinic to a doctor; idempotent. */
+  assignDoctor(serviceId: number, doctorId: number): Promise<void>;
+  /** Unlinks a service from a doctor. Returns false when the link did not exist. */
+  unassignDoctor(serviceId: number, doctorId: number): Promise<boolean>;
 }

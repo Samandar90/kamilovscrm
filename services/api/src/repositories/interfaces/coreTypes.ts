@@ -190,6 +190,13 @@ export type AppointmentCreateInput = {
 
 export type AppointmentUpdateInput = Partial<AppointmentCreateInput>;
 
+/** Resolved service line for replacing an appointment's services; the first line is the primary service. */
+export type AppointmentServiceLineReplacement = {
+  serviceId: number;
+  price: number;
+  quantity: number;
+};
+
 export type AppointmentServiceAssignment = {
   id: number;
   appointmentId: number;

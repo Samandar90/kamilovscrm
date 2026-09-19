@@ -28,6 +28,8 @@ export const PERMISSION_MODULES = [
   "attendance",
   // Колл-центр: очередь звонков-напоминаний. Правила настраивает superadmin (проверка в сервисе).
   "callcenter",
+  // Анкеты пациентов: общая база для всех врачей. Шаблоны — отдельная политика QUESTIONNAIRE_TEMPLATE_MANAGE.
+  "questionnaires",
 ] as const;
 
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];
@@ -49,6 +51,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     doctors: ["read"],
     services: ["read"],
     appointments: ["read", "create", "update", "delete"],
+    questionnaires: ["read", "create", "update"],
     ai: ["read", "create"],
   },
 
@@ -57,12 +60,14 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     doctors: ["read"],
     services: ["read"],
     appointments: ["read", "create", "update"],
+    questionnaires: ["read", "create", "update"],
     ai: ["read", "create"],
   },
 
   nurse: {
     patients: ["read", "create"],
     appointments: ["read", "update"],
+    questionnaires: ["read", "create", "update"],
     ai: ["read", "create"],
   },
 
@@ -101,6 +106,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     doctors: ["read"],
     services: ["read"],
     appointments: ["read", "create", "update", "delete"],
+    questionnaires: ["read", "create", "update", "delete"],
     invoices: ["read"],
     payments: ["read"],
     expenses: ["read", "create", "update", "delete"],
@@ -163,6 +169,15 @@ export const PERMISSIONS = {
   APPOINTMENT_CREATE: roleList("appointments", "create"),
   APPOINTMENT_UPDATE: roleList("appointments", "update"),
   APPOINTMENT_DELETE: roleList("appointments", "delete"),
+  QUESTIONNAIRE_READ: roleList("questionnaires", "read"),
+  QUESTIONNAIRE_CREATE: roleList("questionnaires", "create"),
+  QUESTIONNAIRE_UPDATE: roleList("questionnaires", "update"),
+  QUESTIONNAIRE_DELETE: roleList("questionnaires", "delete"),
+  /** Конструктор шаблонов анкет. Врач правит только свои шаблоны (проверка в сервисе). */
+  QUESTIONNAIRE_TEMPLATE_MANAGE: ["superadmin", "manager", "doctor"] as const satisfies readonly UserRole[],
+
+  /** /services/mine — врач сам ведёт свой список услуг (выбор из каталога и создание новой). */
+  DOCTOR_OWN_SERVICES: ["doctor"] as const satisfies readonly UserRole[],
   /** PATCH /appointments/:id/price — не выводится из module/action матрицы. */
   APPOINTMENT_COMMERCIAL_PRICE: ["superadmin", "reception", "manager"] as const satisfies readonly UserRole[],
 

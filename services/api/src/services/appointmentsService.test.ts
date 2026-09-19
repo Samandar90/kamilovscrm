@@ -80,3 +80,118 @@ describe("operator appointment booking boundary", () => {
     expect(getMockDb().appointmentServices.map(line => ({ serviceId: line.serviceId, price: line.price }))).toEqual([{ serviceId: 3, price: 100000 }, { serviceId: 4, price: 200000 }]);
   });
 });
+
+describe("multiple services per appointment", () => {
+  const reception = { ...operator, role: "reception" as const };
+  const addService = (id: number, price: number, duration: number, assigned = true) => {
+    getMockDb().services.push({ id, name: `Услуга ${id}`, category: "Приём", price, duration, active: true, createdAt });
+    if (assigned) getMockDb().doctorServices.push({ doctorId: 2, serviceId: id });
+  };
+  const lines = (appointmentId: number) =>
+    getMockDb().appointmentServices
+      .filter(line => line.appointmentId === appointmentId)
+      .map(line => ({ serviceId: line.serviceId, price: line.price, quantity: line.quantity }));
+
+  beforeEach(() => {
+    getMockDb().invoices = [];
+    addService(4, 200000, 45);
+    addService(5, 50000, 15);
+  });
+
+  it("books every selected service and sizes the slot to their total duration", async () => {
+    const saved = await service.create(reception, { ...input, serviceLines: [{ serviceId: 3 }, { serviceId: 4, price: 180000 }, { serviceId: 5 }] });
+    expect(saved.endAt).toBe("2099-08-27 11:30:00");
+    expect(lines(saved.id)).toEqual([
+      { serviceId: 3, price: 100000, quantity: 1 },
+      { serviceId: 4, price: 180000, quantity: 1 },
+      { serviceId: 5, price: 50000, quantity: 1 },
+    ]);
+  });
+
+  it("ignores client prices from roles without commercial price access", async () => {
+    getMockDb().patients[0].createdByDoctorId = 2;
+    const saved = await service.create(doctor, { ...input, price: 1, serviceLines: [{ serviceId: 3, price: 1 }, { serviceId: 4, price: 1 }] });
+    expect(saved.price).toBe(100000);
+    expect(lines(saved.id).map(line => line.price)).toEqual([100000, 200000]);
+  });
+
+  it("rejects a booked service that is not assigned to the doctor", async () => {
+    addService(6, 10000, 10, false);
+    await expect(service.create(reception, { ...input, serviceLines: [{ serviceId: 6 }] })).rejects.toMatchObject({ status: 400 });
+    expect(getMockDb().appointments).toHaveLength(0);
+  });
+
+  it("sums durations of all services when checking availability", async () => {
+    await service.create(admin, { ...input, startAt: "2099-08-27 11:00:00" });
+    expect(await service.checkAvailability(admin, { doctorId: 2, serviceIds: [3], date: "2099-08-27", time: "10:00" })).toEqual({ available: true });
+    expect(await service.checkAvailability(admin, { doctorId: 2, serviceIds: [3, 4], date: "2099-08-27", time: "10:00" })).toEqual({ available: false });
+  });
+
+  it("replaces services: new primary, kept custom price, catalog price for new lines, resized slot", async () => {
+    const saved = await service.create(reception, { ...input, serviceLines: [{ serviceId: 3 }, { serviceId: 4, price: 180000 }] });
+    const updated = await service.replaceServices(reception, saved.id, [{ serviceId: 4 }, { serviceId: 5 }]);
+    expect(updated).toMatchObject({ serviceId: 4, price: 180000, endAt: "2099-08-27 11:00:00" });
+    expect(lines(saved.id)).toEqual([
+      { serviceId: 4, price: 180000, quantity: 1 },
+      { serviceId: 5, price: 50000, quantity: 1 },
+    ]);
+  });
+
+  it("lets commercial roles set line prices but forces catalog prices for an operator", async () => {
+    const saved = await service.create(reception, input);
+    await service.replaceServices(reception, saved.id, [{ serviceId: 3, price: 90000 }]);
+    expect(lines(saved.id)).toEqual([{ serviceId: 3, price: 90000, quantity: 1 }]);
+    await service.replaceServices(operator, saved.id, [{ serviceId: 3, price: 1 }, { serviceId: 4, price: 1 }]);
+    expect(lines(saved.id).map(line => line.price)).toEqual([90000, 200000]);
+  });
+
+  it("refuses a resize that overlaps the doctor's next visit without writing", async () => {
+    const first = await service.create(reception, input);
+    await service.create(reception, { ...input, startAt: "2099-08-27 10:30:00" });
+    await expect(service.replaceServices(reception, first.id, [{ serviceId: 3 }, { serviceId: 4 }])).rejects.toMatchObject({ status: 409 });
+    expect(lines(first.id)).toEqual([{ serviceId: 3, price: 100000, quantity: 1 }]);
+  });
+
+  it("keeps the visit time once the patient has arrived", async () => {
+    const saved = await service.create(reception, input);
+    await service.update(reception, saved.id, { status: "arrived" });
+    expect(await service.replaceServices(reception, saved.id, [{ serviceId: 3 }, { serviceId: 4 }])).toMatchObject({ endAt: "2099-08-27 10:30:00" });
+  });
+
+  it("keeps a booked service that was later removed from the doctor, but validates new ones", async () => {
+    const saved = await service.create(reception, { ...input, serviceLines: [{ serviceId: 3 }, { serviceId: 4 }] });
+    getMockDb().doctorServices = getMockDb().doctorServices.filter(link => link.serviceId !== 4);
+    await expect(service.replaceServices(reception, saved.id, [{ serviceId: 4 }, { serviceId: 5 }])).resolves.toMatchObject({ serviceId: 4 });
+    addService(6, 10000, 10, false);
+    await expect(service.replaceServices(reception, saved.id, [{ serviceId: 6 }])).rejects.toMatchObject({ status: 400 });
+    expect(await service.update(reception, saved.id, { status: "arrived" })).toMatchObject({ status: "arrived" });
+  });
+
+  it("blocks changes after completion, payment or invoicing", async () => {
+    const completed = await service.create(reception, { ...input, status: "confirmed" });
+    await service.update(doctor, completed.id, { status: "completed" });
+    await expect(service.replaceServices(reception, completed.id, [{ serviceId: 4 }])).rejects.toMatchObject({ status: 400 });
+
+    const invoiced = await service.create(reception, { ...input, startAt: "2099-08-28 10:00:00" });
+    getMockDb().invoices.push({ id: 900, number: "INV-900", patientId: 1, appointmentId: invoiced.id, status: "issued", subtotal: 100000, discount: 0, total: 100000, paidAmount: 0, createdAt, updatedAt: createdAt, deletedAt: null });
+    await expect(service.replaceServices(reception, invoiced.id, [{ serviceId: 4 }])).rejects.toMatchObject({ status: 409 });
+    expect(lines(invoiced.id)).toEqual([{ serviceId: 3, price: 100000, quantity: 1 }]);
+
+    getMockDb().invoices[0].status = "cancelled";
+    await expect(service.replaceServices(reception, invoiced.id, [{ serviceId: 4 }])).resolves.toMatchObject({ serviceId: 4 });
+  });
+
+  it("scopes doctors to their own visits and denies nurses and cashiers", async () => {
+    const saved = await service.create(reception, input);
+    await expect(service.replaceServices(doctor, saved.id, [{ serviceId: 4 }])).resolves.toMatchObject({ serviceId: 4 });
+    await expect(service.replaceServices({ ...doctor, doctorId: 99 }, saved.id, [{ serviceId: 3 }])).rejects.toMatchObject({ status: 404 });
+    await expect(service.replaceServices({ ...operator, role: "nurse", nurseDoctorId: 2 }, saved.id, [{ serviceId: 3 }])).rejects.toMatchObject({ status: 403 });
+    await expect(service.replaceServices({ ...operator, role: "cashier" }, saved.id, [{ serviceId: 3 }])).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("changes services only through replaceServices and reschedules using every service", async () => {
+    const saved = await service.create(reception, { ...input, serviceLines: [{ serviceId: 3 }, { serviceId: 4 }] });
+    await expect(service.update(reception, saved.id, { serviceId: 4 })).rejects.toMatchObject({ status: 400 });
+    expect(await service.update(reception, saved.id, { startAt: "2099-08-27 14:00:00" })).toMatchObject({ endAt: "2099-08-27 15:15:00" });
+  });
+});

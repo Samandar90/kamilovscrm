@@ -320,4 +320,35 @@ export class PostgresServicesRepository implements IServicesRepository {
     );
     return result.rows[0]?.exists === true;
   }
+
+  async assignDoctor(serviceId: number, doctorId: number): Promise<void> {
+    const clinicId = requireClinicId();
+    await dbPool.query(
+      `
+        INSERT INTO doctor_services (doctor_id, service_id)
+        SELECT d.id, s.id
+        FROM doctors d
+        INNER JOIN services s ON s.id = $2 AND s.clinic_id = $3 AND s.deleted_at IS NULL
+        WHERE d.id = $1 AND d.clinic_id = $3 AND d.deleted_at IS NULL
+        ON CONFLICT DO NOTHING
+      `,
+      [doctorId, serviceId, clinicId]
+    );
+  }
+
+  async unassignDoctor(serviceId: number, doctorId: number): Promise<boolean> {
+    const clinicId = requireClinicId();
+    const result = await dbPool.query(
+      `
+        DELETE FROM doctor_services ds
+        USING services s
+        WHERE ds.doctor_id = $1
+          AND ds.service_id = $2
+          AND s.id = ds.service_id
+          AND s.clinic_id = $3
+      `,
+      [doctorId, serviceId, clinicId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
 }

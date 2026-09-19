@@ -11,6 +11,20 @@ import type { AuthTokenPayload } from "../repositories/interfaces/userTypes";
 import { ApiError } from "../middleware/errorHandler";
 import { parseNumericInput, parseRequiredMoney } from "../utils/numbers";
 
+export type OwnServices = {
+  /** Services the doctor provides (including inactive ones, so they stay manageable). */
+  assigned: Service[];
+  /** Active clinic services the doctor can take on. */
+  available: Service[];
+};
+
+const requireOwnDoctorId = (auth: AuthTokenPayload): number => {
+  if (auth.role !== "doctor" || auth.doctorId == null) {
+    throw new ApiError(403, "Account is not linked to a doctor profile");
+  }
+  return auth.doctorId;
+};
+
 export class ServicesService {
   constructor(private readonly servicesRepository: IServicesRepository) {}
 
@@ -101,6 +115,41 @@ export class ServicesService {
 
   async delete(_auth: AuthTokenPayload, id: number): Promise<boolean> {
     return this.servicesRepository.delete(id);
+  }
+
+  async listOwn(auth: AuthTokenPayload): Promise<OwnServices> {
+    const doctorId = requireOwnDoctorId(auth);
+    const catalog = await this.servicesRepository.findAll();
+    return {
+      assigned: catalog.filter((service) => service.doctorIds.includes(doctorId)),
+      available: catalog.filter(
+        (service) => service.active && !service.doctorIds.includes(doctorId)
+      ),
+    };
+  }
+
+  /** A doctor takes on an existing active service of the clinic catalog. */
+  async addOwn(auth: AuthTokenPayload, serviceId: number): Promise<Service> {
+    const doctorId = requireOwnDoctorId(auth);
+    const service = await this.servicesRepository.findById(serviceId);
+    if (!service || !service.active) {
+      throw new ApiError(404, "Service not found");
+    }
+    await this.servicesRepository.assignDoctor(serviceId, doctorId);
+    return { ...service, doctorIds: [...new Set([...service.doctorIds, doctorId])].sort((a, b) => a - b) };
+  }
+
+  /** A doctor creates a new catalog service that is linked to them right away. */
+  async createOwn(auth: AuthTokenPayload, payload: ServiceCreateInput): Promise<Service> {
+    const doctorId = requireOwnDoctorId(auth);
+    return this.create(auth, { ...payload, active: true, doctorIds: [doctorId] });
+  }
+
+  async removeOwn(auth: AuthTokenPayload, serviceId: number): Promise<void> {
+    const doctorId = requireOwnDoctorId(auth);
+    if (!(await this.servicesRepository.unassignDoctor(serviceId, doctorId))) {
+      throw new ApiError(404, "Service is not in your list");
+    }
   }
 
   async isServiceAssignedToDoctor(

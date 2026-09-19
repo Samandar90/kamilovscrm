@@ -7,6 +7,7 @@ import type {
   AppointmentFilters,
   AppointmentInvoiceLine,
   AppointmentServiceAssignment,
+  AppointmentServiceLineReplacement,
   AppointmentStatus,
   AppointmentUpdateInput,
 } from "../interfaces/coreTypes";
@@ -921,131 +922,100 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     return result.rows[0]?.ok === true;
   }
 
-  async createServiceAssignment(
+  async replaceServiceLines(
     appointmentId: number,
-    serviceId: number,
-    createdBy: number | null
-  ): Promise<AppointmentServiceAssignment> {
+    lines: AppointmentServiceLineReplacement[],
+    options: { endAt?: string; updatedBy: number | null }
+  ): Promise<Appointment | null> {
     const clinicId = requireClinicId();
-    const catalog = await this.getServicePrice(serviceId);
-    const unitPrice = roundMoney2(catalog ?? 0);
-    const result = await dbPool.query<AppointmentServiceRow>(
-      `
-        INSERT INTO appointment_services (appointment_id, service_id, price, quantity, created_by)
-        SELECT $1, $2, $3, 1, $4
-        WHERE EXISTS (
-          SELECT 1 FROM appointments a WHERE a.id = $1 AND a.clinic_id = $5
-        )
-        RETURNING id, appointment_id, service_id, price, quantity, created_by, created_at
-      `,
-      [appointmentId, serviceId, unitPrice, createdBy, clinicId]
-    );
-    const row = result.rows[0];
-    if (!row) {
-      throw new ApiError(404, "Appointment not found");
+    const [primary] = lines;
+    if (!primary) {
+      throw new ApiError(400, "At least one service is required");
     }
-    return this.mapAssignmentRow(row);
-  }
-
-  async deleteServiceAssignment(appointmentId: number, serviceId: number): Promise<boolean> {
-    const result = await dbPool.query<{ id: number }>(
-      `
-        DELETE FROM appointment_services
-        WHERE id = (
-          SELECT id
-          FROM appointment_services
-          WHERE appointment_id = $1 AND service_id = $2
-          ORDER BY id DESC
-          LIMIT 1
-        )
-        RETURNING id
-      `,
-      [appointmentId, serviceId]
-    );
-    return result.rows.length > 0;
-  }
-
-  async replaceServiceAssignments(
-    appointmentId: number,
-    serviceIds: number[],
-    createdBy: number | null
-  ): Promise<AppointmentServiceAssignment[]> {
-    const clinicId = requireClinicId();
-    const apResult = await dbPool.query<{ service_id: number; price: string | number | null }>(
-      `
-        SELECT service_id, price
-        FROM appointments
-        WHERE id = $1 AND clinic_id = $2 AND deleted_at IS NULL
-        LIMIT 1
-      `,
-      [appointmentId, clinicId]
-    );
-    if (apResult.rows.length === 0) {
-      throw new ApiError(404, "Appointment not found");
-    }
-    const primaryServiceId = Number(apResult.rows[0].service_id);
-    const appointmentPriceSnapshot = parseNumericFromPg(apResult.rows[0].price);
-    const primaryUnitPrice =
-      appointmentPriceSnapshot != null
-        ? roundMoney2(appointmentPriceSnapshot)
-        : roundMoney2((await this.getServicePrice(primaryServiceId)) ?? 0);
-
-    const uniqueServiceIds = Array.from(
-      new Set(serviceIds.filter((id) => Number.isInteger(id) && id > 0))
-    );
+    const endAt =
+      options.endAt === undefined ? null : assertAppointmentTimestampForDb(options.endAt, "endAt");
 
     const client = await dbPool.connect();
     try {
       await client.query("BEGIN");
-      await client.query(
+      // Row lock serializes concurrent edits and invoice creation checks for this appointment.
+      const locked = await client.query(
         `
-          DELETE FROM appointment_services
-          WHERE appointment_id = $1
-            AND EXISTS (SELECT 1 FROM appointments a WHERE a.id = $1 AND a.clinic_id = $2)
+          SELECT id
+          FROM appointments
+          WHERE id = $1 AND clinic_id = $2 AND deleted_at IS NULL
+          FOR UPDATE
         `,
         [appointmentId, clinicId]
       );
-
-      const insertedPrimary = await client.query(
-        `
-          INSERT INTO appointment_services (appointment_id, service_id, price, quantity, created_by)
-          SELECT $1, $2, $3, 1, $4
-          WHERE EXISTS (SELECT 1 FROM appointments a WHERE a.id = $1 AND a.clinic_id = $5)
-        `,
-        [appointmentId, primaryServiceId, primaryUnitPrice, createdBy, clinicId]
-      );
-      if (insertedPrimary.rowCount === 0) {
-        throw new ApiError(404, "Appointment not found");
+      if (locked.rows.length === 0) {
+        await client.query("ROLLBACK");
+        return null;
       }
 
-      for (const serviceId of uniqueServiceIds) {
-        if (serviceId === primaryServiceId) continue;
-        const catalog = await this.getServicePrice(serviceId);
-        if (catalog == null) {
-          throw new ApiError(404, `Service ${serviceId} not found`);
-        }
+      const invoiced = await client.query<{ exists: boolean }>(
+        `
+          SELECT EXISTS (
+            SELECT 1
+            FROM invoices
+            WHERE appointment_id = $1
+              AND clinic_id = $2
+              AND deleted_at IS NULL
+              AND status IN ('draft', 'issued', 'partially_paid', 'paid')
+          ) AS exists
+        `,
+        [appointmentId, clinicId]
+      );
+      if (invoiced.rows[0]?.exists === true) {
+        throw new ApiError(409, "По записи уже выставлен счёт — отмените его, чтобы изменить услуги");
+      }
+
+      // Keep the original author of lines that stay on the appointment.
+      const previous = await client.query<{ service_id: number; created_by: number | null }>(
+        `SELECT service_id, created_by FROM appointment_services WHERE appointment_id = $1`,
+        [appointmentId]
+      );
+      const previousAuthors = new Map(
+        previous.rows.map((row) => [
+          Number(row.service_id),
+          row.created_by == null ? null : Number(row.created_by),
+        ])
+      );
+
+      await client.query(`DELETE FROM appointment_services WHERE appointment_id = $1`, [
+        appointmentId,
+      ]);
+      for (const line of lines) {
         await client.query(
           `
             INSERT INTO appointment_services (appointment_id, service_id, price, quantity, created_by)
-            SELECT $1, $2, $3, 1, $4
-            WHERE EXISTS (SELECT 1 FROM appointments a WHERE a.id = $1 AND a.clinic_id = $5)
+            VALUES ($1, $2, $3, $4, $5)
           `,
-          [appointmentId, serviceId, roundMoney2(catalog), createdBy, clinicId]
+          [
+            appointmentId,
+            line.serviceId,
+            roundMoney2(line.price),
+            roundMoney2(line.quantity),
+            previousAuthors.has(line.serviceId)
+              ? previousAuthors.get(line.serviceId) ?? null
+              : options.updatedBy,
+          ]
         );
       }
 
-      const result = await client.query<AppointmentServiceRow>(
+      await client.query(
         `
-          SELECT id, appointment_id, service_id, price, quantity, created_by, created_at
-          FROM appointment_services
-          WHERE appointment_id = $1
-            AND EXISTS (SELECT 1 FROM appointments a WHERE a.id = $1 AND a.clinic_id = $2)
-          ORDER BY id ASC
+          UPDATE appointments
+          SET
+            service_id = $3,
+            price = $4,
+            end_at = COALESCE($5::timestamptz, end_at),
+            updated_at = NOW()
+          WHERE id = $1 AND clinic_id = $2
         `,
-        [appointmentId, clinicId]
+        [appointmentId, clinicId, primary.serviceId, coerceAppointmentPriceForDb(primary.price), endAt]
       );
       await client.query("COMMIT");
-      return result.rows.map((row) => this.mapAssignmentRow(row));
     } catch (error) {
       try {
         await client.query("ROLLBACK");
@@ -1056,6 +1026,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     } finally {
       client.release();
     }
+    return this.findById(appointmentId);
   }
 
   async listServiceAssignments(appointmentId: number): Promise<AppointmentServiceAssignment[]> {

@@ -8,10 +8,11 @@ import type {
   AppointmentFilters,
   AppointmentServiceAssignment,
   AppointmentServiceLineCreateInput,
+  AppointmentServiceLineReplacement,
   AppointmentStatus,
   AppointmentUpdateInput,
 } from "../repositories/interfaces/coreTypes";
-import type { AuthTokenPayload } from "../repositories/interfaces/userTypes";
+import type { AuthTokenPayload, UserRole } from "../repositories/interfaces/userTypes";
 import { invalidateClinicFactsCache } from "../ai/aiCacheService";
 import { canSetAppointmentCommercialPrice, roleHasPermissionKey } from "../auth/permissions";
 import { ApiError } from "../middleware/errorHandler";
@@ -40,6 +41,18 @@ const ACTIVE_APPOINTMENT_STATUSES = new Set<AppointmentStatus>([
   "confirmed",
   "arrived",
   "in_consultation",
+]);
+
+/** Before the visit starts the booked slot follows the services; afterwards the time is history. */
+const RESCHEDULABLE_STATUSES = new Set<AppointmentStatus>(["scheduled", "confirmed"]);
+
+/** Roles that may change an appointment's services (doctors only within their own schedule). */
+const SERVICE_EDITOR_ROLES = new Set<UserRole>([
+  "superadmin",
+  "reception",
+  "manager",
+  "operator",
+  "doctor",
 ]);
 
 /** Statuses a doctor may cancel (soft cancel); other roles follow legacy rules in cancel(). */
@@ -140,44 +153,76 @@ const normalizeServiceLinesPayload = (
   return out.length > 0 ? out : undefined;
 };
 
+const ensureServiceBookableForDoctor = async (
+  appointmentsRepository: IAppointmentsRepository,
+  serviceId: number,
+  doctorId: number,
+  options: { requireActiveService: boolean }
+): Promise<void> => {
+  if (!(await appointmentsRepository.serviceExists(serviceId))) {
+    throw new ApiError(404, "Service not found");
+  }
+  if (options.requireActiveService && !(await appointmentsRepository.isServiceActive(serviceId))) {
+    throw new ApiError(400, "Service is inactive or not available for booking");
+  }
+  if (!(await appointmentsRepository.isServiceAssignedToDoctor(serviceId, doctorId))) {
+    throw new ApiError(400, "Selected service is not assigned to selected doctor");
+  }
+};
+
 const ensureRelatedEntitiesExist = async (
   appointmentsRepository: IAppointmentsRepository,
   patientId: number,
   doctorId: number,
-  serviceId: number,
+  serviceIds: number[],
   options: { requireActiveService: boolean }
 ): Promise<void> => {
-  const [patientFound, doctorFound, serviceFound] = await Promise.all([
+  const [patientFound, doctorFound] = await Promise.all([
     appointmentsRepository.patientExists(patientId),
     appointmentsRepository.doctorExists(doctorId),
-    appointmentsRepository.serviceExists(serviceId),
   ]);
-
   if (!patientFound) {
     throw new ApiError(404, "Patient not found");
   }
   if (!doctorFound) {
     throw new ApiError(404, "Doctor not found");
   }
-  if (!serviceFound) {
-    throw new ApiError(404, "Service not found");
-  }
-
-  if (options.requireActiveService) {
-    const active = await appointmentsRepository.isServiceActive(serviceId);
-    if (!active) {
-      throw new ApiError(400, "Service is inactive or not available for booking");
-    }
-  }
-
-  const serviceAssigned = await appointmentsRepository.isServiceAssignedToDoctor(
-    serviceId,
-    doctorId
-  );
-  if (!serviceAssigned) {
-    throw new ApiError(400, "Selected service is not assigned to selected doctor");
+  for (const serviceId of serviceIds) {
+    await ensureServiceBookableForDoctor(appointmentsRepository, serviceId, doctorId, options);
   }
 };
+
+/** The booked slot covers every service of the visit, not only the primary one. */
+const totalServicesDuration = async (
+  appointmentsRepository: IAppointmentsRepository,
+  serviceIds: number[]
+): Promise<number> => {
+  let total = 0;
+  for (const serviceId of new Set(serviceIds)) {
+    const duration = await appointmentsRepository.getServiceDuration(serviceId);
+    if (!duration || duration <= 0) {
+      throw new ApiError(400, "Service duration must be configured and greater than 0");
+    }
+    total += duration;
+  }
+  return total;
+};
+
+const catalogPrice = async (
+  appointmentsRepository: IAppointmentsRepository,
+  serviceId: number
+): Promise<number> => {
+  const price = await appointmentsRepository.getServicePrice(serviceId);
+  if (price === null || price < 0) {
+    throw new ApiError(400, "Service price is invalid");
+  }
+  return price;
+};
+
+const bookedServiceIds = (appointment: Appointment): number[] =>
+  appointment.services?.length
+    ? appointment.services.map((line) => line.serviceId)
+    : [appointment.serviceId];
 
 const ensureNoDoctorConflict = async (
   appointmentsRepository: IAppointmentsRepository,
@@ -391,56 +436,36 @@ export class AppointmentsService {
     }
     ensureStartAtNotInPast(normalizedPayload.startAt);
 
+    const serviceIds = Array.from(
+      new Set([
+        normalizedPayload.serviceId,
+        ...(normalizedPayload.serviceLines ?? []).map((line) => line.serviceId),
+      ])
+    );
     await ensureRelatedEntitiesExist(
       this.appointmentsRepository,
       normalizedPayload.patientId,
       normalizedPayload.doctorId,
-      normalizedPayload.serviceId,
+      serviceIds,
       { requireActiveService: true }
     );
 
-    if (normalizedPayload.serviceLines?.length) {
-      const seen = new Set<number>([normalizedPayload.serviceId]);
-      for (const line of normalizedPayload.serviceLines) {
-        if (seen.has(line.serviceId)) continue;
-        seen.add(line.serviceId);
-        await ensureRelatedEntitiesExist(
-          this.appointmentsRepository,
-          normalizedPayload.patientId,
-          normalizedPayload.doctorId,
-          line.serviceId,
-          { requireActiveService: true }
-        );
-      }
-    }
-
-    const duration = await this.appointmentsRepository.getServiceDuration(
-      normalizedPayload.serviceId
-    );
-    if (!duration || duration <= 0) {
-      throw new ApiError(400, "Service duration must be configured and greater than 0");
-    }
+    const duration = await totalServicesDuration(this.appointmentsRepository, serviceIds);
     const computedEndAt = addMinutesToLocalDateTime(normalizedPayload.startAt, duration);
     ensureValidDateRange(normalizedPayload.startAt, computedEndAt);
-    const servicePrice = await this.appointmentsRepository.getServicePrice(
-      normalizedPayload.serviceId
-    );
-    if (servicePrice === null || servicePrice < 0) {
-      throw new ApiError(400, "Service price is invalid");
-    }
+    const servicePrice = await catalogPrice(this.appointmentsRepository, normalizedPayload.serviceId);
 
-    if (auth.role === "operator") {
+    if (!canSetAppointmentCommercialPrice(auth.role)) {
       // Booking access does not grant commercial-price access. Ignore client prices
       // (including normal catalog values sent by the form) and derive every fee.
       normalizedPayload.price = Math.round(servicePrice);
       if (normalizedPayload.serviceLines?.length) {
-        normalizedPayload.serviceLines = await Promise.all(normalizedPayload.serviceLines.map(async line => {
-          const catalogPrice = line.serviceId === normalizedPayload.serviceId
-            ? servicePrice
-            : await this.appointmentsRepository.getServicePrice(line.serviceId);
-          if (catalogPrice === null || catalogPrice < 0) throw new ApiError(400, "Service price is invalid");
-          return { ...line, price: Math.round(catalogPrice) };
-        }));
+        normalizedPayload.serviceLines = await Promise.all(
+          normalizedPayload.serviceLines.map(async (line) => ({
+            ...line,
+            price: Math.round(await catalogPrice(this.appointmentsRepository, line.serviceId)),
+          }))
+        );
       }
     }
 
@@ -481,9 +506,11 @@ export class AppointmentsService {
     }
 
     const normalizedPayload = normalizeUpdateInput(payload);
-    if (current.billingStatus === "paid" && normalizedPayload.serviceId !== undefined) {
-      throw new ApiError(409, "Нельзя изменять услуги после оплаты");
+    // Services have one write path (replaceServices) that keeps lines, price and slot consistent.
+    if (normalizedPayload.serviceId !== undefined && normalizedPayload.serviceId !== current.serviceId) {
+      throw new ApiError(400, "Услуги записи меняются через PUT /appointments/:id/services");
     }
+    delete normalizedPayload.serviceId;
     if (normalizedPayload.startAt !== undefined) {
       normalizedPayload.startAt = assertAppointmentTimestampForDb(
         normalizedPayload.startAt,
@@ -552,7 +579,6 @@ export class AppointmentsService {
     const mergedPatientId = normalizedPayload.patientId ?? current.patientId;
     const mergedDoctorId = normalizedPayload.doctorId ?? current.doctorId;
     enforceDoctorSelfScopeOnWrite(auth, mergedDoctorId);
-    const mergedServiceId = normalizedPayload.serviceId ?? current.serviceId;
     const mergedStartAt = normalizedPayload.startAt ?? current.startAt;
     let mergedEndAt = current.endAt;
 
@@ -560,14 +586,11 @@ export class AppointmentsService {
       ensureStartAtNotInPast(mergedStartAt);
     }
 
-    const shouldRecalculateEndAt =
-      normalizedPayload.startAt !== undefined || normalizedPayload.serviceId !== undefined;
-
-    if (shouldRecalculateEndAt) {
-      const duration = await this.appointmentsRepository.getServiceDuration(mergedServiceId);
-      if (!duration || duration <= 0) {
-        throw new ApiError(400, "Service duration must be configured and greater than 0");
-      }
+    if (normalizedPayload.startAt !== undefined) {
+      const duration = await totalServicesDuration(
+        this.appointmentsRepository,
+        bookedServiceIds(current)
+      );
       const recalculatedEndAt = addMinutesToLocalDateTime(mergedStartAt, duration);
       ensureValidDateRange(mergedStartAt, recalculatedEndAt);
       normalizedPayload.endAt = recalculatedEndAt;
@@ -577,12 +600,15 @@ export class AppointmentsService {
     ensureValidDateRange(mergedStartAt, mergedEndAt);
     ensureStatusTransitionAllowed(current.status, mergedStatus);
 
+    // Booked services were validated when added; recheck them only for a new doctor so that
+    // later catalog changes do not block status updates of existing visits.
+    const doctorChanged = mergedDoctorId !== current.doctorId;
     await ensureRelatedEntitiesExist(
       this.appointmentsRepository,
       mergedPatientId,
       mergedDoctorId,
-      mergedServiceId,
-      { requireActiveService: normalizedPayload.serviceId !== undefined }
+      doctorChanged ? bookedServiceIds(current) : [],
+      { requireActiveService: false }
     );
 
     if (ACTIVE_APPOINTMENT_STATUSES.has(mergedStatus)) {
@@ -726,7 +752,7 @@ export class AppointmentsService {
    */
   async checkAvailability(
     auth: AuthTokenPayload,
-    params: { doctorId: number; serviceId: number; date: string; time: string }
+    params: { doctorId: number; serviceIds: number[]; date: string; time: string }
   ): Promise<{ available: boolean }> {
     enforceDoctorSelfScopeOnWrite(auth, params.doctorId);
 
@@ -751,11 +777,7 @@ export class AppointmentsService {
       throw new ApiError(404, "Doctor not found");
     }
 
-    const duration = await this.appointmentsRepository.getServiceDuration(params.serviceId);
-    if (!duration || duration <= 0) {
-      throw new ApiError(400, "Service duration must be configured and greater than 0");
-    }
-
+    const duration = await totalServicesDuration(this.appointmentsRepository, params.serviceIds);
     const endAt = addMinutesToLocalDateTime(startAt, duration);
     ensureValidDateRange(startAt, endAt);
 
@@ -766,45 +788,6 @@ export class AppointmentsService {
     );
 
     return { available: !hasConflict };
-  }
-
-  async assignService(
-    auth: AuthTokenPayload,
-    appointmentId: number,
-    serviceId: number
-  ): Promise<AppointmentServiceAssignment> {
-    if (auth.role !== "doctor" && auth.role !== "superadmin") {
-      throw new ApiError(403, "Недостаточно прав для назначения услуг в приеме");
-    }
-    const appointment = await this.appointmentsRepository.findById(appointmentId);
-    if (!appointment) {
-      throw new ApiError(404, "Appointment not found");
-    }
-    if (appointment.billingStatus === "paid") {
-      throw new ApiError(409, "Нельзя изменять услуги после оплаты");
-    }
-    if (auth.role === "doctor") {
-      enforceDoctorSelfScopeOnWrite(auth, appointment.doctorId);
-    }
-    if (appointment.status !== "in_consultation" && appointment.status !== "arrived") {
-      throw new ApiError(400, "Услуги можно назначать только во время приема");
-    }
-    const serviceExists = await this.appointmentsRepository.serviceExists(serviceId);
-    if (!serviceExists) {
-      throw new ApiError(404, "Service not found");
-    }
-    const isAssigned = await this.appointmentsRepository.isServiceAssignedToDoctor(
-      serviceId,
-      appointment.doctorId
-    );
-    if (!isAssigned) {
-      throw new ApiError(400, "Selected service is not assigned to selected doctor");
-    }
-    return this.appointmentsRepository.createServiceAssignment(
-      appointmentId,
-      serviceId,
-      auth.userId
-    );
   }
 
   async listAssignedServices(
@@ -821,74 +804,91 @@ export class AppointmentsService {
     return this.appointmentsRepository.listServiceAssignments(appointmentId);
   }
 
-  async removeAssignedService(
+  /**
+   * Replaces all services of a booked visit. The first line becomes the primary service.
+   * Kept services keep their price and quantity; new ones take the catalog price unless the
+   * role may set commercial prices. Before the visit starts the slot is resized to the services.
+   */
+  async replaceServices(
     auth: AuthTokenPayload,
     appointmentId: number,
-    serviceId: number
-  ): Promise<boolean> {
-    if (auth.role !== "doctor" && auth.role !== "superadmin") {
-      throw new ApiError(403, "Недостаточно прав для удаления услуги");
+    lines: AppointmentServiceLineCreateInput[]
+  ): Promise<Appointment> {
+    if (!SERVICE_EDITOR_ROLES.has(auth.role)) {
+      throw new ApiError(403, "Недостаточно прав для изменения услуг записи");
     }
-    const appointment = await this.appointmentsRepository.findById(appointmentId);
-    if (!appointment) {
+    const current = await this.appointmentsRepository.findById(appointmentId);
+    if (!current || !canReadAppointment(auth, current)) {
       throw new ApiError(404, "Appointment not found");
     }
-    if (appointment.billingStatus === "paid") {
+    enforceDoctorSelfScopeOnWrite(auth, current.doctorId);
+    if (!ACTIVE_APPOINTMENT_STATUSES.has(current.status)) {
+      throw new ApiError(400, "Услуги можно менять только до завершения приёма");
+    }
+    if (current.billingStatus === "paid") {
       throw new ApiError(409, "Нельзя изменять услуги после оплаты");
     }
-    if (auth.role === "doctor") {
-      enforceDoctorSelfScopeOnWrite(auth, appointment.doctorId);
-    }
-    if (appointment.status !== "in_consultation" && appointment.status !== "arrived") {
-      throw new ApiError(400, "Услуги можно изменять только во время приема");
-    }
-    return this.appointmentsRepository.deleteServiceAssignment(appointmentId, serviceId);
-  }
 
-  async syncAssignedServices(
-    auth: AuthTokenPayload,
-    appointmentId: number,
-    serviceIds: number[]
-  ): Promise<AppointmentServiceAssignment[]> {
-    if (auth.role !== "doctor" && auth.role !== "superadmin") {
-      throw new ApiError(403, "Недостаточно прав для синхронизации услуг");
-    }
-    const appointment = await this.appointmentsRepository.findById(appointmentId);
-    if (!appointment) {
-      throw new ApiError(404, "Appointment not found");
-    }
-    if (appointment.billingStatus === "paid") {
-      throw new ApiError(409, "Нельзя изменять услуги после оплаты");
-    }
-    if (auth.role === "doctor") {
-      enforceDoctorSelfScopeOnWrite(auth, appointment.doctorId);
-    }
-    if (appointment.status !== "in_consultation" && appointment.status !== "arrived") {
-      throw new ApiError(400, "Услуги можно изменять только во время приема");
-    }
-
-    const uniqueServiceIds = Array.from(
-      new Set(serviceIds.filter((id) => Number.isInteger(id) && id > 0))
+    const kept = new Map(
+      (await this.appointmentsRepository.listServiceAssignments(appointmentId)).map((line) => [
+        line.serviceId,
+        line,
+      ])
     );
-    for (const serviceId of uniqueServiceIds) {
-      const exists = await this.appointmentsRepository.serviceExists(serviceId);
-      if (!exists) {
-        throw new ApiError(404, `Service ${serviceId} not found`);
+    const canSetPrice = canSetAppointmentCommercialPrice(auth.role);
+    const resolved: AppointmentServiceLineReplacement[] = [];
+    for (const line of lines) {
+      if (resolved.some((row) => row.serviceId === line.serviceId)) continue;
+      const previous = kept.get(line.serviceId);
+      if (!previous) {
+        await ensureServiceBookableForDoctor(
+          this.appointmentsRepository,
+          line.serviceId,
+          current.doctorId,
+          { requireActiveService: true }
+        );
       }
-      const assignedToDoctor = await this.appointmentsRepository.isServiceAssignedToDoctor(
-        serviceId,
-        appointment.doctorId
+      const price =
+        canSetPrice && line.price != null
+          ? line.price
+          : previous?.price ?? (await catalogPrice(this.appointmentsRepository, line.serviceId));
+      resolved.push({
+        serviceId: line.serviceId,
+        price: roundMoney2(price),
+        quantity: line.quantity ?? previous?.quantity ?? 1,
+      });
+    }
+    if (resolved.length === 0) {
+      throw new ApiError(400, "Выберите хотя бы одну услугу");
+    }
+
+    let endAt: string | undefined;
+    if (RESCHEDULABLE_STATUSES.has(current.status)) {
+      const duration = await totalServicesDuration(
+        this.appointmentsRepository,
+        resolved.map((line) => line.serviceId)
       );
-      if (!assignedToDoctor) {
-        throw new ApiError(400, "Selected service is not assigned to selected doctor");
-      }
+      endAt = addMinutesToLocalDateTime(current.startAt, duration);
+      await ensureNoDoctorConflict(
+        this.appointmentsRepository,
+        current.doctorId,
+        current.startAt,
+        endAt,
+        appointmentId
+      );
     }
 
-    return this.appointmentsRepository.replaceServiceAssignments(
-      appointmentId,
-      uniqueServiceIds,
-      auth.userId
-    );
+    const updated = await this.appointmentsRepository.replaceServiceLines(appointmentId, resolved, {
+      endAt,
+      updatedBy: auth.userId,
+    });
+    if (!updated) {
+      throw new ApiError(404, "Appointment not found");
+    }
+    invalidateClinicFactsCache();
+    return shouldRedactAppointmentClinicalFields(auth.role)
+      ? redactAppointmentClinicalFields(updated)
+      : updated;
   }
 }
 

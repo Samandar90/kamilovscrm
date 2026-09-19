@@ -17,6 +17,8 @@ import { AttendanceService } from "../services/attendanceService";
 import { CallCenterService } from "../services/callCenterService";
 import { CallCenterWorkspaceService } from "../services/callCenterWorkspaceService";
 import { PostgresCallCenterWorkspaceRepository } from "../repositories/postgres/PostgresCallCenterWorkspaceRepository";
+import { QuestionnairesService } from "../services/questionnairesService";
+import { PostgresQuestionnairesRepository } from "../repositories/postgres/PostgresQuestionnairesRepository";
 import { dbPool } from "../config/database";
 import { env } from "../config/env";
 import { repositories } from "./repositories";
@@ -48,4 +50,5 @@ export const services = {
   attendance: new AttendanceService(repositories.attendance, repositories.users),
   callCenter: new CallCenterService(repositories.callCenter),
   callCenterWorkspace: new CallCenterWorkspaceService(new PostgresCallCenterWorkspaceRepository(dbPool, env.reportsTimezone)),
+  questionnaires: new QuestionnairesService(new PostgresQuestionnairesRepository(dbPool, env.reportsTimezone)),
 };

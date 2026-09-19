@@ -4,10 +4,8 @@ import { nextRetryAt } from "../../services/callCenterWorkspaceService";
 import type { ICallCenterWorkspaceRepository } from "../interfaces/ICallCenterWorkspaceRepository";
 import { DEFAULT_WORKSPACE_SETTINGS } from "../interfaces/callCenterWorkspaceTypes";
 import type { ContactAttempt, ContactPreferences, WorkspaceAttemptInput, WorkspaceClaim, WorkspaceCounts, WorkspaceFilters, WorkspacePatient, WorkspaceResult, WorkspaceSettings } from "../interfaces/callCenterWorkspaceTypes";
+import type { QueryClient as WorkspaceQueryClient, QueryPool as WorkspacePool } from "./queryPool";
 
-// Inject the pool so SQL tests can execute real PostgreSQL without loading application credentials.
-export interface WorkspaceQueryClient { query(sql: string, params?: unknown[]): Promise<{ rows: any[] }> }
-export interface WorkspacePool extends WorkspaceQueryClient { connect(): Promise<WorkspaceQueryClient & { release(): void }> }
 const iso = (value: Date | string | null): string | null => value == null ? null : new Date(value).toISOString();
 const numberOrNull = (value: unknown): number | null => value == null ? null : Number(value);
 const mapAttempt = (r: any): ContactAttempt => ({

@@ -8,15 +8,12 @@ import type {
   AppointmentFilters,
   AppointmentInvoiceLine,
   AppointmentServiceAssignment,
+  AppointmentServiceLineReplacement,
   AppointmentStatus,
   AppointmentUpdateInput,
 } from "./interfaces/coreTypes";
-import {
-  type AppointmentRecord,
-  type AppointmentServiceRecord,
-  getMockDb,
-  nextId,
-} from "./mockDatabase";
+import { getMockDb, nextId, type AppointmentRecord } from "./mockDatabase";
+import { ApiError } from "../middleware/errorHandler";
 export { APPOINTMENT_STATUSES };
 export { APPOINTMENT_BILLING_STATUSES };
 export type {
@@ -29,6 +26,9 @@ export type {
 };
 
 const toAppointment = (row: AppointmentRecord): Appointment => ({ ...row });
+
+/** Mirrors the uq_invoices_active_appointment index: these invoices snapshot the service lines. */
+const ACTIVE_INVOICE_STATUSES = new Set(["draft", "issued", "partially_paid", "paid"]);
 
 const attachServices = (
   appointments: AppointmentRecord[]
@@ -294,96 +294,52 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
     );
   }
 
-  async createServiceAssignment(
+  async replaceServiceLines(
     appointmentId: number,
-    serviceId: number,
-    createdBy: number | null
-  ): Promise<AppointmentServiceAssignment> {
-    const unitPrice = (await this.getServicePrice(serviceId)) ?? 0;
-    const created: AppointmentServiceRecord = {
-      id: nextId(),
-      appointmentId,
-      serviceId,
-      price: unitPrice,
-      quantity: 1,
-      createdBy,
-      createdAt: new Date().toISOString(),
-    };
-    getMockDb().appointmentServices.push(created);
-    return {
-      id: created.id,
-      appointmentId: created.appointmentId,
-      serviceId: created.serviceId,
-      price: created.price,
-      quantity: created.quantity,
-      createdBy: created.createdBy,
-      createdAt: created.createdAt,
-    };
-  }
-
-  async deleteServiceAssignment(appointmentId: number, serviceId: number): Promise<boolean> {
+    lines: AppointmentServiceLineReplacement[],
+    options: { endAt?: string; updatedBy: number | null }
+  ): Promise<Appointment | null> {
     const db = getMockDb();
-    const idx = [...db.appointmentServices]
-      .map((row, index) => ({ row, index }))
-      .filter(({ row }) => row.appointmentId === appointmentId && row.serviceId === serviceId)
-      .sort((a, b) => b.row.id - a.row.id)[0]?.index;
-    if (idx === undefined) return false;
-    db.appointmentServices.splice(idx, 1);
-    return true;
-  }
-
-  async replaceServiceAssignments(
-    appointmentId: number,
-    serviceIds: number[],
-    createdBy: number | null
-  ): Promise<AppointmentServiceAssignment[]> {
-    const db = getMockDb();
-    const appt = db.appointments.find((a) => a.id === appointmentId);
-    if (!appt) {
-      return [];
+    const idx = db.appointments.findIndex((item) => item.id === appointmentId);
+    const [primary] = lines;
+    if (idx < 0 || !primary) return null;
+    const invoiced = db.invoices.some(
+      (row) =>
+        row.appointmentId === appointmentId &&
+        row.deletedAt === null &&
+        ACTIVE_INVOICE_STATUSES.has(row.status)
+    );
+    if (invoiced) {
+      throw new ApiError(409, "По записи уже выставлен счёт — отмените его, чтобы изменить услуги");
     }
-    const primaryServiceId = appt.serviceId;
-    const primaryUnit =
-      appt.price ?? (await this.getServicePrice(primaryServiceId)) ?? 0;
-    const unique = Array.from(new Set(serviceIds.filter((id) => Number.isInteger(id) && id > 0)));
-    db.appointmentServices = db.appointmentServices.filter(
-      (item) => item.appointmentId !== appointmentId
+    const previousAuthors = new Map(
+      db.appointmentServices
+        .filter((item) => item.appointmentId === appointmentId)
+        .map((item) => [item.serviceId, item.createdBy])
     );
     const now = new Date().toISOString();
-    db.appointmentServices.push({
-      id: nextId(),
-      appointmentId,
-      serviceId: primaryServiceId,
-      price: primaryUnit,
-      quantity: 1,
-      createdBy,
-      createdAt: now,
-    });
-    for (const serviceId of unique) {
-      if (serviceId === primaryServiceId) continue;
-      const cat = (await this.getServicePrice(serviceId)) ?? 0;
-      db.appointmentServices.push({
+    db.appointmentServices = [
+      ...db.appointmentServices.filter((item) => item.appointmentId !== appointmentId),
+      ...lines.map((line) => ({
         id: nextId(),
         appointmentId,
-        serviceId,
-        price: cat,
-        quantity: 1,
-        createdBy,
+        serviceId: line.serviceId,
+        price: line.price,
+        quantity: line.quantity,
+        createdBy: previousAuthors.has(line.serviceId)
+          ? previousAuthors.get(line.serviceId) ?? null
+          : options.updatedBy,
         createdAt: now,
-      });
-    }
-    return db.appointmentServices
-      .filter((item) => item.appointmentId === appointmentId)
-      .sort((a, b) => a.id - b.id)
-      .map((item) => ({
-        id: item.id,
-        appointmentId: item.appointmentId,
-        serviceId: item.serviceId,
-        price: item.price,
-        quantity: item.quantity,
-        createdBy: item.createdBy,
-        createdAt: item.createdAt,
-      }));
+      })),
+    ];
+    db.appointments[idx] = {
+      ...db.appointments[idx],
+      serviceId: primary.serviceId,
+      price: Math.round(primary.price),
+      endAt: options.endAt ?? db.appointments[idx].endAt,
+      updatedAt: now,
+    };
+    return this.findById(appointmentId);
   }
 
   async listServiceAssignments(appointmentId: number): Promise<AppointmentServiceAssignment[]> {

@@ -32,20 +32,40 @@ const parsePositiveQueryId = (
   return parsed;
 };
 
+const MAX_AVAILABILITY_SERVICES = 30;
+
+/** `serviceIds=3,5` (all services of the visit) or the legacy single `serviceId=3`. */
+const parseAvailabilityServiceIds = (req: Request): number[] => {
+  const raw = req.query.serviceIds;
+  if (raw === undefined) {
+    const serviceId = parsePositiveQueryId(req.query.serviceId, "serviceId");
+    if (serviceId === undefined) {
+      throw new ApiError(400, "Query param 'serviceIds' is required");
+    }
+    return [serviceId];
+  }
+  const ids = typeof raw === "string" && raw.trim() !== "" ? raw.split(",").map((part) => Number(part.trim())) : [];
+  if (
+    ids.length === 0 ||
+    ids.length > MAX_AVAILABILITY_SERVICES ||
+    ids.some((id) => !Number.isInteger(id) || id <= 0)
+  ) {
+    throw new ApiError(400, "Query param 'serviceIds' must be a comma-separated list of positive integers");
+  }
+  return ids;
+};
+
 export const checkAvailabilityController = async (
   req: Request,
   res: Response
 ) => {
   const doctorId = parsePositiveQueryId(req.query.doctorId, "doctorId");
-  const serviceId = parsePositiveQueryId(req.query.serviceId, "serviceId");
+  const serviceIds = parseAvailabilityServiceIds(req);
   const date = typeof req.query.date === "string" ? req.query.date.trim() : "";
   const timeRaw = typeof req.query.time === "string" ? req.query.time.trim() : "";
 
   if (doctorId === undefined) {
     throw new ApiError(400, "Query param 'doctorId' is required");
-  }
-  if (serviceId === undefined) {
-    throw new ApiError(400, "Query param 'serviceId' is required");
   }
   if (!date || !timeRaw) {
     throw new ApiError(400, "Query params 'date' and 'time' are required");
@@ -54,7 +74,7 @@ export const checkAvailabilityController = async (
   const auth = getAuthPayload(req);
   const result = await services.appointments.checkAvailability(auth, {
     doctorId,
-    serviceId,
+    serviceIds,
     date,
     time: timeRaw,
   });
@@ -190,24 +210,6 @@ export const updateAppointmentPriceController = async (
   return res.status(200).json(updated);
 };
 
-export const addAppointmentServiceController = async (req: Request, res: Response) => {
-  const auth = getAuthPayload(req);
-  const id = Number(req.params.id);
-  const serviceId = Number(req.body?.service_id ?? req.body?.serviceId);
-  if (!Number.isInteger(serviceId) || serviceId <= 0) {
-    throw new ApiError(400, "Field 'service_id' must be a positive integer");
-  }
-  const assignment = await services.appointments.assignService(auth, id, serviceId);
-  return res.status(201).json({
-    id: assignment.id,
-    appointmentId: assignment.appointmentId,
-    serviceId: assignment.serviceId,
-    price: assignment.price,
-    quantity: assignment.quantity,
-    createdAt: assignment.createdAt,
-  });
-};
-
 export const listAppointmentServicesController = async (req: Request, res: Response) => {
   const auth = getAuthPayload(req);
   const id = Number(req.params.id);
@@ -224,38 +226,14 @@ export const listAppointmentServicesController = async (req: Request, res: Respo
   );
 };
 
-export const deleteAppointmentServiceController = async (req: Request, res: Response) => {
+export const replaceAppointmentServicesController = async (req: Request, res: Response) => {
   const auth = getAuthPayload(req);
-  const id = Number(req.params.id);
-  const serviceId = Number(req.params.serviceId);
-  if (!Number.isInteger(serviceId) || serviceId <= 0) {
-    throw new ApiError(400, "Param 'serviceId' must be a positive integer");
-  }
-  const deleted = await services.appointments.removeAssignedService(auth, id, serviceId);
-  if (!deleted) {
-    throw new ApiError(404, "Service assignment not found");
-  }
-  return res.status(200).json({ success: true });
-};
-
-export const syncAppointmentServicesController = async (req: Request, res: Response) => {
-  const auth = getAuthPayload(req);
-  const id = Number(req.params.id);
-  const serviceIdsRaw = Array.isArray(req.body?.serviceIds) ? req.body.serviceIds : [];
-  const serviceIds = serviceIdsRaw
-    .map((value: unknown) => Number(value))
-    .filter((value: number) => Number.isInteger(value) && value > 0);
-  const assignments = await services.appointments.syncAssignedServices(auth, id, serviceIds);
-  return res.status(200).json(
-    assignments.map((row) => ({
-      id: row.id,
-      appointmentId: row.appointmentId,
-      serviceId: row.serviceId,
-      price: row.price,
-      quantity: row.quantity,
-      createdAt: row.createdAt,
-    }))
+  const updated = await services.appointments.replaceServices(
+    auth,
+    Number(req.params.id),
+    req.body.services
   );
+  return res.status(200).json(updated);
 };
 
 export const completeAppointmentController = async (req: Request, res: Response) => {

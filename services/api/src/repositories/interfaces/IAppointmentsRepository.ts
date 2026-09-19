@@ -5,6 +5,7 @@ import type {
   AppointmentFilters,
   AppointmentInvoiceLine,
   AppointmentServiceAssignment,
+  AppointmentServiceLineReplacement,
   AppointmentUpdateInput,
 } from "./coreTypes";
 
@@ -39,17 +40,16 @@ export interface IAppointmentsRepository {
    * Patient is in the current clinic and either registered by this doctor or already had an appointment with them.
    */
   isPatientEligibleForDoctorBooking(patientId: number, doctorId: number): Promise<boolean>;
-  createServiceAssignment(
+  /**
+   * Atomically replaces the appointment's service lines. The first line becomes the primary
+   * service (appointments.service_id / price). Fails with 409 while an active invoice exists,
+   * because the invoice is a snapshot of these lines. Returns null when the appointment is absent.
+   */
+  replaceServiceLines(
     appointmentId: number,
-    serviceId: number,
-    createdBy: number | null
-  ): Promise<AppointmentServiceAssignment>;
-  deleteServiceAssignment(appointmentId: number, serviceId: number): Promise<boolean>;
-  replaceServiceAssignments(
-    appointmentId: number,
-    serviceIds: number[],
-    createdBy: number | null
-  ): Promise<AppointmentServiceAssignment[]>;
+    lines: AppointmentServiceLineReplacement[],
+    options: { endAt?: string; updatedBy: number | null }
+  ): Promise<Appointment | null>;
   listServiceAssignments(appointmentId: number): Promise<AppointmentServiceAssignment[]>;
   /** Позиции счёта: цены и количества из appointment_services (не из каталога). */
   listAppointmentInvoiceLines(appointmentId: number): Promise<AppointmentInvoiceLine[]>;

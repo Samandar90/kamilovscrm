@@ -103,4 +103,23 @@ export class MockServicesRepository implements IServicesRepository {
       (row) => row.serviceId === serviceId && row.doctorId === doctorId
     );
   }
+
+  async assignDoctor(serviceId: number, doctorId: number): Promise<void> {
+    const db = getMockDb();
+    const exists = db.doctorServices.some(
+      (item) => item.serviceId === serviceId && item.doctorId === doctorId
+    );
+    if (!exists) {
+      db.doctorServices.push({ doctorId, serviceId });
+    }
+  }
+
+  async unassignDoctor(serviceId: number, doctorId: number): Promise<boolean> {
+    const db = getMockDb();
+    const before = db.doctorServices.length;
+    db.doctorServices = db.doctorServices.filter(
+      (item) => !(item.serviceId === serviceId && item.doctorId === doctorId)
+    );
+    return db.doctorServices.length < before;
+  }
 }

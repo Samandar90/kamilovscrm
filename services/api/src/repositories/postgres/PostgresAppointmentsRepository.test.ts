@@ -43,3 +43,47 @@ describe("appointment recommended return date SQL", () => {
     expect(await runWithClinicContext(2, () => repo.update(Number(rows.rows[0].id), { recommendedReturnDate: "2099-10-01" }))).toBeNull();
   });
 });
+
+describe("replacing appointment service lines SQL", () => {
+  const booking = { patientId: 1, doctorId: 2, serviceId: 3, price: 100000, endAt: "2099-12-01 10:30:00", status: "scheduled" as const, diagnosis: null, treatment: null, notes: null };
+  const lineRows = async (appointmentId: number) =>
+    (await db.query<{ service_id: string; price: string; quantity: string; created_by: string | null }>(
+      "SELECT service_id, price, quantity, created_by FROM appointment_services WHERE appointment_id = $1 ORDER BY id",
+      [appointmentId]
+    )).rows.map(row => [Number(row.service_id), Number(row.price), Number(row.quantity), row.created_by == null ? null : Number(row.created_by)]);
+
+  beforeAll(async () => {
+    // Wall-clock timestamps round-trip only when the DB session and Node share a zone, as in production.
+    await db.exec(`SET TIME ZONE '${Intl.DateTimeFormat().resolvedOptions().timeZone}'`);
+    await db.exec(`CREATE TABLE invoices(id bigserial primary key, clinic_id bigint, appointment_id bigint, status text, deleted_at timestamptz);
+      INSERT INTO services VALUES (4,1,'УЗИ',150000),(5,1,'Анализ',50000);`);
+  });
+
+  it("swaps lines atomically, syncs the primary service and keeps authors of kept lines", async () => {
+    await runWithClinicContext(1, async () => {
+      const saved = await repo.create({ ...booking, startAt: "2099-12-01 10:00:00", serviceLines: [{ serviceId: 3 }, { serviceId: 4, price: 150000 }] });
+      await db.query("UPDATE appointment_services SET created_by = 7 WHERE appointment_id = $1 AND service_id = 4", [saved.id]);
+      const updated = await repo.replaceServiceLines(saved.id, [{ serviceId: 4, price: 150000, quantity: 1 }, { serviceId: 5, price: 50000, quantity: 2 }], { endAt: "2099-12-01 11:15:00", updatedBy: 9 });
+      expect(updated).toMatchObject({ serviceId: 4, price: 150000, endAt: "2099-12-01 11:15:00" });
+      expect(updated?.services).toEqual([{ serviceId: 4, name: "УЗИ", price: 150000 }, { serviceId: 5, name: "Анализ", price: 50000 }]);
+      expect(await lineRows(saved.id)).toEqual([[4, 150000, 1, 7], [5, 50000, 2, 9]]);
+    });
+  });
+
+  it("refuses while an active invoice exists and leaves the lines untouched", async () => {
+    await runWithClinicContext(1, async () => {
+      const saved = await repo.create({ ...booking, startAt: "2099-12-02 10:00:00" });
+      await db.query("INSERT INTO invoices(clinic_id, appointment_id, status) VALUES (1, $1, 'issued')", [saved.id]);
+      await expect(repo.replaceServiceLines(saved.id, [{ serviceId: 4, price: 150000, quantity: 1 }], { updatedBy: 9 })).rejects.toMatchObject({ status: 409 });
+      expect(await lineRows(saved.id)).toEqual([[3, 100000, 1, null]]);
+      await db.query("UPDATE invoices SET status = 'cancelled' WHERE appointment_id = $1", [saved.id]);
+      expect(await repo.replaceServiceLines(saved.id, [{ serviceId: 4, price: 150000, quantity: 1 }], { updatedBy: 9 })).toMatchObject({ serviceId: 4, endAt: booking.endAt });
+    });
+  });
+
+  it("does not touch an appointment of another clinic", async () => {
+    const saved = await runWithClinicContext(1, () => repo.create({ ...booking, startAt: "2099-12-03 10:00:00" }));
+    expect(await runWithClinicContext(2, () => repo.replaceServiceLines(saved.id, [{ serviceId: 4, price: 1, quantity: 1 }], { updatedBy: 9 }))).toBeNull();
+    expect(await lineRows(saved.id)).toEqual([[3, 100000, 1, null]]);
+  });
+});
