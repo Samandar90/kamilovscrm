@@ -11,6 +11,7 @@ import type {
 } from "../interfaces/billingTypes";
 import { env } from "../../config/env";
 import { dbPool } from "../../config/database";
+import { ApiError } from "../../middleware/errorHandler";
 import { parseMoneyColumn, parseRequiredNumber } from "../../utils/numbers";
 import { requireClinicId } from "../../tenancy/clinicContext";
 
@@ -294,7 +295,11 @@ export class PostgresInvoicesRepository implements IInvoicesRepository {
     };
   }
 
-  async create(input: InvoiceCreateInput, items: InvoiceItemInput[]): Promise<InvoiceSummary> {
+  async create(
+    input: InvoiceCreateInput,
+    items: InvoiceItemInput[],
+    options: { appointmentVersion?: string } = {}
+  ): Promise<InvoiceSummary> {
     const clinicId = requireClinicId();
     if (items.length === 0) {
       throw new Error("PostgresInvoicesRepository.create: items must not be empty");
@@ -303,6 +308,21 @@ export class PostgresInvoicesRepository implements IInvoicesRepository {
     const client = await dbPool.connect();
     try {
       await client.query("BEGIN");
+      if (input.appointmentId != null && options.appointmentVersion) {
+        // Same row lock as replacing the appointment's services: the billed lines are current.
+        const locked = await client.query<{ fresh: boolean }>(
+          `
+            SELECT date_trunc('milliseconds', updated_at) = $3::timestamptz AS fresh
+            FROM appointments
+            WHERE id = $1 AND clinic_id = $2 AND deleted_at IS NULL
+            FOR UPDATE
+          `,
+          [input.appointmentId, clinicId, options.appointmentVersion]
+        );
+        if (locked.rows[0]?.fresh !== true) {
+          throw new ApiError(409, "Услуги записи только что изменились — создайте счёт ещё раз");
+        }
+      }
 
       const insertHeaderValues: (string | number | null)[] = [
         clinicId,

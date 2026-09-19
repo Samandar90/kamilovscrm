@@ -241,7 +241,11 @@ export class InvoicesService {
     return this.invoicesRepository.findById(id);
   }
 
-  async create(_auth: AuthTokenPayload, payload: CreateInvoicePayload): Promise<Invoice> {
+  async create(
+    _auth: AuthTokenPayload,
+    payload: CreateInvoicePayload,
+    options: { appointmentVersion?: string } = {}
+  ): Promise<Invoice> {
     if (!Array.isArray(payload.items) || payload.items.length === 0) {
       throw new ApiError(400, "Field 'items' must contain at least one line with a service");
     }
@@ -300,7 +304,7 @@ export class InvoicesService {
     }
 
     try {
-      const created = await this.invoicesRepository.create(invoiceInput, resolvedItems);
+      const created = await this.invoicesRepository.create(invoiceInput, resolvedItems, options);
       const fullInvoice = await this.invoicesRepository.findById(created.id);
       if (!fullInvoice) {
         throw new ApiError(500, "Failed to load created invoice");
@@ -330,13 +334,12 @@ export class InvoicesService {
         throw new ApiError(409, "Счёт уже создан для этой записи");
       }
 
-      const [lines, appointment] = await Promise.all([
-        this.appointmentsRepository.listAppointmentInvoiceLines(appointmentId),
-        this.appointmentsRepository.findById(appointmentId),
-      ]);
+      // Version first, lines second: a change in between shows up as a version mismatch.
+      const appointment = await this.appointmentsRepository.findById(appointmentId);
       if (!appointment) {
         throw new ApiError(404, "Appointment not found");
       }
+      const lines = await this.appointmentsRepository.listAppointmentInvoiceLines(appointmentId);
 
       if (lines.length === 0) {
         throw new ApiError(400, "No services found for appointment");
@@ -353,13 +356,17 @@ export class InvoicesService {
       // Закрываем сразу: status paid (paidAmount 0 === total 0), запись — оплачена.
       const totalIsZero = items.every((i) => (i.price ?? 0) * (i.quantity || 1) === 0);
 
-      const created = await this.create(auth, {
-        patientId: appointment.patientId,
-        appointmentId: appointment.id,
-        status: totalIsZero ? "paid" : "issued",
-        discount: 0,
-        items,
-      });
+      const created = await this.create(
+        auth,
+        {
+          patientId: appointment.patientId,
+          appointmentId: appointment.id,
+          status: totalIsZero ? "paid" : "issued",
+          discount: 0,
+          items,
+        },
+        { appointmentVersion: appointment.updatedAt }
+      );
       await this.appointmentsRepository.updateBillingStatus(
         appointment.id,
         totalIsZero ? "paid" : "ready_for_payment"

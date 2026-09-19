@@ -1,8 +1,10 @@
 import type { UserRole } from "./permissions";
 import {
+  PERMISSIONS,
   USER_ROLES,
   canSetAppointmentCommercialPrice,
   hasPermission,
+  roleHasPermissionKey,
   rolesWithPermission,
 } from "./permissions";
 
@@ -61,6 +63,12 @@ export const ATTENDANCE_ROLES = rolesWithPermission("attendance", "read");
 /** Колл-центр: очередь звонков-напоминаний (operator + superadmin). */
 export const CALL_CENTER_ROLES = rolesWithPermission("callcenter", "read");
 
+/** База анкет пациентов (общая для всех врачей). */
+export const QUESTIONNAIRE_ROLES = rolesWithPermission("questionnaires", "read");
+
+/** «Мои услуги»: врач сам ведёт список своих услуг. */
+export const MY_SERVICES_ROLES: UserRole[] = [...PERMISSIONS.DOCTOR_OWN_SERVICES];
+
 export const DOCTOR_WORKSPACE_ROLES: UserRole[] = ["superadmin", "manager", "doctor", "nurse"];
 
 export const canReadBilling = (role: UserRole | undefined | null): boolean =>
@@ -88,6 +96,18 @@ export const canDeleteAppointments = (role: UserRole | undefined | null): boolea
   !!role && hasPermission(role, "appointments", "delete");
 
 export { canSetAppointmentCommercialPrice };
+
+/** PUT /appointments/:id/services — mirrors SERVICE_EDITOR_ROLES in the API (doctor: own visits only). */
+const APPOINTMENT_SERVICE_EDITOR_ROLES: readonly UserRole[] = [
+  "superadmin",
+  "reception",
+  "manager",
+  "operator",
+  "doctor",
+];
+
+export const canEditAppointmentServices = (role: UserRole | undefined | null): boolean =>
+  !!role && APPOINTMENT_SERVICE_EDITOR_ROLES.includes(role);
 
 /** Creating appointment with patient picker from directory (modals with autocomplete). */
 export const canCreateAppointmentWithPatientPicker = (
@@ -135,3 +155,15 @@ export const PATIENT_VISIT_CLINICAL_ROLES: UserRole[] = [
 
 export const canViewPatientVisitClinical = (role: UserRole | undefined | null): boolean =>
   !!role && PATIENT_VISIT_CLINICAL_ROLES.includes(role);
+
+export const canCreateQuestionnaires = (role: UserRole | undefined | null): boolean =>
+  !!role && hasPermission(role, "questionnaires", "create");
+
+export const canUpdateQuestionnaires = (role: UserRole | undefined | null): boolean =>
+  !!role && hasPermission(role, "questionnaires", "update");
+
+export const canDeleteQuestionnaires = (role: UserRole | undefined | null): boolean =>
+  !!role && hasPermission(role, "questionnaires", "delete");
+
+export const canManageQuestionnaireTemplates = (role: UserRole | undefined | null): boolean =>
+  !!role && roleHasPermissionKey(role, "QUESTIONNAIRE_TEMPLATE_MANAGE");

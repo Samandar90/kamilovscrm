@@ -42,13 +42,14 @@ export interface IAppointmentsRepository {
   isPatientEligibleForDoctorBooking(patientId: number, doctorId: number): Promise<boolean>;
   /**
    * Atomically replaces the appointment's service lines. The first line becomes the primary
-   * service (appointments.service_id / price). Fails with 409 while an active invoice exists,
-   * because the invoice is a snapshot of these lines. Returns null when the appointment is absent.
+   * service (appointments.service_id / price). Optimistic lock: fails with 409 when the
+   * appointment changed after `expectedUpdatedAt` was read, and while an active invoice exists
+   * (the invoice is a snapshot of these lines). Returns null when the appointment is absent.
    */
   replaceServiceLines(
     appointmentId: number,
     lines: AppointmentServiceLineReplacement[],
-    options: { endAt?: string; updatedBy: number | null }
+    options: { endAt?: string; updatedBy: number | null; expectedUpdatedAt: string }
   ): Promise<Appointment | null>;
   listServiceAssignments(appointmentId: number): Promise<AppointmentServiceAssignment[]>;
   /** Позиции счёта: цены и количества из appointment_services (не из каталога). */

@@ -1,9 +1,11 @@
 import { ApiError } from "../middleware/errorHandler";
 import { roleHasPermissionKey } from "../auth/permissions";
 import type { AuthTokenPayload } from "../repositories/interfaces/userTypes";
+import type { IAppointmentsRepository } from "../repositories/interfaces/IAppointmentsRepository";
 import type {
   IQuestionnairesRepository,
   PatientQuestionnaire,
+  PatientQuestionnaireSummary,
   QuestionnaireFilters,
   QuestionnaireListResult,
   QuestionnaireTemplate,
@@ -24,6 +26,9 @@ type Body = Record<string, unknown>;
 const asBody = (body: unknown): Body =>
   body && typeof body === "object" && !Array.isArray(body) ? (body as Body) : {};
 
+/** The booking rule decides which patients a doctor (or their nurse) treats. */
+type PatientScope = Pick<IAppointmentsRepository, "isPatientEligibleForDoctorBooking">;
+
 const ownDoctorId = (auth: AuthTokenPayload): number => {
   if (auth.doctorId == null) {
     throw new ApiError(403, "Account is not linked to a doctor profile");
@@ -32,11 +37,15 @@ const ownDoctorId = (auth: AuthTokenPayload): number => {
 };
 
 /**
- * Patient questionnaires: a shared base visible to every clinical role of the clinic.
- * A filled questionnaire snapshots its template, so templates stay freely editable.
+ * Patient questionnaires: a shared base every clinical role of the clinic can read.
+ * Doctors and nurses write only for patients they treat and do not get contact details,
+ * as elsewhere in the CRM. A filled questionnaire snapshots its template.
  */
 export class QuestionnairesService {
-  constructor(private readonly repository: IQuestionnairesRepository) {}
+  constructor(
+    private readonly repository: IQuestionnairesRepository,
+    private readonly patientScope: PatientScope
+  ) {}
 
   /** Inactive templates are only relevant to those who manage templates. */
   listTemplates(auth: AuthTokenPayload, includeInactive: boolean): Promise<QuestionnaireTemplate[]> {
@@ -70,16 +79,13 @@ export class QuestionnairesService {
     return updated;
   }
 
-  list(_auth: AuthTokenPayload, filters: QuestionnaireFilters): Promise<QuestionnaireListResult> {
-    return this.repository.list(filters);
+  async list(auth: AuthTokenPayload, filters: QuestionnaireFilters): Promise<QuestionnaireListResult> {
+    const result = await this.repository.list(filters);
+    return { ...result, items: result.items.map((item) => this.withoutContacts(auth, item)) };
   }
 
-  async getById(_auth: AuthTokenPayload, id: number): Promise<PatientQuestionnaire> {
-    const found = await this.repository.findById(id);
-    if (!found) {
-      throw new ApiError(404, "Анкета не найдена");
-    }
-    return found;
+  async getById(auth: AuthTokenPayload, id: number): Promise<PatientQuestionnaire> {
+    return this.withoutContacts(auth, await this.findOrFail(id));
   }
 
   async create(auth: AuthTokenPayload, rawBody: unknown): Promise<PatientQuestionnaire> {
@@ -98,6 +104,7 @@ export class QuestionnairesService {
     if (!(await this.repository.patientExists(patientId))) {
       throw new ApiError(404, "Пациент не найден");
     }
+    await this.assertTreatsPatient(auth, patientId);
 
     let doctorId: number | null = isDoctorScopedRole(auth.role) ? getEffectiveDoctorId(auth) : null;
     if (appointmentId !== null) {
@@ -111,7 +118,7 @@ export class QuestionnairesService {
       doctorId = appointment.doctorId;
     }
 
-    return this.repository.create(
+    const created = await this.repository.create(
       {
         patientId,
         templateId,
@@ -123,22 +130,47 @@ export class QuestionnairesService {
       },
       auth.userId
     );
+    return this.withoutContacts(auth, created);
   }
 
   async updateAnswers(auth: AuthTokenPayload, id: number, rawBody: unknown): Promise<PatientQuestionnaire> {
-    const current = await this.getById(auth, id);
+    const current = await this.findOrFail(id);
+    await this.assertTreatsPatient(auth, current.patientId);
     const answers = parseAnswers(asBody(rawBody).answers, current.questions);
     const updated = await this.repository.updateAnswers(id, answers, auth.userId);
     if (!updated) {
       throw new ApiError(404, "Анкета не найдена");
     }
-    return updated;
+    return this.withoutContacts(auth, updated);
   }
 
   async delete(_auth: AuthTokenPayload, id: number): Promise<void> {
     if (!(await this.repository.softDelete(id))) {
       throw new ApiError(404, "Анкета не найдена");
     }
+  }
+
+  private async findOrFail(id: number): Promise<PatientQuestionnaire> {
+    const found = await this.repository.findById(id);
+    if (!found) {
+      throw new ApiError(404, "Анкета не найдена");
+    }
+    return found;
+  }
+
+  private async assertTreatsPatient(auth: AuthTokenPayload, patientId: number): Promise<void> {
+    if (!isDoctorScopedRole(auth.role)) return;
+    const treats = await this.patientScope.isPatientEligibleForDoctorBooking(
+      patientId,
+      getEffectiveDoctorId(auth)
+    );
+    if (!treats) {
+      throw new ApiError(403, "Анкеты можно заполнять и менять только для своих пациентов");
+    }
+  }
+
+  private withoutContacts<T extends PatientQuestionnaireSummary>(auth: AuthTokenPayload, row: T): T {
+    return isDoctorScopedRole(auth.role) ? { ...row, patientPhone: null } : row;
   }
 
   private async parseTemplateInput(

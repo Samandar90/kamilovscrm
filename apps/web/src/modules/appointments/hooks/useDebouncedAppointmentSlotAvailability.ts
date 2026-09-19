@@ -8,14 +8,15 @@ const DEBOUNCE_MS = 400;
 
 export type SlotAvailabilityParams = {
   doctorId: string;
-  serviceId: string;
+  /** Все услуги визита: сервер считает длительность слота по их сумме. */
+  serviceIds: number[];
   date: string;
   time: string;
 };
 
 /**
  * GET /api/appointments/check-availability с debounce и отменой предыдущего запроса.
- * Нужны врач, услуга (для длительности на сервере), дата и время.
+ * Нужны врач, услуги, дата и время.
  */
 export function useDebouncedAppointmentSlotAvailability(
   token: string | null | undefined,
@@ -23,6 +24,7 @@ export function useDebouncedAppointmentSlotAvailability(
   enabled: boolean
 ): SlotAvailabilityPhase {
   const [phase, setPhase] = React.useState<SlotAvailabilityPhase>("idle");
+  const serviceIdsKey = params.serviceIds.join(",");
 
   React.useEffect(() => {
     if (!enabled || !token) {
@@ -31,8 +33,8 @@ export function useDebouncedAppointmentSlotAvailability(
     }
 
     const doctorId = Number(params.doctorId);
-    const serviceId = Number(params.serviceId);
-    if (!doctorId || !serviceId || !params.date || !params.time) {
+    const serviceIds = serviceIdsKey ? serviceIdsKey.split(",").map(Number) : [];
+    if (!doctorId || serviceIds.length === 0 || !params.date || !params.time) {
       setPhase("idle");
       return;
     }
@@ -55,7 +57,7 @@ export function useDebouncedAppointmentSlotAvailability(
           token,
           {
             doctorId,
-            serviceId,
+            serviceIds,
             date: params.date,
             time: params.time,
           },
@@ -82,7 +84,7 @@ export function useDebouncedAppointmentSlotAvailability(
     enabled,
     token,
     params.doctorId,
-    params.serviceId,
+    serviceIdsKey,
     params.date,
     params.time,
   ]);

@@ -26,6 +26,7 @@ import { formatSum } from "../../../utils/formatMoney";
 import { PhoneInput } from "../../../shared/ui/PhoneInput";
 import { phoneToApiValue, storedPhoneToNormalized } from "../../../utils/phoneInput";
 import { PatientCard } from "../components/PatientCard";
+import { PatientQuestionnairesPanel } from "../../questionnaires/components/PatientQuestionnairesPanel";
 import { cn } from "../../../ui/utils/cn";
 
 type PatientSource =
@@ -883,6 +884,11 @@ export const PatientsPage: React.FC = () => {
                 <X className="h-4 w-4" strokeWidth={2} />
               </button>
             </div>
+            {role && hasPermission(role, "questionnaires", "read") ? (
+              <div className="mb-4">
+                <PatientQuestionnairesPanel patient={historyPatient} />
+              </div>
+            ) : null}
             {historyLoading ? (
               <p className="text-sm text-[#64748b]">{t("patients.loadingHistory")}</p>
             ) : visitHistory.length === 0 ? (

@@ -12,7 +12,6 @@ const MAX_DIAGNOSIS_LENGTH = 1000;
 const MAX_TREATMENT_LENGTH = 2000;
 const MAX_CANCEL_REASON_LENGTH = 1000;
 const MAX_SERVICE_LINES = 30;
-const MAX_SERVICE_QUANTITY = 1000;
 
 const parsePositiveInteger = (value: unknown): number | null => {
   const n = parseNumericInput(value);
@@ -283,8 +282,9 @@ export const validateUpdateAppointmentPrice = (
 };
 
 /**
- * PUT /appointments/:id/services — `{ services: [{ serviceId, price?, quantity? }] }`.
+ * PUT /appointments/:id/services — `{ services: [{ serviceId, price? }] }`.
  * Order matters: the first line becomes the primary service of the appointment.
+ * Quantities are not editable here: kept lines keep theirs, new lines get 1.
  */
 export const validateReplaceAppointmentServices = (
   req: Request,
@@ -313,20 +313,10 @@ export const validateReplaceAppointmentServices = (
       if (parsed === null || parsed < 0) {
         throw new ApiError(400, `services[${index}].price must be a number greater than or equal to 0`);
       }
-      price = parsed;
+      // Whole sums, as at booking: appointments.price is BIGINT.
+      price = Math.round(parsed);
     }
-    let quantity: number | undefined;
-    if (line.quantity !== undefined && line.quantity !== null) {
-      const parsed = parseNumericInput(line.quantity);
-      if (parsed === null || parsed <= 0 || parsed > MAX_SERVICE_QUANTITY) {
-        throw new ApiError(
-          400,
-          `services[${index}].quantity must be greater than 0 and at most ${MAX_SERVICE_QUANTITY}`
-        );
-      }
-      quantity = parsed;
-    }
-    return { serviceId, price, quantity };
+    return { serviceId, price };
   });
   req.body = { services };
   next();

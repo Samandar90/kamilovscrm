@@ -63,7 +63,8 @@ describe("replacing appointment service lines SQL", () => {
     await runWithClinicContext(1, async () => {
       const saved = await repo.create({ ...booking, startAt: "2099-12-01 10:00:00", serviceLines: [{ serviceId: 3 }, { serviceId: 4, price: 150000 }] });
       await db.query("UPDATE appointment_services SET created_by = 7 WHERE appointment_id = $1 AND service_id = 4", [saved.id]);
-      const updated = await repo.replaceServiceLines(saved.id, [{ serviceId: 4, price: 150000, quantity: 1 }, { serviceId: 5, price: 50000, quantity: 2 }], { endAt: "2099-12-01 11:15:00", updatedBy: 9 });
+      const current = (await repo.findById(saved.id))!;
+      const updated = await repo.replaceServiceLines(saved.id, [{ serviceId: 4, price: 150000, quantity: 1 }, { serviceId: 5, price: 50000, quantity: 2 }], { endAt: "2099-12-01 11:15:00", updatedBy: 9, expectedUpdatedAt: current.updatedAt });
       expect(updated).toMatchObject({ serviceId: 4, price: 150000, endAt: "2099-12-01 11:15:00" });
       expect(updated?.services).toEqual([{ serviceId: 4, name: "УЗИ", price: 150000 }, { serviceId: 5, name: "Анализ", price: 50000 }]);
       expect(await lineRows(saved.id)).toEqual([[4, 150000, 1, 7], [5, 50000, 2, 9]]);
@@ -74,16 +75,33 @@ describe("replacing appointment service lines SQL", () => {
     await runWithClinicContext(1, async () => {
       const saved = await repo.create({ ...booking, startAt: "2099-12-02 10:00:00" });
       await db.query("INSERT INTO invoices(clinic_id, appointment_id, status) VALUES (1, $1, 'issued')", [saved.id]);
-      await expect(repo.replaceServiceLines(saved.id, [{ serviceId: 4, price: 150000, quantity: 1 }], { updatedBy: 9 })).rejects.toMatchObject({ status: 409 });
+      await expect(repo.replaceServiceLines(saved.id, [{ serviceId: 4, price: 150000, quantity: 1 }], { updatedBy: 9, expectedUpdatedAt: saved.updatedAt })).rejects.toMatchObject({ status: 409 });
       expect(await lineRows(saved.id)).toEqual([[3, 100000, 1, null]]);
       await db.query("UPDATE invoices SET status = 'cancelled' WHERE appointment_id = $1", [saved.id]);
-      expect(await repo.replaceServiceLines(saved.id, [{ serviceId: 4, price: 150000, quantity: 1 }], { updatedBy: 9 })).toMatchObject({ serviceId: 4, endAt: booking.endAt });
+      expect(await repo.replaceServiceLines(saved.id, [{ serviceId: 4, price: 150000, quantity: 1 }], { updatedBy: 9, expectedUpdatedAt: saved.updatedAt })).toMatchObject({ serviceId: 4, endAt: booking.endAt });
     });
   });
 
   it("does not touch an appointment of another clinic", async () => {
     const saved = await runWithClinicContext(1, () => repo.create({ ...booking, startAt: "2099-12-03 10:00:00" }));
-    expect(await runWithClinicContext(2, () => repo.replaceServiceLines(saved.id, [{ serviceId: 4, price: 1, quantity: 1 }], { updatedBy: 9 }))).toBeNull();
+    expect(await runWithClinicContext(2, () => repo.replaceServiceLines(saved.id, [{ serviceId: 4, price: 1, quantity: 1 }], { updatedBy: 9, expectedUpdatedAt: saved.updatedAt }))).toBeNull();
     expect(await lineRows(saved.id)).toEqual([[3, 100000, 1, null]]);
+  });
+
+  it("refuses a replacement decided on a stale version of the appointment", async () => {
+    await runWithClinicContext(1, async () => {
+      const saved = await repo.create({ ...booking, startAt: "2099-12-04 10:00:00" });
+      await repo.update(saved.id, { notes: "changed meanwhile" });
+      await expect(repo.replaceServiceLines(saved.id, [{ serviceId: 4, price: 150000, quantity: 1 }], { updatedBy: 9, expectedUpdatedAt: saved.updatedAt })).rejects.toMatchObject({ status: 409 });
+      expect(await lineRows(saved.id)).toEqual([[3, 100000, 1, null]]);
+    });
+  });
+
+  it("returns services from single-row updates so clients keep the full visit", async () => {
+    await runWithClinicContext(1, async () => {
+      const saved = await repo.create({ ...booking, startAt: "2099-12-05 10:00:00", serviceLines: [{ serviceId: 3, price: 100000 }, { serviceId: 4, price: 150000 }] });
+      expect((await repo.update(saved.id, { notes: "x" }))?.services?.map(line => line.serviceId)).toEqual([3, 4]);
+      expect((await repo.updateBillingStatus(saved.id, "ready_for_payment"))?.services).toHaveLength(2);
+    });
   });
 });

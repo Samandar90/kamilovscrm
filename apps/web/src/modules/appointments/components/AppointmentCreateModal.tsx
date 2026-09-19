@@ -2,28 +2,19 @@ import React from "react";
 import { CalendarPlus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Patient, Service } from "../api/appointmentsFlowApi";
-import { coercePriceToNumber } from "../../../shared/lib/money";
-import { MoneyInput } from "../../../shared/ui/MoneyInput";
-import { formatSum } from "../../../utils/formatMoney";
 import { Modal } from "../../../components/ui/Modal";
 import { PatientAutocompleteInput } from "./PatientAutocompleteInput";
-import {
-  modalHintClass,
-  modalInputClass,
-  modalLabelClass,
-  modalSelectClass,
-  modalSelectDisabledClass,
-} from "../utils/modalFieldClasses";
+import { ServiceLinesPicker } from "./ServiceLinesPicker";
+import { modalInputClass, modalLabelClass, modalSelectClass } from "../utils/modalFieldClasses";
+import type { ServiceLineDraft } from "../utils/serviceLines";
 import type { SlotAvailabilityPhase } from "../hooks/useDebouncedAppointmentSlotAvailability";
 
 export type FullFormFields = {
   patientQuery: string;
   selectedPatient: Patient | null;
   doctorId: string;
-  serviceId: string;
-  price: number;
-  /** false — цена подставляется из выбранной услуги; true — вручную */
-  priceLocked: boolean;
+  /** Выбранные услуги визита; первая — основная. */
+  serviceLines: ServiceLineDraft[];
   date: string;
   time: string;
   notes: string;
@@ -41,6 +32,8 @@ type Props = {
   doctorsMap: Record<number, string>;
   availableServices: Service[];
   servicesLoading: boolean;
+  /** Цены по строкам правят только роли с коммерческим доступом. */
+  canEditPrices: boolean;
   onDoctorChange: (doctorId: string) => void;
   patientInputRef: React.Ref<HTMLInputElement>;
   slotAvailabilityPhase: SlotAvailabilityPhase;
@@ -67,6 +60,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
   doctorsMap,
   availableServices,
   servicesLoading,
+  canEditPrices,
   onDoctorChange,
   patientInputRef,
   slotAvailabilityPhase,
@@ -86,17 +80,23 @@ export const AppointmentCreateModal: React.FC<Props> = ({
   );
 
   const patientSelected = Boolean(form.selectedPatient);
-  const allSlotFields = Boolean(form.doctorId && form.serviceId && form.date && form.time);
+  const hasServices = form.serviceLines.length > 0;
+  const allSlotFields = Boolean(form.doctorId && hasServices && form.date && form.time);
   const slotOk = !allSlotFields || slotAvailabilityPhase === "free";
   const canSubmit =
-    Boolean(patientSelected && form.doctorId && form.serviceId && form.date && form.time) &&
+    Boolean(patientSelected && form.doctorId && hasServices && form.date && form.time) &&
     slotOk &&
     !submitting;
 
-  const serviceLocked = !form.doctorId || servicesLoading;
+  const servicesHint = !form.doctorId
+    ? t("appointments.selectDoctorFirst")
+    : servicesLoading
+      ? t("appointments.loadingServices")
+      : availableServices.length === 0
+        ? t("appointments.noDoctorServices")
+        : null;
 
   const sel = modalSelectClass.replace("mt-2", "mt-1.5");
-  const selDis = modalSelectDisabledClass.replace("mt-2", "mt-1.5");
   const inp = modalInputClass.replace("mt-2", "mt-1.5");
 
   return (
@@ -110,6 +110,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
         aria-modal="true"
         aria-labelledby="full-appointment-title"
         aria-describedby="full-appointment-desc"
+        className="flex min-h-0 flex-1 flex-col"
       >
         <header className="relative shrink-0 border-b border-[#e5e7eb] bg-white px-5 py-3.5">
           <div className="flex gap-3">
@@ -185,7 +186,7 @@ export const AppointmentCreateModal: React.FC<Props> = ({
                   value={form.doctorId}
                   onChange={(e) => {
                     const v = e.target.value;
-                    updateForm({ doctorId: v, serviceId: "" });
+                    updateForm({ doctorId: v, serviceLines: [] });
                     onDoctorChange(v);
                   }}
                 >
@@ -201,48 +202,19 @@ export const AppointmentCreateModal: React.FC<Props> = ({
 
             <div>
               <label htmlFor="create-service" className={modalLabelClass}>
-                {t("common.service")}
+                {t("serviceLines.label")}
               </label>
-              <select
-                id="create-service"
-                className={serviceLocked ? selDis : sel}
-                value={form.serviceId}
-                onChange={(e) => updateForm({ serviceId: e.target.value, price: 0, priceLocked: false })}
-                disabled={serviceLocked}
-              >
-                <option value="">
-                  {servicesLoading
-                    ? t("common.loading")
-                    : form.doctorId
-                      ? t("appointments.selectService")
-                      : t("appointments.selectDoctorFirst")}
-                </option>
-                {form.doctorId && !servicesLoading
-                  ? availableServices.map((service) => (
-                      <option key={service.id} value={service.id}>
-                        {service.name} · {formatSum(coercePriceToNumber(service.price))}
-                      </option>
-                    ))
-                  : null}
-              </select>
-              {!form.doctorId ? (
-                <p className={modalHintClass}>{t("appointments.selectDoctorFirst")}</p>
-              ) : servicesLoading ? (
-                <p className={modalHintClass}>{t("appointments.loadingServices")}</p>
-              ) : null}
-            </div>
-
-            <div>
-              <label htmlFor="create-price" className={modalLabelClass}>
-                {t("billing.price")}
-              </label>
-              <MoneyInput
-                id="create-price"
-                mode="integer"
-                className={inp}
-                value={form.price}
-                onChange={(next) => updateForm({ price: next, priceLocked: true })}
-              />
+              <div className="mt-1.5">
+                <ServiceLinesPicker
+                  id="create-service"
+                  services={availableServices}
+                  lines={form.serviceLines}
+                  onChange={(serviceLines) => updateForm({ serviceLines })}
+                  canEditPrice={canEditPrices}
+                  disabled={submitting}
+                  hint={servicesHint}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

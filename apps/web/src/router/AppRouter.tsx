@@ -24,6 +24,8 @@ import { LoginPage } from "../modules/auth/pages/LoginPage";
 import { RegisterPage } from "../modules/auth/pages/RegisterPage";
 import { AIAssistantPage } from "../modules/ai-assistant/pages/AIAssistantPage";
 import { DoctorWorkspacePage } from "../modules/doctor-workspace/pages/DoctorWorkspacePage";
+import { MyServicesPage } from "../modules/my-services/pages/MyServicesPage";
+import { QuestionnairesPage } from "../modules/questionnaires/pages/QuestionnairesPage";
 import { MainLayout } from "../layouts/MainLayout";
 import { GuestRoute } from "../auth/guards/GuestRoute";
 import { ProtectedRoute } from "../auth/guards/ProtectedRoute";
@@ -38,6 +40,8 @@ import {
   PAYMENTS_READ_PAGE_ROLES,
   ATTENDANCE_ROLES,
   CALL_CENTER_ROLES,
+  MY_SERVICES_ROLES,
+  QUESTIONNAIRE_ROLES,
   REPORT_ROLES,
   SERVICES_DIRECTORY_ROLES,
   SYSTEM_ARCH_ROLES,
@@ -134,6 +138,22 @@ export const AppRouter: React.FC = () => {
           element={
             <RoleGuard roles={APPOINTMENTS_PAGE_ROUTE_ROLES}>
               <DoctorWorkspacePage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/questionnaires"
+          element={
+            <RoleGuard roles={QUESTIONNAIRE_ROLES}>
+              <QuestionnairesPage />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/my-services"
+          element={
+            <RoleGuard roles={MY_SERVICES_ROLES}>
+              <MyServicesPage />
             </RoleGuard>
           }
         />

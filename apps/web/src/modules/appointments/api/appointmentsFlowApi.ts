@@ -127,6 +127,13 @@ export type Payment = {
   voidReason: string | null;
 };
 
+/** One service of a visit; the first line is the primary service. Price only for commercial roles. */
+export type AppointmentServiceLineInput = {
+  serviceId: number;
+  price?: number | null;
+  quantity?: number;
+};
+
 type AppointmentCreateInput = {
   patientId: number;
   /** Опционально для роли врача — сервер подставляет из JWT. */
@@ -136,11 +143,7 @@ type AppointmentCreateInput = {
   /** По умолчанию 1 на бэкенде. */
   quantity?: number;
   /** Несколько услуг при создании записи → строки в appointment_services. */
-  serviceLines?: Array<{
-    serviceId: number;
-    price?: number | null;
-    quantity?: number;
-  }>;
+  serviceLines?: AppointmentServiceLineInput[];
   startAt: string;
   status: AppointmentStatus;
   diagnosis?: string | null;
@@ -193,14 +196,14 @@ export const appointmentsFlowApi = {
 
   checkAppointmentAvailability: (
     token: string,
-    params: { doctorId: number; serviceId: number; date: string; time: string },
+    params: { doctorId: number; serviceIds: number[]; date: string; time: string },
     signal?: AbortSignal
   ) => {
     const time =
       params.time.length === 5 ? `${params.time}:00` : params.time;
     const qs = new URLSearchParams({
       doctorId: String(params.doctorId),
-      serviceId: String(params.serviceId),
+      serviceIds: params.serviceIds.join(","),
       date: params.date,
       time,
     });
@@ -269,27 +272,16 @@ export const appointmentsFlowApi = {
       { token }
     ),
 
-  addAppointmentService: (token: string, appointmentId: number, serviceId: number) =>
-    requestJson<AppointmentAssignedService>(`/api/appointments/${appointmentId}/services`, {
-      method: "POST",
-      token,
-      body: { service_id: serviceId },
-    }),
-
-  removeAppointmentService: (token: string, appointmentId: number, serviceId: number) =>
-    requestJson<{ success: boolean }>(
-      `/api/appointments/${appointmentId}/services/${serviceId}`,
-      {
-        method: "DELETE",
-        token,
-      }
-    ),
-
-  syncAppointmentServices: (token: string, appointmentId: number, serviceIds: number[]) =>
-    requestJson<AppointmentAssignedService[]>(`/api/appointments/${appointmentId}/services`, {
+  /** Replaces every service of the visit; returns the updated appointment. */
+  replaceAppointmentServices: (
+    token: string,
+    appointmentId: number,
+    services: AppointmentServiceLineInput[]
+  ) =>
+    requestJson<Appointment>(`/api/appointments/${appointmentId}/services`, {
       method: "PUT",
       token,
-      body: { serviceIds },
+      body: { services },
     }),
 
   cancelAppointment: (

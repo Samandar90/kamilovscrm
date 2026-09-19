@@ -24,6 +24,7 @@ import { AppointmentActionPanel } from "../components/AppointmentActionPanel";
 import { AppointmentCard } from "../components/AppointmentCard";
 import { AppointmentMobileCard } from "../components/AppointmentMobileCard";
 import { AppointmentCreateModal, type FullFormFields } from "../components/AppointmentCreateModal";
+import { AppointmentServicesModal } from "../components/AppointmentServicesModal";
 import { AppointmentQuickCreateModal } from "../features/quick-create/AppointmentQuickCreateModal";
 import { useDebouncedAppointmentSlotAvailability } from "../hooks/useDebouncedAppointmentSlotAvailability";
 import { CreatePatientModal } from "../components/CreatePatientModal";
@@ -33,6 +34,11 @@ import {
   uiDateToYmd,
 } from "../utils/appointmentFormUtils";
 import { summarizeAppointments } from "../utils/appointmentSummary";
+import {
+  canChangeAppointmentServices,
+  toServiceLineInputs,
+  totalDurationMinutes,
+} from "../utils/serviceLines";
 import {
   AppContainer,
   EmptyState,
@@ -55,17 +61,6 @@ const secondaryActionButtonClass =
 const MOBILE_WINDOW_INITIAL = 40;
 const MOBILE_WINDOW_STEP = 40;
 
-type ConsultationModalState = {
-  open: boolean;
-  appointment: Appointment | null;
-  diagnosis: string;
-  treatment: string;
-  notes: string;
-  services: Array<{ serviceId: number; name: string; price: number }>;
-  carePlanItems: Array<{ id: string; type: "medication" | "recommendation" | "procedure"; text: string }>;
-  carePlanInput: string;
-  selectedServiceId: string;
-};
 type AppointmentDetailsModalState = {
   open: boolean;
   appointment: Appointment | null;
@@ -263,9 +258,7 @@ const emptyFullForm = (): FullFormFields => ({
   patientQuery: "",
   selectedPatient: null,
   doctorId: "",
-  serviceId: "",
-  price: 0,
-  priceLocked: false,
+  serviceLines: [],
   date: todayYmd(),
   time: "",
   notes: "",
@@ -284,7 +277,6 @@ export const AppointmentsPage: React.FC = () => {
   const canEditAppointmentPrice = canSetAppointmentCommercialPrice(ur);
   const canUpdateApptStatus = canUpdateAppointments(ur);
   const readBilling = canReadBilling(ur);
-  const canDoClinical = ur === "doctor" || ur === "superadmin";
   const canHardDeleteAppointment = ur === "superadmin";
   const canCreateInvoice = !!ur && hasPermission(ur, "invoices", "create");
 
@@ -327,17 +319,6 @@ export const AppointmentsPage: React.FC = () => {
 
   const fullPatientRef = React.useRef<HTMLInputElement>(null);
 
-  const [consultationModal, setConsultationModal] = React.useState<ConsultationModalState>({
-    open: false,
-    appointment: null,
-    diagnosis: "",
-    treatment: "",
-    notes: "",
-    services: [],
-    carePlanItems: [],
-    carePlanInput: "",
-    selectedServiceId: "",
-  });
   const [detailsModal, setDetailsModal] = React.useState<AppointmentDetailsModalState>({
     open: false,
     appointment: null,
@@ -363,15 +344,13 @@ export const AppointmentsPage: React.FC = () => {
     message: null,
     suggestedTimes: [],
   });
-  const [isConsultationSaving, setIsConsultationSaving] = React.useState(false);
-  const [isConsultationAutoSaving, setIsConsultationAutoSaving] = React.useState(false);
-  const consultationLastSavedSignatureRef = React.useRef<string>("");
+  const [servicesModalAppointment, setServicesModalAppointment] = React.useState<Appointment | null>(null);
 
   const fullSlotAvailabilityPhase = useDebouncedAppointmentSlotAvailability(
     token,
     {
       doctorId: fullForm.doctorId,
-      serviceId: fullForm.serviceId,
+      serviceIds: fullForm.serviceLines.map((line) => line.serviceId),
       date: fullForm.date,
       time: fullForm.time,
     },
@@ -379,9 +358,6 @@ export const AppointmentsPage: React.FC = () => {
   );
   const fullSlotAvailabilityPhaseRef = React.useRef(fullSlotAvailabilityPhase);
   fullSlotAvailabilityPhaseRef.current = fullSlotAvailabilityPhase;
-  const canCompleteConsultation =
-    consultationModal.diagnosis.trim().length > 0 &&
-    consultationModal.treatment.trim().length > 0;
 
   const loadData = React.useCallback(async (opts?: { silent?: boolean }) => {
     if (!token) return;
@@ -463,31 +439,12 @@ export const AppointmentsPage: React.FC = () => {
 
   React.useEffect(() => {
     if (!fullModalOpen || !fullForm.doctorId || servicesLoading) return;
-    if (!fullForm.serviceId) return;
-    const sid = Number(fullForm.serviceId);
-    if (!Number.isInteger(sid) || sid <= 0) return;
-    if (availableServices.length === 0 || !availableServices.some((s) => s.id === sid)) {
-      setFullForm((f) => ({ ...f, serviceId: "" }));
-    }
-  }, [
-    fullModalOpen,
-    fullForm.doctorId,
-    fullForm.serviceId,
-    availableServices,
-    servicesLoading,
-  ]);
-
-  React.useEffect(() => {
-    if (!fullModalOpen || !fullForm.serviceId) return;
-    const sid = Number(fullForm.serviceId);
-    if (!Number.isInteger(sid) || sid <= 0) return;
-    const selectedService = availableServices.find((service) => service.id === sid);
-    if (!selectedService) return;
+    const offered = new Set(availableServices.map((service) => service.id));
     setFullForm((prev) => {
-      if (prev.priceLocked) return prev;
-      return { ...prev, price: Math.round(coercePriceToNumber(selectedService.price)) };
+      const kept = prev.serviceLines.filter((line) => offered.has(line.serviceId));
+      return kept.length === prev.serviceLines.length ? prev : { ...prev, serviceLines: kept };
     });
-  }, [fullModalOpen, fullForm.serviceId, availableServices]);
+  }, [fullModalOpen, fullForm.doctorId, availableServices, servicesLoading]);
 
   React.useEffect(() => {
     const patientIdParam = searchParams.get("patientId");
@@ -546,11 +503,10 @@ export const AppointmentsPage: React.FC = () => {
 
   React.useEffect(() => {
     const doctorId = Number(fullForm.doctorId);
-    const serviceId = Number(fullForm.serviceId);
     if (
       fullSlotAvailabilityPhase !== "busy" ||
       !doctorId ||
-      !serviceId ||
+      fullForm.serviceLines.length === 0 ||
       !fullForm.date ||
       !fullForm.time
     ) {
@@ -558,7 +514,7 @@ export const AppointmentsPage: React.FC = () => {
       return;
     }
 
-    const duration = servicesMap[serviceId]?.duration ?? 0;
+    const duration = totalDurationMinutes(fullForm.serviceLines, servicesMap);
     if (!duration) {
       setFullConflictHint({ message: null, suggestedTimes: [] });
       return;
@@ -607,7 +563,7 @@ export const AppointmentsPage: React.FC = () => {
     appointments,
     fullForm.date,
     fullForm.doctorId,
-    fullForm.serviceId,
+    fullForm.serviceLines,
     fullForm.time,
     fullSlotAvailabilityPhase,
     servicesMap,
@@ -616,14 +572,14 @@ export const AppointmentsPage: React.FC = () => {
   const submitFullAppointment = async (form: FullFormFields) => {
     if (!token || !canOpenAppointmentCreateModals) return;
     const doctorId = isDoctorUser ? Number(user?.doctorId ?? 0) : Number(form.doctorId);
-    const serviceId = Number(form.serviceId);
     const patientId = Number(form.selectedPatient?.id);
+    const [primary] = form.serviceLines;
     if (
       !form.selectedPatient ||
       !Number.isInteger(patientId) ||
       patientId <= 0 ||
       !doctorId ||
-      !serviceId ||
+      !primary ||
       !form.date ||
       !form.time
     ) {
@@ -635,19 +591,13 @@ export const AppointmentsPage: React.FC = () => {
       setError(t("appointments.errors.invalidDateTime"));
       return;
     }
-    if (!availableServices.some((s) => s.id === serviceId)) {
+    const offered = new Set(availableServices.map((service) => service.id));
+    if (form.serviceLines.some((line) => !offered.has(line.serviceId))) {
       setError(t("appointments.errors.selectServiceFromList"));
       return;
     }
-    const servicePrice = coercePriceToNumber(servicesMap[serviceId]?.price ?? 0);
-    const parsedPrice = form.priceLocked ? form.price : servicePrice;
-    if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
+    if (form.serviceLines.some((line) => !Number.isFinite(line.price) || line.price < 0)) {
       setError(t("appointments.errors.priceError"));
-      return;
-    }
-    const serviceDuration = servicesMap[serviceId]?.duration ?? 0;
-    if (!serviceDuration) {
-      setError(t("appointments.errors.serviceDurationError"));
       return;
     }
     const slotPhase = fullSlotAvailabilityPhaseRef.current;
@@ -666,8 +616,9 @@ export const AppointmentsPage: React.FC = () => {
     try {
       const basePayload = {
         patientId,
-        serviceId,
-        price: Math.round(parsedPrice),
+        serviceId: primary.serviceId,
+        ...(canEditAppointmentPrice ? { price: Math.round(primary.price) } : {}),
+        serviceLines: toServiceLineInputs(form.serviceLines, canEditAppointmentPrice),
         startAt,
         status: "scheduled" as const,
         diagnosis: null,
@@ -746,222 +697,13 @@ export const AppointmentsPage: React.FC = () => {
     navigate(`/doctor-workspace/${appointment.id}`);
   };
 
-  const closeConsultation = () => {
-    setConsultationModal({
-      open: false,
-      appointment: null,
-      diagnosis: "",
-      treatment: "",
-      notes: "",
-      services: [],
-      carePlanItems: [],
-      carePlanInput: "",
-      selectedServiceId: "",
-    });
-    consultationLastSavedSignatureRef.current = "";
-    setIsConsultationSaving(false);
-    setIsConsultationAutoSaving(false);
+  const handleServicesSaved = (updated: Appointment) => {
+    setServicesModalAppointment(null);
+    setAppointments((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+    setDetailsModal({ open: true, appointment: updated });
+    setToast(t("serviceLines.saved"));
+    void loadData({ silent: true });
   };
-
-  const printPrescription = () => {
-    if (!consultationModal.appointment) return;
-    const patient = patientsMap[consultationModal.appointment.patientId] ?? `#${consultationModal.appointment.patientId}`;
-    const doctor = doctorsMap[consultationModal.appointment.doctorId] ?? `#${consultationModal.appointment.doctorId}`;
-    const servicesHtml =
-      consultationModal.services.length > 0
-        ? consultationModal.services
-            .map((item) => `<li>${item.name} — ${formatSum(item.price)}</li>`)
-            .join("")
-        : "<li>Нет назначенных услуг</li>";
-    const planHtml =
-      consultationModal.carePlanItems.length > 0
-        ? consultationModal.carePlanItems.map((item) => `<li>${item.text}</li>`).join("")
-        : "<li>Нет назначений</li>";
-    const popup = window.open("", "_blank");
-    if (!popup) return;
-    popup.document.write(`<!doctype html><html><body style="font-family:Arial,sans-serif;padding:24px;">
-      <h2>Назначение пациента</h2>
-      <p><b>Пациент:</b> ${patient}</p>
-      <p><b>Врач:</b> ${doctor}</p>
-      <h3>Услуги</h3><ul>${servicesHtml}</ul>
-      <h3>Диагноз</h3><p>${consultationModal.diagnosis || "—"}</p>
-      <h3>Лечение</h3><p>${consultationModal.treatment || "—"}</p>
-      <h3>Заметки</h3><p>${consultationModal.notes || "—"}</p>
-      <h3>Назначение</h3><ul>${planHtml}</ul>
-    </body></html>`);
-    popup.document.close();
-    popup.focus();
-    popup.print();
-  };
-
-  const completeConsultation = async () => {
-    if (!token || !consultationModal.appointment || !canDoClinical) return;
-    if (consultationModal.services.length === 0) {
-      window.alert(t("appointments.errors.addServiceBeforeComplete"));
-      return;
-    }
-    const diagnosis = consultationModal.diagnosis.trim();
-    const treatment = consultationModal.treatment.trim();
-    if (!diagnosis || !treatment) {
-      setError(t("appointments.errors.fillDiagnosisAndTreatment"));
-      return;
-    }
-    const saved = await saveConsultationDraft(false);
-    if (!saved) {
-      return;
-    }
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      await appointmentsFlowApi.completeAppointment(token, consultationModal.appointment.id, {
-        diagnosis,
-        treatment,
-        notes: consultationModal.notes.trim() || null,
-      });
-      closeConsultation();
-      await loadData();
-      setToast(t("appointments.messages.patientReady"));
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t("appointments.errors.creationError"));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const addServiceToConsultation = async (forcedServiceId?: number) => {
-    if (!consultationModal.appointment) return;
-    const serviceId =
-      forcedServiceId ?? Number(consultationModal.selectedServiceId);
-    if (!Number.isInteger(serviceId) || serviceId <= 0) return;
-    if (consultationModal.services.some((row) => row.serviceId === serviceId)) {
-      setConsultationModal((prev) => ({ ...prev, selectedServiceId: "" }));
-      return;
-    }
-    const service = servicesMap[serviceId];
-    if (!service) {
-      setError(t("appointments.errors.serviceNotFound"));
-      return;
-    }
-    setConsultationModal((prev) => ({
-      ...prev,
-      selectedServiceId: "",
-      services: [
-        ...prev.services,
-        {
-          serviceId,
-          name: service.name,
-          price: coercePriceToNumber(service.price),
-        },
-      ],
-    }));
-  };
-
-  const removeServiceFromConsultation = async (serviceId: number) => {
-    if (!consultationModal.appointment) return;
-    setConsultationModal((prev) => ({
-      ...prev,
-      services: prev.services.filter((row) => row.serviceId !== serviceId),
-    }));
-  };
-
-  const addCarePlanItem = () => {
-    const text = consultationModal.carePlanInput.trim();
-    if (!text) return;
-    setConsultationModal((prev) => ({
-      ...prev,
-      carePlanItems: [
-        ...prev.carePlanItems,
-        {
-          id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          type: "recommendation",
-          text,
-        },
-      ],
-      carePlanInput: "",
-    }));
-  };
-
-  const removeCarePlanItem = (id: string) => {
-    setConsultationModal((prev) => ({
-      ...prev,
-      carePlanItems: prev.carePlanItems.filter((item) => item.id !== id),
-    }));
-  };
-
-  const saveConsultationDraft = async (showToast = false): Promise<boolean> => {
-    if (!token || !consultationModal.appointment) return false;
-    const diagnosis = consultationModal.diagnosis.trim() || null;
-    const treatment = consultationModal.treatment.trim() || null;
-    const notes = consultationModal.notes.trim() || null;
-    const serviceIds = consultationModal.services.map((item) => item.serviceId);
-    const signature = JSON.stringify({ diagnosis, treatment, notes, serviceIds });
-    if (consultationLastSavedSignatureRef.current === signature) {
-      return true;
-    }
-    setIsConsultationSaving(true);
-    try {
-      const updated = await appointmentsFlowApi.updateAppointment(
-        token,
-        consultationModal.appointment.id,
-        { diagnosis, treatment, notes }
-      );
-      await appointmentsFlowApi.syncAppointmentServices(
-        token,
-        consultationModal.appointment.id,
-        serviceIds
-      );
-      consultationLastSavedSignatureRef.current = signature;
-      setConsultationModal((prev) => ({
-        ...prev,
-        appointment: prev.appointment ? { ...prev.appointment, ...updated } : prev.appointment,
-      }));
-      await loadData();
-      if (showToast) setToast("Изменения сохранены");
-      return true;
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t("appointments.errors.saveDraftError"));
-      return false;
-    } finally {
-      setIsConsultationSaving(false);
-    }
-  };
-
-  React.useEffect(() => {
-    if (!token || !consultationModal.open || !consultationModal.appointment) return;
-    const diagnosis = consultationModal.diagnosis.trim() || null;
-    const treatment = consultationModal.treatment.trim() || null;
-    const notes = consultationModal.notes.trim() || null;
-    const signature = JSON.stringify({ diagnosis, treatment, notes });
-    if (consultationLastSavedSignatureRef.current === signature) return;
-    const timer = window.setTimeout(() => {
-      setIsConsultationAutoSaving(true);
-      void appointmentsFlowApi
-        .updateAppointment(token, consultationModal.appointment!.id, { diagnosis, treatment, notes })
-        .then((updated) => {
-          consultationLastSavedSignatureRef.current = signature;
-          setConsultationModal((prev) => ({
-            ...prev,
-            appointment: prev.appointment ? { ...prev.appointment, ...updated } : prev.appointment,
-          }));
-        })
-        .catch((requestError) => {
-          setError(
-            requestError instanceof Error
-              ? requestError.message
-              : t("appointments.errors.autosaveError")
-          );
-        })
-        .finally(() => setIsConsultationAutoSaving(false));
-    }, 500);
-    return () => window.clearTimeout(timer);
-  }, [
-    token,
-    consultationModal.open,
-    consultationModal.appointment,
-    consultationModal.diagnosis,
-    consultationModal.treatment,
-    consultationModal.notes,
-  ]);
 
   const cancelAppointment = async () => {
     if (!token || !cancelModal.appointment || !canUpdateApptStatus) return;
@@ -1506,6 +1248,7 @@ export const AppointmentsPage: React.FC = () => {
           doctorsMap={doctorsMap}
           availableServices={availableServices}
           servicesLoading={servicesLoading}
+          canEditPrices={canEditAppointmentPrice}
           onDoctorChange={handleDoctorChangeForFull}
           patientInputRef={fullPatientRef}
           slotAvailabilityPhase={fullSlotAvailabilityPhase}
@@ -1566,6 +1309,7 @@ export const AppointmentsPage: React.FC = () => {
               showActions &&
               (ap.status === "scheduled" || ap.status === "confirmed" || ap.status === "arrived");
             const showCancelBtn = showActions && shouldOfferCancel(ap);
+            const showEditServices = canChangeAppointmentServices(user, ap);
             const rowClass = "flex flex-col gap-0.5 border-b border-slate-100 py-3 last:border-b-0";
             const labelClass = "text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500";
             const valueClass = "text-sm font-medium text-slate-900";
@@ -1653,6 +1397,19 @@ export const AppointmentsPage: React.FC = () => {
                 <div className="sticky bottom-0 z-[1] flex shrink-0 flex-col gap-2 border-t border-slate-100 bg-white px-6 py-4">
                   {showActions ? (
                     <div className="flex flex-wrap gap-2">
+                      {showEditServices ? (
+                        <button
+                          type="button"
+                          disabled={isSubmitting}
+                          onClick={() => {
+                            setDetailsModal({ open: false, appointment: null });
+                            setServicesModalAppointment(ap);
+                          }}
+                          className="inline-flex min-h-[40px] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          {t("serviceLines.editAction")}
+                        </button>
+                      ) : null}
                       {showReschedule ? (
                         <button
                           type="button"
@@ -1898,219 +1655,19 @@ export const AppointmentsPage: React.FC = () => {
         </Modal>
       ) : null}
 
-      {canDoClinical && consultationModal.open && consultationModal.appointment && (
-        <Modal
-          isOpen={consultationModal.open}
-          onClose={closeConsultation}
-          className="w-full max-w-3xl rounded-[20px] border border-[#e5e7eb] bg-white p-6 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.2)]"
-        >
-            {(() => {
-              const consultationBusy = isSubmitting || isConsultationSaving || isConsultationAutoSaving;
-              return (
-                <>
-            <h3 className="text-lg font-semibold text-[#111827]">Рабочее место врача</h3>
-            <p className="mt-1 text-sm text-[#6b7280]">
-              Пациент: {patientsMap[consultationModal.appointment.patientId] ?? `#${consultationModal.appointment.patientId}`}
-            </p>
-            <p className="text-xs text-[#9ca3af]">
-              История визитов:{" "}
-              {appointments.filter((row) => row.patientId === consultationModal.appointment?.patientId).length}
-            </p>
-            <div className="mt-1 text-xs text-[#94a3b8]">
-              {isConsultationAutoSaving ? t("common.autosaving") : t("common.autoSavingDesc")}
-            </div>
-            <div className="mt-4 grid max-h-[65vh] gap-4 overflow-y-auto pr-1">
-              <div className="rounded-xl border border-[#e5e7eb] bg-[#f8fafc] p-4 shadow-sm">
-                <p className="text-sm font-medium text-[#111827]">Назначенные услуги</p>
-                {consultationModal.services.length === 0 ? (
-                  <p className="mt-2 text-sm text-[#9ca3af]">Нет назначенных услуг</p>
-                ) : (
-                  <>
-                    <ul className="mt-3 divide-y divide-[#e5e7eb] rounded-lg border border-[#e5e7eb] bg-white text-sm">
-                      {consultationModal.services.map((service) => (
-                        <li
-                          key={service.serviceId}
-                          className="flex items-center justify-between gap-3 px-3 py-2 transition-opacity duration-200 hover:bg-[#f8fafc]"
-                        >
-                          <span className="text-[#111827]">{service.name}</span>
-                          <div className="flex items-center gap-3">
-                            <span className="text-[#6b7280] tabular-nums">
-                              {formatSum(service.price)}
-                            </span>
-                            <button
-                              type="button"
-                              className="text-[#94a3b8] transition hover:text-rose-600"
-                              onClick={() => void removeServiceFromConsultation(service.serviceId)}
-                              disabled={consultationBusy}
-                              aria-label={`Удалить услугу ${service.name}`}
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="mt-3 flex justify-end text-base font-semibold text-[#111827]">
-                      ИТОГО:{" "}
-                      {formatSum(
-                        consultationModal.services.reduce((sum, service) => sum + service.price, 0)
-                      )}
-                    </div>
-                  </>
-                )}
-                <div className="mt-3 flex gap-2">
-                  <select
-                    value={consultationModal.selectedServiceId}
-                    onChange={(event) =>
-                      setConsultationModal((prev) => ({
-                        ...prev,
-                        selectedServiceId: event.target.value,
-                      }))
-                    }
-                    className="h-10 flex-1 rounded-[10px] border border-[#e5e7eb] bg-white px-3 text-sm text-[#111827]"
-                    disabled={consultationBusy}
-                  >
-                    <option value="">Выберите услугу</option>
-                    {availableServices.map((service) => (
-                      <option key={service.id} value={String(service.id)}>
-                        {service.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    className="rounded-xl border border-[#e5e7eb] bg-white px-3 text-sm font-medium text-[#111827] transition hover:bg-[#f3f4f6]"
-                    onClick={() => void addServiceToConsultation()}
-                    disabled={consultationBusy || !consultationModal.selectedServiceId}
-                  >
-                    + Добавить
-                  </button>
-                </div>
-              </div>
-              <label className="text-sm text-[#111827]">
-                <span className="text-xs font-medium uppercase tracking-wide text-[#94a3b8]">
-                  Diagnosis
-                </span>
-                <input
-                  value={consultationModal.diagnosis}
-                  onChange={(event) => setConsultationModal((prev) => ({ ...prev, diagnosis: event.target.value }))}
-                  className="mt-1 h-11 w-full rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] px-3 text-sm text-[#111827] outline-none transition focus:border-[#22c55e] focus:bg-white focus:ring-1 focus:ring-[#22c55e]/25"
-                  aria-label="diagnosis"
-                  placeholder="Например: Пульпит 36 зуба"
-                  disabled={consultationBusy}
-                />
-              </label>
-              <label className="text-sm text-[#111827]">
-                <span className="text-xs font-medium uppercase tracking-wide text-[#94a3b8]">
-                  Treatment
-                </span>
-                <textarea
-                  value={consultationModal.treatment}
-                  onChange={(event) => setConsultationModal((prev) => ({ ...prev, treatment: event.target.value }))}
-                  className="mt-1 min-h-20 w-full rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-sm text-[#111827] outline-none transition focus:border-[#22c55e] focus:bg-white focus:ring-1 focus:ring-[#22c55e]/25"
-                  aria-label="treatment"
-                  placeholder="Удаление нерва, пломбирование каналов"
-                  disabled={consultationBusy}
-                />
-              </label>
-              <label className="text-sm text-[#111827]">
-                <span className="text-xs font-medium uppercase tracking-wide text-[#94a3b8]">
-                  Notes
-                </span>
-                <textarea
-                  value={consultationModal.notes}
-                  onChange={(event) => setConsultationModal((prev) => ({ ...prev, notes: event.target.value }))}
-                  className="mt-1 min-h-20 w-full rounded-[10px] border border-[#e5e7eb] bg-[#f9fafb] px-3 py-2 text-sm text-[#111827] outline-none transition focus:border-[#22c55e] focus:bg-white focus:ring-1 focus:ring-[#22c55e]/25"
-                  aria-label="notes"
-                  placeholder="Дополнительные комментарии"
-                  disabled={consultationBusy}
-                />
-              </label>
-              <div className="rounded-2xl border border-[#e5e7eb] bg-[#fafafa] p-4 shadow-sm">
-                <p className="text-sm font-medium text-[#111827]">Назначение</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={consultationModal.carePlanInput}
-                    onChange={(event) =>
-                      setConsultationModal((prev) => ({
-                        ...prev,
-                        carePlanInput: event.target.value,
-                      }))
-                    }
-                    placeholder="Например: Амоксиклав 2 раза в день"
-                    className="h-10 flex-1 rounded-xl border border-[#e5e7eb] bg-white px-3 text-sm text-[#111827] outline-none transition focus:border-[#22c55e] focus:ring-1 focus:ring-[#22c55e]/25"
-                    disabled={consultationBusy}
-                  />
-                  <button
-                    type="button"
-                    className="rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 text-sm font-medium text-[#111827] transition duration-150 ease-out hover:bg-[#f3f4f6]"
-                    disabled={consultationBusy || !consultationModal.carePlanInput.trim()}
-                    onClick={addCarePlanItem}
-                  >
-                    Добавить
-                  </button>
-                </div>
-                <ul className="mt-3 space-y-2 text-sm text-[#334155]">
-                  {consultationModal.carePlanItems.length === 0 ? (
-                    <>
-                      <li className="text-[#9ca3af]">Нет назначений</li>
-                      <li className="text-xs text-[#c0c4cc]">Добавьте рекомендации пациенту</li>
-                    </>
-                  ) : (
-                    consultationModal.carePlanItems.map((item) => (
-                      <li
-                        key={item.id}
-                        className="flex items-center justify-between rounded-xl border border-[#e5e7eb] bg-white px-3 py-2 transition duration-150 ease-out hover:bg-[#f8fafc]"
-                      >
-                        <span>• {item.text}</span>
-                        <button
-                          type="button"
-                          className="text-[#94a3b8] transition hover:text-rose-600"
-                          disabled={consultationBusy}
-                          onClick={() => removeCarePlanItem(item.id)}
-                        >
-                          ✕
-                        </button>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              </div>
-            </div>
-            <div className="sticky bottom-0 mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[#e5e7eb] bg-white pt-3">
-              <button
-                type="button"
-                className="rounded-xl border border-[#e5e7eb] bg-white px-4 py-2 text-sm font-medium text-[#111827] transition duration-150 ease-out hover:bg-[#f3f4f6] active:scale-[0.97]"
-                onClick={printPrescription}
-                disabled={consultationBusy}
-              >
-                {t("appointments.printPrescription")}
-              </button>
-              <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="rounded-xl border border-transparent bg-transparent px-4 py-2 text-sm font-medium text-[#111827] transition duration-150 ease-out hover:bg-[#f3f4f6] active:scale-[0.97] disabled:opacity-50"
-                onClick={() => void saveConsultationDraft(true)}
-                disabled={consultationBusy}
-              >
-                {isConsultationSaving ? t("common.saving") : t("common.save")}
-              </button>
-              <button
-                type="button"
-                className="rounded-xl bg-[#22c55e] px-4 py-2 text-sm font-medium text-white shadow-sm transition duration-150 ease-out hover:scale-[1.03] hover:bg-[#16a34a] active:scale-[0.97] disabled:opacity-50"
-                onClick={() => void completeConsultation()}
-                disabled={consultationBusy || !canCompleteConsultation}
-              >
-                {isSubmitting ? t("common.saving") : t("appointments.completeConsultation")}
-              </button>
-              </div>
-            </div>
-                </>
-              );
-            })()}
-        </Modal>
-      )}
+      {servicesModalAppointment && token ? (
+        <AppointmentServicesModal
+          appointment={servicesModalAppointment}
+          token={token}
+          canEditPrices={canEditAppointmentPrice}
+          onClose={() => {
+            const closed = servicesModalAppointment;
+            setServicesModalAppointment(null);
+            setDetailsModal({ open: true, appointment: closed });
+          }}
+          onSaved={handleServicesSaved}
+        />
+      ) : null}
     </div>
   );
 };

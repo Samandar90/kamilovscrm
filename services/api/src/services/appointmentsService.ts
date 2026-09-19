@@ -113,13 +113,14 @@ const validateRecommendedReturnDate = (value: unknown, startAt: string): void =>
   }
 };
 
+/** appointment_services.quantity is INTEGER in production. */
 const normalizeOptionalQuantity = (value: unknown): number | undefined => {
   if (value === undefined || value === null) return undefined;
   const parsed = parseNumericInput(value);
-  if (parsed === null || parsed <= 0) {
-    throw new ApiError(400, "Поле quantity должно быть числом больше 0");
+  if (parsed === null || parsed <= 0 || !Number.isInteger(parsed)) {
+    throw new ApiError(400, "Поле quantity должно быть целым числом больше 0");
   }
-  return roundMoney2(parsed);
+  return parsed;
 };
 
 const normalizeServiceLinesPayload = (
@@ -812,7 +813,7 @@ export class AppointmentsService {
   async replaceServices(
     auth: AuthTokenPayload,
     appointmentId: number,
-    lines: AppointmentServiceLineCreateInput[]
+    lines: Array<{ serviceId: number; price?: number }>
   ): Promise<Appointment> {
     if (!SERVICE_EDITOR_ROLES.has(auth.role)) {
       throw new ApiError(403, "Недостаточно прав для изменения услуг записи");
@@ -829,12 +830,16 @@ export class AppointmentsService {
       throw new ApiError(409, "Нельзя изменять услуги после оплаты");
     }
 
-    const kept = new Map(
+    const kept = new Map<number, { price: number; quantity: number }>(
       (await this.appointmentsRepository.listServiceAssignments(appointmentId)).map((line) => [
         line.serviceId,
         line,
       ])
     );
+    // Legacy visits may have no lines at all: their primary service is still the booked one.
+    if (kept.size === 0 && current.price != null) {
+      kept.set(current.serviceId, { price: current.price, quantity: 1 });
+    }
     const canSetPrice = canSetAppointmentCommercialPrice(auth.role);
     const resolved: AppointmentServiceLineReplacement[] = [];
     for (const line of lines) {
@@ -855,7 +860,7 @@ export class AppointmentsService {
       resolved.push({
         serviceId: line.serviceId,
         price: roundMoney2(price),
-        quantity: line.quantity ?? previous?.quantity ?? 1,
+        quantity: previous?.quantity ?? 1,
       });
     }
     if (resolved.length === 0) {
@@ -881,6 +886,7 @@ export class AppointmentsService {
     const updated = await this.appointmentsRepository.replaceServiceLines(appointmentId, resolved, {
       endAt,
       updatedBy: auth.userId,
+      expectedUpdatedAt: current.updatedAt,
     });
     if (!updated) {
       throw new ApiError(404, "Appointment not found");

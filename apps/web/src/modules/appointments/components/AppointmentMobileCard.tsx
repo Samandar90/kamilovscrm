@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { Phone } from "lucide-react";
 import type { Appointment, AppointmentStatus, Service } from "../api/appointmentsFlowApi";
+import { getAllServices } from "../../../shared/lib/appointments/getAllServices";
 import { buildUnifiedAppointmentActions } from "./appointmentActions";
 
 const getStatusLabel = (status: AppointmentStatus, t: any): string => {
@@ -124,7 +125,13 @@ export const AppointmentMobileCard: React.FC<Props> = ({
           </span>
         </div>
         <div className="mt-2 text-xs text-slate-500">
-          <p className="truncate">{service?.name ?? `${t("appointments.service")} #${appointment.serviceId}`}</p>
+          <p className="truncate">
+            {getAllServices(appointment, {
+              fallbackBase: service ? { id: service.id, name: service.name, price: service.price } : undefined,
+            })
+              .map((line) => line.name)
+              .join(", ") || `${t("appointments.service")} #${appointment.serviceId}`}
+          </p>
           <p className="mt-0.5 truncate text-slate-400">{patientPhone?.trim() || t("appointments.phoneNotProvided")}</p>
         </div>
         <div className="mt-3 flex flex-col gap-2 border-t border-slate-100 pt-2.5" onClick={(e) => e.stopPropagation()}>

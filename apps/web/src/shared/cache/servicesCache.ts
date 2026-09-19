@@ -26,3 +26,9 @@ export async function refreshServicesCache(fetcher: () => Promise<any[]>) {
 export function getServicesInstant() {
   return cache;
 }
+
+/** Drop cached services after a change elsewhere (e.g. a doctor edits their own services). */
+export function invalidateServicesCache() {
+  cache = null;
+  lastFetch = 0;
+}

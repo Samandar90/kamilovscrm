@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarPlus } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { requestJson } from "../../../../api/http";
+import { useAuth } from "../../../../auth/AuthContext";
+import { canSetAppointmentCommercialPrice } from "../../../../auth/roleGroups";
 import { Modal } from "../../../../components/ui/Modal";
 import type { Doctor, Patient, Service } from "../../api/appointmentsFlowApi";
 import { appointmentsFlowApi } from "../../api/appointmentsFlowApi";
 import { PatientAutocompleteInput } from "../../components/PatientAutocompleteInput";
-import { formatSum } from "../../../../utils/formatMoney";
-import { coercePriceToNumber } from "../../../../shared/lib/money";
-import { MoneyInput } from "../../../../shared/ui/MoneyInput";
+import { ServiceLinesPicker } from "../../components/ServiceLinesPicker";
+import { draftLineFor, toServiceLineInputs, type ServiceLineDraft } from "../../utils/serviceLines";
 import { PhoneInput } from "../../../../shared/ui/PhoneInput";
 import { phoneToApiValue } from "../../../../utils/phoneInput";
 import { normalizeDateTimeForApi, nextQuarterHourTimeHm, todayYmd } from "../../utils/appointmentFormUtils";
@@ -43,6 +43,8 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
   canCreateNewPatient = true,
 }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const canEditPrices = canSetAppointmentCommercialPrice(user?.role);
   const [patientQuery, setPatientQuery] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 
@@ -52,8 +54,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
 
   const [services, setServices] = useState<Service[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
-  const [serviceId, setServiceId] = useState<number | "">("");
-  const [price, setPrice] = useState(0);
+  const [serviceLines, setServiceLines] = useState<ServiceLineDraft[]>([]);
 
   const [date, setDate] = useState(todayYmd());
   const [time, setTime] = useState(nextQuarterHourTimeHm());
@@ -76,8 +77,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
     setSelectedPatient(null);
     setDoctorId("");
     setServices([]);
-    setServiceId("");
-    setPrice(0);
+    setServiceLines([]);
     setDate(todayYmd());
     setTime(nextQuarterHourTimeHm());
     setFormError(null);
@@ -150,7 +150,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
 
     if (doctorId === "") {
       setServices([]);
-      setServiceId("");
+      setServiceLines([]);
       setLoadingServices(false);
       return;
     }
@@ -158,63 +158,33 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
     let cancelled = false;
     setLoadingServices(true);
     setServices([]);
-    setServiceId("");
+    setServiceLines([]);
 
-    const loadServicesByDoctor = async (id: number) => {
-      try {
-        const data = await requestJson<Service[]>(`/api/services?doctorId=${encodeURIComponent(String(id))}`, {
-          token,
-        });
+    void appointmentsFlowApi
+      .listServices(token, doctorId)
+      .then((data) => {
         if (cancelled) return;
         setServices(data);
-        if (data.length === 1) {
-          setServiceId(data[0].id);
-        } else {
-          setServiceId("");
-        }
-      } catch (e) {
+        // A doctor with a single service: nothing to choose.
+        setServiceLines(data.length === 1 ? [draftLineFor(data[0])] : []);
+      })
+      .catch((e: unknown) => {
         console.error(t("appointments.servicesLoadError"), e);
-        if (!cancelled) {
-          setServices([]);
-          setServiceId("");
-        }
-      } finally {
+        if (!cancelled) setServices([]);
+      })
+      .finally(() => {
         if (!cancelled) setLoadingServices(false);
-      }
-    };
-
-    void loadServicesByDoctor(doctorId);
+      });
     return () => {
       cancelled = true;
     };
   }, [open, token, doctorId]);
 
-  useEffect(() => {
-    const selectedService =
-      typeof serviceId === "number"
-        ? services.find((service) => service.id === serviceId)
-        : services.length === 1
-          ? services[0]
-          : null;
-    if (!selectedService) {
-      setPrice(0);
-      return;
-    }
-    setPrice(Math.round(coercePriceToNumber(selectedService.price)));
-  }, [serviceId, services]);
-
-  const resolvedServiceId: number | null =
-    typeof serviceId === "number"
-      ? serviceId
-      : services.length === 1
-        ? services[0].id
-        : null;
-
   const slotAvailabilityPhase = useDebouncedAppointmentSlotAvailability(
     token,
     {
       doctorId: typeof doctorId === "number" ? String(doctorId) : "",
-      serviceId: resolvedServiceId != null ? String(resolvedServiceId) : "",
+      serviceIds: serviceLines.map((line) => line.serviceId),
       date,
       time,
     },
@@ -273,12 +243,13 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
       setFormError(t("appointments.selectDoctorError"));
       return;
     }
-    const sid = resolvedServiceId;
-    if (!sid) {
-      setFormError(t("appointments.noDoctorServices"));
+    const [primary] = serviceLines;
+    if (!primary) {
+      setFormError(services.length === 0 ? t("appointments.noDoctorServices") : t("serviceLines.empty"));
       return;
     }
-    if (!services.some((s) => s.id === sid)) {
+    const offered = new Set(services.map((service) => service.id));
+    if (serviceLines.some((line) => !offered.has(line.serviceId))) {
       setFormError(t("appointments.selectServiceError"));
       return;
     }
@@ -307,8 +278,9 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
     const payload = {
       patientId: selectedPatient.id,
       doctorId,
-      serviceId: sid,
-      price: Math.max(0, Math.round(price)),
+      serviceId: primary.serviceId,
+      ...(canEditPrices ? { price: Math.max(0, Math.round(primary.price)) } : {}),
+      serviceLines: toServiceLineInputs(serviceLines, canEditPrices),
       startAt,
       status: "scheduled" as const,
       diagnosis: null,
@@ -318,7 +290,7 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
 
     setSubmitting(true);
     try {
-      await requestJson("/api/appointments", { method: "POST", token, body: payload });
+      await appointmentsFlowApi.createAppointment(token, payload);
       onClose();
       resetForm();
       await onCreated();
@@ -331,10 +303,10 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
 
   const noDoctors = !loadingDoctors && doctorOptions.length === 0;
   const allSlotFields =
-    doctorId !== "" && resolvedServiceId != null && Boolean(date) && Boolean(time);
+    doctorId !== "" && serviceLines.length > 0 && Boolean(date) && Boolean(time);
   const slotOk = !allSlotFields || slotAvailabilityPhase === "free";
   const canSubmit =
-    Boolean(selectedPatient && doctorId !== "" && date && time && resolvedServiceId) &&
+    Boolean(selectedPatient && doctorId !== "" && date && time && serviceLines.length > 0) &&
     slotOk &&
     !submitting &&
     !loadingServices;
@@ -504,65 +476,32 @@ export const AppointmentQuickCreateModal: React.FC<AppointmentQuickCreateModalPr
             </div>
 
             <div>
-              <label
-                htmlFor={
-                  typeof doctorId === "number" && !loadingServices && services.length > 1
-                    ? "quick-service"
-                    : undefined
-                }
-                className={quickModalLabelClass}
-              >
-                {t("common.service")}
+              <label htmlFor="quick-service" className={quickModalLabelClass}>
+                {t("serviceLines.label")}
               </label>
-              {typeof doctorId === "number" ? (
-                <>
-                  {loadingServices ? (
-                    <p className="mt-1.5 text-xs text-[#6b7280]">{t("appointments.loadingServices")}</p>
-                  ) : null}
-                  {!loadingServices && services.length === 0 ? (
-                    <p className="mt-1.5 text-xs text-amber-700">{t("appointments.noServices")}</p>
-                  ) : null}
-                  {!loadingServices && services.length === 1 ? (
-                    <p className="mt-1.5 rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-2.5 py-1.5 text-sm text-[#111827]">
-                      {services[0].name} — {formatSum(services[0].price)}
-                    </p>
-                  ) : null}
-                  {!loadingServices && services.length > 1 ? (
-                    <select
-                      id="quick-service"
-                      className={qSel}
-                      value={serviceId === "" ? "" : String(serviceId)}
-                      onChange={(e) => setServiceId(e.target.value === "" ? "" : Number(e.target.value))}
-                      disabled={submitting}
-                    >
-                      <option value="">{t("appointments.selectServiceOption")}</option>
-                      {services.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.name} — {formatSum(s.price)}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
-                </>
-              ) : (
-                <p className="mt-1.5 text-xs text-[#6b7280]">{t("appointments.selectDoctorFirst")}</p>
-              )}
+              <div className="mt-1.5">
+                <ServiceLinesPicker
+                  id="quick-service"
+                  services={services}
+                  lines={serviceLines}
+                  onChange={setServiceLines}
+                  canEditPrice={canEditPrices}
+                  disabled={submitting}
+                  selectClassName={quickModalSelectClass.replace("mt-2 ", "")}
+                  hint={
+                    typeof doctorId !== "number"
+                      ? t("appointments.selectDoctorFirst")
+                      : loadingServices
+                        ? t("appointments.loadingServices")
+                        : services.length === 0
+                          ? t("appointments.noServices")
+                          : null
+                  }
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <div className="col-span-2">
-                <label htmlFor="quick-price" className={quickModalLabelClass}>
-                  {t("appointments.price")}
-                </label>
-                <MoneyInput
-                  id="quick-price"
-                  mode="integer"
-                  className={qInp}
-                  value={price}
-                  onChange={setPrice}
-                  disabled={submitting || loadingServices || services.length === 0}
-                />
-              </div>
               <div>
                 <label htmlFor="quick-date" className={quickModalLabelClass}>
                   {t("appointments.date")}

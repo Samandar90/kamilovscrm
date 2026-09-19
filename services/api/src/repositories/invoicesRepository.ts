@@ -11,6 +11,7 @@ import {
   type InvoiceUpdateInput,
 } from "./interfaces/billingTypes";
 import { getMockDb, nextId, type InvoiceRecord } from "./mockDatabase";
+import { ApiError } from "../middleware/errorHandler";
 
 export {
   INVOICE_STATUSES,
@@ -79,7 +80,15 @@ export class MockInvoicesRepository implements IInvoicesRepository {
     };
   }
 
-  async create(input: InvoiceCreateInput, items: InvoiceItemInput[]): Promise<InvoiceSummary> {
+  async create(
+    input: InvoiceCreateInput,
+    items: InvoiceItemInput[],
+    options: { appointmentVersion?: string } = {}
+  ): Promise<InvoiceSummary> {
+    const appointment = getMockDb().appointments.find((row) => row.id === input.appointmentId);
+    if (options.appointmentVersion && appointment?.updatedAt !== options.appointmentVersion) {
+      throw new ApiError(409, "Услуги записи только что изменились — создайте счёт ещё раз");
+    }
     const now = new Date().toISOString();
     const created = {
       id: nextId(),

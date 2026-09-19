@@ -50,5 +50,8 @@ export const services = {
   attendance: new AttendanceService(repositories.attendance, repositories.users),
   callCenter: new CallCenterService(repositories.callCenter),
   callCenterWorkspace: new CallCenterWorkspaceService(new PostgresCallCenterWorkspaceRepository(dbPool, env.reportsTimezone)),
-  questionnaires: new QuestionnairesService(new PostgresQuestionnairesRepository(dbPool, env.reportsTimezone)),
+  questionnaires: new QuestionnairesService(
+    new PostgresQuestionnairesRepository(dbPool, env.reportsTimezone),
+    repositories.appointments
+  ),
 };

@@ -3,6 +3,9 @@ import type { Request, Response } from "express";
 vi.mock("../config/env", () => ({ env: { isProduction: false } }));
 import { AppointmentsService } from "./appointmentsService";
 import { MockAppointmentsRepository } from "../repositories/appointmentsRepository";
+import { MockInvoicesRepository } from "../repositories/invoicesRepository";
+import { MockServicesRepository } from "../repositories/servicesRepository";
+import { InvoicesService } from "./invoicesService";
 import { getMockDb } from "../repositories/mockDatabase";
 import { allowPermission } from "../middleware/permissionMiddleware";
 import type { PermissionKey } from "../auth/permissions";
@@ -193,5 +196,41 @@ describe("multiple services per appointment", () => {
     const saved = await service.create(reception, { ...input, serviceLines: [{ serviceId: 3 }, { serviceId: 4 }] });
     await expect(service.update(reception, saved.id, { serviceId: 4 })).rejects.toMatchObject({ status: 400 });
     expect(await service.update(reception, saved.id, { startAt: "2099-08-27 14:00:00" })).toMatchObject({ endAt: "2099-08-27 15:15:00" });
+  });
+});
+
+describe("invoice snapshot of the visit's services", () => {
+  const reception = { ...operator, role: "reception" as const };
+  const invoices = new InvoicesService(new MockInvoicesRepository(), new MockServicesRepository(), repository);
+
+  beforeEach(() => {
+    getMockDb().invoices = [];
+    getMockDb().invoiceItems = [];
+    getMockDb().services.push({ id: 4, name: "УЗИ", category: "Диагностика", price: 200000, duration: 20, active: true, createdAt });
+    getMockDb().doctorServices.push({ doctorId: 2, serviceId: 4 });
+  });
+
+  it("bills every line of the visit", async () => {
+    const saved = await service.create(reception, { ...input, serviceLines: [{ serviceId: 3 }, { serviceId: 4 }] });
+    expect(await invoices.createFromAppointment(admin, saved.id)).toMatchObject({ total: 300000 });
+  });
+
+  it("refuses to bill lines that changed after the appointment version was read", async () => {
+    const saved = await service.create(reception, input);
+    const readLines = repository.listAppointmentInvoiceLines.bind(repository);
+    // A concurrent edit lands between reading the version and reading the lines.
+    const spy = vi.spyOn(repository, "listAppointmentInvoiceLines").mockImplementationOnce(async (id) => {
+      const current = (await repository.findById(id))!;
+      await repository.replaceServiceLines(id, [{ serviceId: 3, price: 100000, quantity: 1 }, { serviceId: 4, price: 200000, quantity: 1 }], {
+        updatedBy: 1,
+        expectedUpdatedAt: current.updatedAt,
+      });
+      return readLines(id);
+    });
+    await new Promise(resolve => setTimeout(resolve, 5));
+    await expect(invoices.createFromAppointment(admin, saved.id)).rejects.toMatchObject({ status: 409 });
+    expect(getMockDb().invoices).toHaveLength(0);
+    spy.mockRestore();
+    expect(await invoices.createFromAppointment(admin, saved.id)).toMatchObject({ total: 300000 });
   });
 });

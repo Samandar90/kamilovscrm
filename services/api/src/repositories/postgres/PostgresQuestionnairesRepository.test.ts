@@ -7,7 +7,9 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 vi.mock("../../config/env", () => ({ env: { isProduction: false, jwtSecret: "isolated-questionnaire-tests-only" } }));
 vi.mock("../../container", () => ({ services: { get questionnaires() { return svc; } } }));
+vi.mock("../../config/database", () => ({ dbPool: { query: (sql: string, params?: unknown[]) => pool.query(sql, params) } }));
 import { PostgresQuestionnairesRepository } from "./PostgresQuestionnairesRepository";
+import { PostgresAppointmentsRepository } from "./PostgresAppointmentsRepository";
 import { QuestionnairesService } from "../../services/questionnairesService";
 import { questionnairesRouter } from "../../routes/questionnairesRoutes";
 import { errorHandler } from "../../middleware/errorHandler";
@@ -33,7 +35,10 @@ const pool = {
     return { query: (sql: string, params?: unknown[]) => db.query(sql, params), release };
   },
 };
-const svc = new QuestionnairesService(new PostgresQuestionnairesRepository(pool, "Asia/Tashkent"));
+const svc = new QuestionnairesService(
+  new PostgresQuestionnairesRepository(pool, "Asia/Tashkent"),
+  new PostgresAppointmentsRepository()
+);
 
 type Role = "superadmin" | "manager" | "reception" | "doctor" | "nurse" | "cashier" | "operator";
 const users: Record<string, { userId: number; role: Role; doctorId?: number | null; nurseDoctorId?: number | null; clinicId?: number }> = {
@@ -73,7 +78,7 @@ const createTemplate = async (who: keyof typeof users = "manager", extra: Record
 
 beforeAll(async () => {
   await db.exec(`CREATE TABLE clinics(id bigint primary key);
-    CREATE TABLE patients(id bigint primary key, clinic_id bigint not null, full_name text, phone text, deleted_at timestamptz);
+    CREATE TABLE patients(id bigint primary key, clinic_id bigint not null, full_name text, phone text, deleted_at timestamptz, created_by_doctor_id bigint);
     CREATE TABLE doctors(id bigint primary key, clinic_id bigint not null, full_name text, deleted_at timestamptz);
     CREATE TABLE users(id bigint primary key, clinic_id bigint not null, full_name text);
     CREATE TABLE appointments(id bigint primary key, clinic_id bigint not null, patient_id bigint, doctor_id bigint, deleted_at timestamptz);`);
@@ -93,8 +98,8 @@ afterAll(async () => {
 beforeEach(async () => {
   await db.exec(`TRUNCATE patient_questionnaires, questionnaire_templates, appointments, users, doctors, patients, clinics RESTART IDENTITY CASCADE;
     INSERT INTO clinics VALUES (1), (2);
-    INSERT INTO patients VALUES (100,1,'Анна Каримова','998901111111',null),(101,1,'Бобур 100%_','998902222222',null),
-      (102,1,'Архив',null,now()),(200,2,'Чужой пациент',null,null);
+    INSERT INTO patients VALUES (100,1,'Анна Каримова','998901111111',null,null),(101,1,'Бобур 100%_','998902222222',null,null),
+      (102,1,'Архив',null,now(),null),(200,2,'Чужой пациент',null,null,null),(103,1,'Новая пациентка','998903333333',null,10);
     INSERT INTO doctors VALUES (10,1,'Др. Алиева',null),(11,1,'Др. Юсупов',null),(20,2,'Чужой врач',null);
     INSERT INTO users VALUES (1,1,'Менеджер'),(2,1,'Регистратура'),(3,1,'Алиева'),(4,1,'Юсупов'),(5,1,'Медсестра');
     INSERT INTO appointments VALUES (500,1,100,10,null),(501,1,101,11,null);`);
@@ -175,10 +180,13 @@ describe("filled questionnaires", () => {
       http(who, "/", "POST", { patientId, templateId: tpl.body.id, appointmentId, answers: { complaints: "Боль" } });
 
     expect((await byDoctor("doctor", 101, 501)).status).toBe(403);
-    expect((await byDoctor("doctor", 101, 500)).status).toBe(400);
-    expect((await byDoctor("doctor", 100, 500)).body).toMatchObject({ doctorId: 10, appointmentId: 500, doctorName: "Др. Алиева" });
-    expect((await byDoctor("nurse", 101)).body).toMatchObject({ doctorId: 10, appointmentId: null });
-    expect((await byDoctor("reception", 101, 501)).body).toMatchObject({ doctorId: 11 });
+    expect((await byDoctor("doctor", 101)).status).toBe(403);
+    expect((await byDoctor("nurse", 101)).status).toBe(403);
+    expect((await byDoctor("doctor", 100, 501)).status).toBe(400);
+    expect((await byDoctor("doctor", 100, 500)).body).toMatchObject({ doctorId: 10, appointmentId: 500, doctorName: "Др. Алиева", patientPhone: null });
+    expect((await byDoctor("doctor", 103)).body).toMatchObject({ doctorId: 10, patientName: "Новая пациентка" });
+    expect((await byDoctor("nurse", 100)).body).toMatchObject({ doctorId: 10, appointmentId: null });
+    expect((await byDoctor("reception", 101, 501)).body).toMatchObject({ doctorId: 11, patientPhone: "998902222222" });
   });
 
   it("refuses unknown, archived and foreign patients and inactive templates", async () => {
@@ -196,7 +204,7 @@ describe("filled questionnaires", () => {
     const intake = await createTemplate();
     const dental = await createTemplate("doctor", { title: "Стоматология" });
     await http("reception", "/", "POST", { patientId: 100, templateId: intake.body.id, answers: { complaints: "Боль" } });
-    await http("doctor", "/", "POST", { patientId: 101, templateId: dental.body.id, answers: { complaints: "Зуб" } });
+    await http("otherDoctor", "/", "POST", { patientId: 101, templateId: dental.body.id, answers: { complaints: "Зуб" } });
     await http("doctor", "/", "POST", { patientId: 100, templateId: dental.body.id, answers: { complaints: "Десна" } });
     // 2026-03-01 21:30 UTC is already March 2nd in Tashkent.
     await db.exec(`UPDATE patient_questionnaires SET created_at = '2026-03-01T21:30:00Z' WHERE id = 1`);
@@ -229,5 +237,17 @@ describe("filled questionnaires", () => {
     expect((await http("manager", "/templates")).body[0]).toMatchObject({ usageCount: 0 });
     expect((await http("cashier", "/")).status).toBe(403);
     expect((await http("operator", `/${saved.body.id}`)).status).toBe(403);
+  });
+
+  it("lets every doctor read the shared base without contacts, but write only for own patients", async () => {
+    const tpl = await createTemplate();
+    const saved = await http("reception", "/", "POST", { patientId: 101, templateId: tpl.body.id, answers: { complaints: "Боль" } });
+    const list = await http("doctor", "/");
+    expect(list.body.items).toHaveLength(1);
+    expect(list.body.items[0]).toMatchObject({ patientName: "Бобур 100%_", patientPhone: null });
+    expect((await http("doctor", `/${saved.body.id}`)).body).toMatchObject({ answers: { complaints: "Боль" }, patientPhone: null });
+    expect((await http("doctor", `/${saved.body.id}`, "PUT", { answers: { complaints: "Чужая правка" } })).status).toBe(403);
+    expect((await http("otherDoctor", `/${saved.body.id}`, "PUT", { answers: { complaints: "Лучше" } })).body).toMatchObject({ answers: { complaints: "Лучше" } });
+    expect((await http("manager", `/${saved.body.id}`)).body.patientPhone).toBe("998902222222");
   });
 });

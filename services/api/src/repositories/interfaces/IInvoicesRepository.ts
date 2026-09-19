@@ -12,7 +12,15 @@ export interface IInvoicesRepository {
   findByAppointmentId(appointmentId: number): Promise<InvoiceSummary | null>;
   findById(id: number): Promise<Invoice | null>;
   /** Persists header and line items in one transaction (Postgres) or equivalent (mock). */
-  create(input: InvoiceCreateInput, items: InvoiceItemInput[]): Promise<InvoiceSummary>;
+  /**
+   * `appointmentVersion` (the appointment's updatedAt when its lines were read) makes creation
+   * fail with 409 if the appointment changed meanwhile, so the invoice never bills stale lines.
+   */
+  create(
+    input: InvoiceCreateInput,
+    items: InvoiceItemInput[],
+    options?: { appointmentVersion?: string }
+  ): Promise<InvoiceSummary>;
   /**
    * Updates invoice header. When `replaceLineItems` is set, replaces all line items in the same transaction as the header update.
    */

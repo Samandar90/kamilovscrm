@@ -12,8 +12,6 @@
     "logout": "Chiqish",
     "password": "Parol",
     "back": "Orqaga",
-    "autosaving": "Avtomatik saqlash...",
-    "autoSavingDesc": "Ozgarishlar avtomatik saqlanmoqda",
     "saving": "Saqlash...",
     "patient": "Bemor",
     "actions": {
@@ -213,6 +211,8 @@
     "passwordLabel": "Parol:"
   },
   "pages": {
+    "questionnaires": "Anketalar",
+    "myServices": "Mening xizmatlarim",
     "dashboard": "Bosh sahifa",
     "patients": "Bemorlar",
     "appointments": "Qabul vaqtlari",
@@ -408,7 +408,6 @@
       "invalidDateTime": "Noto'g'ri sana yoki vaqt",
       "selectServiceFromList": "Tanlangan shifokor ro'yxatidan xizmatni tanlang",
       "priceError": "Narx 0 dan katta yoki teng bo'lishi kerak",
-      "serviceDurationError": "Xizmat davomiyligini aniqlash mumkin emas",
       "slotBusy": "Bu vaqt band",
       "checkingSlotError": "Mavjudlikni tekshirish mumkin emas. Qayta urinib ko'ring.",
       "waitingForCheck": "Vaqt tekshiruvini kuting",
@@ -419,12 +418,8 @@
       "deletionError": "Qabulni o'chirishda xatolik",
       "priceUpdateError": "Narxni yangilashda xatolik",
       "invoiceCreationError": "Hisob-kitob yaratishda xatolik",
-      "saveDraftError": "Qoralama saqlash mumkin emas",
-      "autosaveError": "Avto-saqlash bajarilmadi",
       "serviceNotFound": "Xizmatni topa olmadi",
-      "confirmDelete": "Aniqmi? Bu harakatni bekor qilib bo'lmaydi",
-      "addServiceBeforeComplete": "Qabulni tugatishdan oldin kamida bitta xizmat qo'shing",
-      "fillDiagnosisAndTreatment": "Qabulni tugatishdan oldin tanishnoma va davolashni to'ldiring"
+      "confirmDelete": "Aniqmi? Bu harakatni bekor qilib bo'lmaydi"
     },
     "messages": {
       "appointmentCreated": "Qabul yaratildi",
@@ -433,7 +428,6 @@
       "appointmentRescheduled": "Qabul vaqti yangilandi",
       "appointmentDeleted": "Qabul o'chirildi",
       "priceUpdated": "Qabul narxi yangilandi",
-      "patientReady": "Bemor to'lovga tayyor",
       "phoneCopied": "Raqam nusxalandi",
       "changesSaved": "O'zgarishlar saqlandi",
       "invalidRecheduleDate": "To'g'ri sanani va vaqtni ko'rsating"
@@ -443,7 +437,6 @@
     },
     "creating": "Yaratilmoqda",
     "create": "Kunni yaratish",
-    "price": "Narx",
     "date": "Sana",
     "time": "Vaqt",
     "checkingSlot": "Vaqt tekshirilmoqda",
@@ -462,7 +455,6 @@
     "startConsultation": "Konsultatsiyani boshlash",
     "cancelAppointment": "Kunni bekor qilish",
     "close": "Yopish",
-    "printPrescription": "Tavsiyani chop etish",
     "cancelReason": "Bekor qilish sababi",
     "cancelReasonPlaceholder": "Masalan: bemorni topilmadi",
     "completeConsultation": "Konsultatsiyani tugatish",
@@ -507,9 +499,7 @@
     "selectDoctorFirst": "Avval shifokorni tanlang",
     "selectDoctorOption": "Shifokorni tanlang",
     "selectPatientOrCreate": "Bemorni tanlang yoki yangisini yarating",
-    "selectService": "Xizmatni tanlang",
     "selectServiceError": "Xizmatni tanlang",
-    "selectServiceOption": "Xizmatni tanlang",
     "servicesLoadError": "Xizmatlarni yuklab bo'lmadi",
     "slotBusy": "Slot band",
     "slotBusyError": "Bu vaqt allaqachon band",
@@ -826,7 +816,6 @@
     "overdue": "Muddati o'tgan",
     "service": "Xizmat",
     "qty": "Miqdori",
-    "price": "Narxi",
     "sum": "Jami",
     "paymentMethod": "To'lov usuli",
     "transfer": "Ko'chirish",
@@ -1290,12 +1279,9 @@
       "saveFailed": "Saqlash muvaffaqiyatsiz",
       "missingDiagnosisTreatment": "Diagnoz va davolashni to'ldiring",
       "completeFailed": "Qabulni yakunlash muvaffaqiyatsiz",
-      "addServiceFailed": "Xizmatni qo'shish muvaffaqiyatsiz",
-      "createInvoiceFailed": "Hisob-kitob yaratish muvaffaqiyatsiz",
-      "noServicesForDoctor": "Bu shifokor uchun xizmatlar yo'q"
+      "createInvoiceFailed": "Hisob-kitob yaratish muvaffaqiyatsiz"
     },
     "notices": {
-      "serviceAdded": "Xizmat qo'shildi",
       "invoiceCreated": "Hisob-kitob yaratildi"
     },
     "form": {
@@ -1308,9 +1294,6 @@
     },
     "actions": {
       "title": "Amallar",
-      "addService": "Xizmat qo'shish",
-      "selectService": "Xizmatni tanlang",
-      "saveService": "Saqlash",
       "createInvoice": "Hisob-kitob yaratish",
       "printPrescription": "Retseptni chop qilish",
       "completeVisit": "Qabulni yakunlash"
@@ -1882,5 +1865,128 @@
     "preview": "Tanlovni tekshirish",
     "saveSettings": "Sozlamalarni saqlash",
     "settingsSaved": "Sozlamalar saqlandi. Navbatlar yangilandi."
+  },
+  "serviceLines": {
+    "label": "Xizmatlar",
+    "add": "Xizmat qo'shish",
+    "allAdded": "Shifokorning barcha xizmatlari qo'shilgan",
+    "primary": "asosiy",
+    "remove": "«{{name}}» xizmatini olib tashlash",
+    "total": "Jami",
+    "minutes": "{{count}} daq",
+    "minutesAtLeast": "kamida {{count}} daq",
+    "notOffered": "Shifokor bu xizmatni endi ko'rsatmaydi",
+    "empty": "Kamida bitta xizmat qo'shing",
+    "editTitle": "Qabul xizmatlari",
+    "editSubtitle": "Birinchi xizmat — asosiy. Qabul boshlanguncha vaqt barcha xizmatlar davomiyligi bo'yicha qayta hisoblanadi.",
+    "editAction": "Xizmatlarni o'zgartirish",
+    "saved": "Qabul xizmatlari yangilandi",
+    "loadError": "Xizmatlarni yuklab bo'lmadi",
+    "saveError": "Xizmatlarni saqlab bo'lmadi"
+  },
+  "myServices": {
+    "title": "Mening xizmatlarim",
+    "subtitle": "Bemorni sizga yozish mumkin bo'lgan xizmatlar. Klinika narxnomasidan xizmat qo'shing yoki yangisini yarating.",
+    "addFromCatalog": "Narxnomadan qo'shish",
+    "createNew": "Xizmat yaratish",
+    "remove": "Olib tashlash",
+    "confirmRemove": "«{{name}}» xizmatini ro'yxatingizdan olib tashlaysizmi? Mavjud qabullar o'zgarmaydi.",
+    "createTitle": "Yangi xizmat",
+    "createHint": "Xizmat klinika narxnomasida paydo bo'ladi va darhol sizga yozish uchun mavjud bo'ladi.",
+    "createSubmit": "Yaratish",
+    "catalogTitle": "Klinika narxnomasi",
+    "searchPlaceholder": "Xizmatni qidirish",
+    "catalogEmpty": "Klinikaning barcha xizmatlari ro'yxatingizda bor",
+    "noMatches": "Hech narsa topilmadi",
+    "empty": {
+      "title": "Sizda hali xizmatlar yo'q",
+      "description": "Bemorlarni sizga yozish uchun xizmatlar qo'shing."
+    },
+    "messages": {
+      "added": "Xizmat qo'shildi",
+      "created": "Xizmat yaratildi",
+      "removed": "Xizmat ro'yxatingizdan olib tashlandi"
+    },
+    "errors": {
+      "loadFailed": "Xizmatlaringizni yuklab bo'lmadi",
+      "saveFailed": "O'zgarishlarni saqlab bo'lmadi"
+    }
+  },
+  "questionnaires": {
+    "title": "Anketalar",
+    "subtitle": "Klinikaning barcha shifokorlari uchun umumiy bemor anketalari bazasi.",
+    "tabs": {
+      "base": "Anketalar bazasi",
+      "templates": "Shablonlar"
+    },
+    "fill": "Anketani to'ldirish",
+    "fillTitle": "Yangi anketa",
+    "fillSubtitle": "Bemor va shablonni tanlang",
+    "template": "Anketa shabloni",
+    "chooseTemplate": "Shablonni tanlang",
+    "noTemplates": "Hali anketa shablonlari yo'q",
+    "noTemplatesHint": "Birinchi shablonni yarating: bemorlarga beriladigan savollarni qo'shing.",
+    "forAllDoctors": "Barcha shifokorlar uchun",
+    "doctorTemplates": "Shifokorlar shablonlari",
+    "changePatient": "O'zgartirish",
+    "doctor": "Shifokor",
+    "filledBy": "To'ldirgan",
+    "updatedBy": "O'zgartirgan",
+    "yes": "Ha",
+    "no": "Yo'q",
+    "confirmDelete": "Anketani o'chirasizmi? U bazadan yo'qoladi.",
+    "patientPanelTitle": "Bemor anketalari",
+    "patientEmpty": "Hali anketalar yo'q",
+    "answeredOf": "{{total}} tadan {{answered}}",
+    "searchPlaceholder": "Bemor, telefon yoki anketa",
+    "allTemplates": "Barcha shablonlar",
+    "allDoctors": "Barcha shifokorlar",
+    "dateFrom": "Sanadan",
+    "dateTo": "Sanagacha",
+    "noResults": "Filtrlar bo'yicha hech narsa topilmadi",
+    "empty": {
+      "title": "Hali anketalar yo'q",
+      "description": "To'ldirilgan bemor anketalari shu yerda to'planadi."
+    },
+    "showMore": "Yana ko'rsatish ({{count}})",
+    "inactive": "O'chirilgan",
+    "questionsCount": "Savollar: {{count}}",
+    "usedCount": "To'ldirilgan: {{count}}",
+    "templateSaved": "Shablon saqlandi",
+    "newTemplate": "Yangi shablon",
+    "editTemplate": "Anketa shabloni",
+    "editorHint": "Shablondagi o'zgarishlar to'ldirilgan anketalarga ta'sir qilmaydi.",
+    "templateTitle": "Nomi",
+    "description": "Tavsif",
+    "activeTemplate": "Shablon ishlatiladi",
+    "questions": "Savollar",
+    "questionNumber": "{{number}}-savol",
+    "questionPlaceholder": "Savol matni",
+    "moveUp": "Yuqoriga ko'chirish",
+    "moveDown": "Pastga ko'chirish",
+    "removeQuestion": "Savolni o'chirish",
+    "answerType": "Javob turi",
+    "required": "Majburiy",
+    "options": "Javob variantlari",
+    "optionsPlaceholder": "Javob variantlari — har biri yangi qatordan",
+    "addQuestion": "Savol qo'shish",
+    "types": {
+      "text": "Qisqa matn",
+      "textarea": "Batafsil matn",
+      "number": "Raqam",
+      "date": "Sana",
+      "yes_no": "Ha / Yo'q",
+      "single_choice": "Bitta variant",
+      "multi_choice": "Bir nechta variant"
+    },
+    "errors": {
+      "loadFailed": "Anketalarni yuklab bo'lmadi",
+      "saveFailed": "Anketani saqlab bo'lmadi",
+      "requiredMissing": "«{{label}}» majburiy savoliga javob bering",
+      "titleRequired": "Shablon nomini kiriting",
+      "noQuestions": "Kamida bitta savol qo'shing",
+      "labelRequired": "{{number}}-savol matnini kiriting",
+      "optionsInvalid": "«{{label}}» savoli: kamida 2 ta turli javob varianti kerak"
+    }
   }
 }

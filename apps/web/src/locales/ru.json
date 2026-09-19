@@ -12,8 +12,6 @@
     "logout": "Выйти",
     "password": "Пароль",
     "back": "Назад",
-    "autosaving": "Автосохранение...",
-    "autoSavingDesc": "Изменения сохраняются автоматически",
     "saving": "Сохранение...",
     "patient": "Пациент",
     "actions": {
@@ -213,6 +211,8 @@
     "passwordLabel": "Пароль:"
   },
   "pages": {
+    "questionnaires": "Анкеты",
+    "myServices": "Мои услуги",
     "dashboard": "Панель управления",
     "patients": "Пациенты",
     "appointments": "Записи",
@@ -408,7 +408,6 @@
       "invalidDateTime": "Неверная дата или время",
       "selectServiceFromList": "Выберите услугу из списка выбранного врача",
       "priceError": "Цена должна быть числом больше или равна 0",
-      "serviceDurationError": "Не удалось определить длительность услуги",
       "slotBusy": "Это время уже занято",
       "checkingSlotError": "Не удалось проверить занятость. Повторите попытку.",
       "waitingForCheck": "Дождитесь проверки времени",
@@ -419,12 +418,8 @@
       "deletionError": "Ошибка удаления записи",
       "priceUpdateError": "Ошибка обновления цены",
       "invoiceCreationError": "Ошибка создания счета",
-      "saveDraftError": "Не удалось сохранить черновик",
-      "autosaveError": "Не удалось выполнить автосохранение",
       "serviceNotFound": "Не удалось найти услугу",
-      "confirmDelete": "Вы уверены? Это действие нельзя отменить",
-      "addServiceBeforeComplete": "Добавьте хотя бы одну услугу перед завершением приёма",
-      "fillDiagnosisAndTreatment": "Заполните diagnosis и treatment перед завершением приема"
+      "confirmDelete": "Вы уверены? Это действие нельзя отменить"
     },
     "messages": {
       "appointmentCreated": "Запись создана",
@@ -433,7 +428,6 @@
       "appointmentRescheduled": "Время записи обновлено",
       "appointmentDeleted": "Запись удалена",
       "priceUpdated": "Цена записи обновлена",
-      "patientReady": "Пациент готов к оплате",
       "phoneCopied": "Номер скопирован",
       "changesSaved": "Изменения сохранены",
       "invalidRecheduleDate": "Укажите корректную дату и время"
@@ -443,7 +437,6 @@
     },
     "creating": "Создаём…",
     "create": "Создать запись",
-    "price": "Цена",
     "date": "Дата",
     "time": "Время",
     "checkingSlot": "Проверка времени…",
@@ -462,7 +455,6 @@
     "startConsultation": "Начать приём",
     "cancelAppointment": "Отменить запись",
     "close": "Закрыть",
-    "printPrescription": "Печать назначения",
     "cancelReason": "Причина отмены",
     "cancelReasonPlaceholder": "Например: пациент не пришел",
     "completeConsultation": "Завершить приём",
@@ -533,9 +525,7 @@
     "selectDoctorFirst": "Сначала выберите врача",
     "selectDoctorOption": "Выберите врача",
     "selectPatientOrCreate": "Выберите пациента или создайте нового",
-    "selectService": "Выберите услугу",
     "selectServiceError": "Выберите услугу",
-    "selectServiceOption": "Выберите услугу",
     "servicesLoadError": "Не удалось загрузить услуги",
     "slotBusy": "Слот занят",
     "slotBusyError": "Это время уже занято",
@@ -826,7 +816,6 @@
     "overdue": "Просрочен",
     "service": "Услуга",
     "qty": "Кол",
-    "price": "Цена",
     "sum": "Сумма",
     "paymentMethod": "Способ оплаты",
     "transfer": "Перевод",
@@ -1290,12 +1279,9 @@
       "saveFailed": "Не удалось сохранить",
       "missingDiagnosisTreatment": "Заполните диагноз и лечение",
       "completeFailed": "Не удалось завершить приём",
-      "addServiceFailed": "Не удалось добавить услугу",
-      "createInvoiceFailed": "Не удалось создать счёт",
-      "noServicesForDoctor": "Нет доступных услуг для этого врача"
+      "createInvoiceFailed": "Не удалось создать счёт"
     },
     "notices": {
-      "serviceAdded": "Услуга добавлена",
       "invoiceCreated": "Счёт создан"
     },
     "form": {
@@ -1308,9 +1294,6 @@
     },
     "actions": {
       "title": "Действия",
-      "addService": "Добавить услугу",
-      "selectService": "Выберите услугу",
-      "saveService": "Сохранить",
       "createInvoice": "Создать счёт",
       "printPrescription": "Печать назначений",
       "completeVisit": "Завершить приём"
@@ -1882,5 +1865,128 @@
     "preview": "Проверить выборку",
     "saveSettings": "Сохранить настройки",
     "settingsSaved": "Настройки сохранены. Очереди обновлены."
+  },
+  "serviceLines": {
+    "label": "Услуги",
+    "add": "Добавить услугу",
+    "allAdded": "Все услуги врача уже добавлены",
+    "primary": "основная",
+    "remove": "Убрать услугу «{{name}}»",
+    "total": "Итого",
+    "minutes": "{{count}} мин",
+    "minutesAtLeast": "от {{count}} мин",
+    "notOffered": "Врач больше не оказывает эту услугу",
+    "empty": "Добавьте хотя бы одну услугу",
+    "editTitle": "Услуги записи",
+    "editSubtitle": "Первая услуга — основная. До начала приёма время записи пересчитается по длительности всех услуг.",
+    "editAction": "Изменить услуги",
+    "saved": "Услуги записи обновлены",
+    "loadError": "Не удалось загрузить услуги",
+    "saveError": "Не удалось сохранить услуги"
+  },
+  "myServices": {
+    "title": "Мои услуги",
+    "subtitle": "Услуги, на которые пациента можно записать к вам. Добавьте услугу из прайса клиники или создайте новую.",
+    "addFromCatalog": "Добавить из прайса",
+    "createNew": "Создать услугу",
+    "remove": "Убрать",
+    "confirmRemove": "Убрать услугу «{{name}}» из вашего списка? Уже созданные записи не изменятся.",
+    "createTitle": "Новая услуга",
+    "createHint": "Услуга появится в прайсе клиники и сразу будет доступна для записи к вам.",
+    "createSubmit": "Создать",
+    "catalogTitle": "Прайс клиники",
+    "searchPlaceholder": "Поиск услуги",
+    "catalogEmpty": "Все услуги клиники уже в вашем списке",
+    "noMatches": "Ничего не найдено",
+    "empty": {
+      "title": "У вас пока нет услуг",
+      "description": "Добавьте услуги, чтобы к вам можно было записывать пациентов."
+    },
+    "messages": {
+      "added": "Услуга добавлена",
+      "created": "Услуга создана",
+      "removed": "Услуга убрана из вашего списка"
+    },
+    "errors": {
+      "loadFailed": "Не удалось загрузить ваши услуги",
+      "saveFailed": "Не удалось сохранить изменения"
+    }
+  },
+  "questionnaires": {
+    "title": "Анкеты",
+    "subtitle": "Общая база анкет пациентов для всех врачей клиники.",
+    "tabs": {
+      "base": "База анкет",
+      "templates": "Шаблоны"
+    },
+    "fill": "Заполнить анкету",
+    "fillTitle": "Новая анкета",
+    "fillSubtitle": "Выберите пациента и шаблон",
+    "template": "Шаблон анкеты",
+    "chooseTemplate": "Выберите шаблон",
+    "noTemplates": "Шаблонов анкет пока нет",
+    "noTemplatesHint": "Создайте первый шаблон: добавьте вопросы, которые нужно задавать пациентам.",
+    "forAllDoctors": "Для всех врачей",
+    "doctorTemplates": "Шаблоны врачей",
+    "changePatient": "Изменить",
+    "doctor": "Врач",
+    "filledBy": "Заполнил(а)",
+    "updatedBy": "Изменил(а)",
+    "yes": "Да",
+    "no": "Нет",
+    "confirmDelete": "Удалить анкету? Она пропадёт из базы.",
+    "patientPanelTitle": "Анкеты пациента",
+    "patientEmpty": "Анкет пока нет",
+    "answeredOf": "{{answered}} из {{total}}",
+    "searchPlaceholder": "Пациент, телефон или анкета",
+    "allTemplates": "Все шаблоны",
+    "allDoctors": "Все врачи",
+    "dateFrom": "Дата с",
+    "dateTo": "Дата по",
+    "noResults": "По фильтрам ничего не найдено",
+    "empty": {
+      "title": "Анкет пока нет",
+      "description": "Заполненные анкеты пациентов будут собираться здесь."
+    },
+    "showMore": "Показать ещё ({{count}})",
+    "inactive": "Отключён",
+    "questionsCount": "Вопросов: {{count}}",
+    "usedCount": "Заполнено: {{count}}",
+    "templateSaved": "Шаблон сохранён",
+    "newTemplate": "Новый шаблон",
+    "editTemplate": "Шаблон анкеты",
+    "editorHint": "Изменения шаблона не затрагивают уже заполненные анкеты.",
+    "templateTitle": "Название",
+    "description": "Описание",
+    "activeTemplate": "Шаблон используется",
+    "questions": "Вопросы",
+    "questionNumber": "Вопрос {{number}}",
+    "questionPlaceholder": "Текст вопроса",
+    "moveUp": "Переместить выше",
+    "moveDown": "Переместить ниже",
+    "removeQuestion": "Удалить вопрос",
+    "answerType": "Тип ответа",
+    "required": "Обязательный",
+    "options": "Варианты ответа",
+    "optionsPlaceholder": "Варианты ответа — каждый с новой строки",
+    "addQuestion": "Добавить вопрос",
+    "types": {
+      "text": "Короткий текст",
+      "textarea": "Развёрнутый текст",
+      "number": "Число",
+      "date": "Дата",
+      "yes_no": "Да / Нет",
+      "single_choice": "Один вариант",
+      "multi_choice": "Несколько вариантов"
+    },
+    "errors": {
+      "loadFailed": "Не удалось загрузить анкеты",
+      "saveFailed": "Не удалось сохранить анкету",
+      "requiredMissing": "Ответьте на обязательный вопрос «{{label}}»",
+      "titleRequired": "Укажите название шаблона",
+      "noQuestions": "Добавьте хотя бы один вопрос",
+      "labelRequired": "Заполните текст вопроса {{number}}",
+      "optionsInvalid": "Вопрос «{{label}}»: нужно минимум 2 разных варианта ответа"
+    }
   }
 }

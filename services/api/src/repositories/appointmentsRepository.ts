@@ -169,7 +169,7 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
         primary.price = db.appointments[idx].price ?? primary.price;
       }
     }
-    return toAppointment(db.appointments[idx]);
+    return attachServices([db.appointments[idx]])[0];
   }
 
   async updatePrice(id: number, price: number): Promise<Appointment | null> {
@@ -183,7 +183,7 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
     if (primary) {
       primary.price = price;
     }
-    return toAppointment(db.appointments[idx]);
+    return attachServices([db.appointments[idx]])[0];
   }
 
   async cancel(
@@ -204,7 +204,7 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
       cancelledByRole: cancelledByRole ?? null,
       updatedAt: new Date().toISOString(),
     };
-    return toAppointment(db.appointments[idx]);
+    return attachServices([db.appointments[idx]])[0];
   }
 
   async delete(id: number): Promise<boolean> {
@@ -297,12 +297,15 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
   async replaceServiceLines(
     appointmentId: number,
     lines: AppointmentServiceLineReplacement[],
-    options: { endAt?: string; updatedBy: number | null }
+    options: { endAt?: string; updatedBy: number | null; expectedUpdatedAt: string }
   ): Promise<Appointment | null> {
     const db = getMockDb();
     const idx = db.appointments.findIndex((item) => item.id === appointmentId);
     const [primary] = lines;
     if (idx < 0 || !primary) return null;
+    if (db.appointments[idx].updatedAt !== options.expectedUpdatedAt) {
+      throw new ApiError(409, "Запись изменилась — обновите страницу и повторите");
+    }
     const invoiced = db.invoices.some(
       (row) =>
         row.appointmentId === appointmentId &&
@@ -310,7 +313,7 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
         ACTIVE_INVOICE_STATUSES.has(row.status)
     );
     if (invoiced) {
-      throw new ApiError(409, "По записи уже выставлен счёт — отмените его, чтобы изменить услуги");
+      throw new ApiError(409, "По записи уже выставлен счёт — услуги больше менять нельзя");
     }
     const previousAuthors = new Map(
       db.appointmentServices
@@ -387,6 +390,6 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
       billingStatus,
       updatedAt: new Date().toISOString(),
     };
-    return toAppointment(db.appointments[idx]);
+    return attachServices([db.appointments[idx]])[0];
   }
 }

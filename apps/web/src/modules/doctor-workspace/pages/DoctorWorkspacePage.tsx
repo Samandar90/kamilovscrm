@@ -3,7 +3,12 @@ import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthContext";
-import { appointmentsFlowApi, type Appointment, type Service } from "../../appointments/api/appointmentsFlowApi";
+import { appointmentsFlowApi, type Appointment } from "../../appointments/api/appointmentsFlowApi";
+import { AppointmentServicesModal } from "../../appointments/components/AppointmentServicesModal";
+import { canChangeAppointmentServices } from "../../appointments/utils/serviceLines";
+import { canSetAppointmentCommercialPrice } from "../../../auth/roleGroups";
+import { hasPermission } from "../../../auth/permissions";
+import { PatientQuestionnairesPanel } from "../../questionnaires/components/PatientQuestionnairesPanel";
 import { cashDeskApi } from "../../billing/api/cashDeskApi";
 import { useClinic } from "../../../hooks/useClinic";
 import { UziProtocolPanel } from "../components/UziProtocolPanel";
@@ -15,6 +20,15 @@ type WorkspaceForm = {
   recommendedReturnDate: string;
 };
 
+/** Print HTML is written into a same-origin window: every user-entered value must be escaped. */
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 const fieldClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20";
 
@@ -22,16 +36,12 @@ export const DoctorWorkspacePage: React.FC = () => {
   const { t } = useTranslation();
   const { appointmentId } = useParams<{ appointmentId: string }>();
   const navigate = useNavigate();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { clinic } = useClinic();
   const [appointment, setAppointment] = React.useState<Appointment | null>(null);
   const [patientName, setPatientName] = React.useState(t("common.patient"));
   const [patientBirthDate, setPatientBirthDate] = React.useState<string | null>(null);
-  const [serviceName, setServiceName] = React.useState(t("common.service"));
-  const [servicesCatalog, setServicesCatalog] = React.useState<Service[]>([]);
-  const [assignedServiceIds, setAssignedServiceIds] = React.useState<number[]>([]);
-  const [servicePickerOpen, setServicePickerOpen] = React.useState(false);
-  const [selectedServiceId, setSelectedServiceId] = React.useState("");
+  const [servicesModalOpen, setServicesModalOpen] = React.useState(false);
   const [form, setForm] = React.useState<WorkspaceForm>({
     diagnosis: "",
     treatment: "",
@@ -45,17 +55,19 @@ export const DoctorWorkspacePage: React.FC = () => {
   const [clinicPrintName, setClinicPrintName] = React.useState(t("common.clinic"));
 
   const parsedId = Number(appointmentId);
-  const noServicesForDoctor = !loading && appointment !== null && servicesCatalog.length === 0;
+  const visitServices = appointment?.services ?? [];
+  const serviceName =
+    visitServices.map((line) => line.name).join(", ") ||
+    (appointment ? t("common.serviceWithId", { id: appointment.serviceId }) : t("common.service"));
 
   const load = React.useCallback(async () => {
     if (!token || !Number.isInteger(parsedId) || parsedId <= 0) return;
     setLoading(true);
     setError(null);
     try {
-      const [rows, patients, assignedRows, clinicMeta] = await Promise.all([
+      const [rows, patients, clinicMeta] = await Promise.all([
         appointmentsFlowApi.listAppointments(token),
         appointmentsFlowApi.listPatients(token),
-        appointmentsFlowApi.listAppointmentAssignedServices(token, parsedId).catch(() => []),
         cashDeskApi.getClinicMeta(token).catch(() => null),
       ]);
       setClinicPrintName(clinicMeta?.clinicName?.trim() || t("common.clinic"));
@@ -65,17 +77,10 @@ export const DoctorWorkspacePage: React.FC = () => {
         setAppointment(null);
         return;
       }
-      const doctorServices = await appointmentsFlowApi.listServices(token, found.doctorId);
       const patient = patients.find((row) => row.id === found.patientId);
-      const service = doctorServices.find((row) => row.id === found.serviceId);
       setAppointment(found);
-      setServicesCatalog(doctorServices);
-      setAssignedServiceIds(assignedRows.map((row) => row.serviceId));
       setPatientName(patient?.fullName ?? t("common.patientWithId", { id: found.patientId }));
       setPatientBirthDate(patient?.birthDate ?? null);
-      setServiceName(service?.name ?? t("common.serviceWithId", { id: found.serviceId }));
-      setSelectedServiceId("");
-      setServicePickerOpen(false);
       setForm({
         diagnosis: found.diagnosis ?? "",
         treatment: found.treatment ?? "",
@@ -142,25 +147,6 @@ export const DoctorWorkspacePage: React.FC = () => {
     }
   };
 
-  const addService = async () => {
-    if (!token || !appointment) return;
-    const serviceId = Number(selectedServiceId);
-    if (!Number.isInteger(serviceId) || serviceId <= 0) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await appointmentsFlowApi.addAppointmentService(token, appointment.id, serviceId);
-      setAssignedServiceIds((prev) => (prev.includes(serviceId) ? prev : [...prev, serviceId]));
-      setSelectedServiceId("");
-      setServicePickerOpen(false);
-      setNotice(t("doctorWorkspace.notices.serviceAdded"));
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t("doctorWorkspace.errors.addServiceFailed"));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const createInvoice = async () => {
     if (!token || !appointment) return;
     setSubmitting(true);
@@ -176,17 +162,10 @@ export const DoctorWorkspacePage: React.FC = () => {
   };
 
   const printPrescription = (targetAppointment: Appointment) => {
-    const safeClinicName = clinicPrintName
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-    const serviceLines = assignedServiceIds.length
-      ? assignedServiceIds
-          .map((id) => servicesCatalog.find((s) => s.id === id)?.name ?? t("common.serviceWithId", { id }))
-          .map((name) => `<li>${name}</li>`)
-          .join("")
-      : `<li>${serviceName}</li>`;
+    const safeClinicName = escapeHtml(clinicPrintName);
+    const serviceLines = visitServices.length
+      ? visitServices.map((line) => `<li>${escapeHtml(line.name)}</li>`).join("")
+      : `<li>${escapeHtml(serviceName)}</li>`;
     const win = window.open("", "_blank");
     if (!win) return;
 
@@ -268,7 +247,7 @@ export const DoctorWorkspacePage: React.FC = () => {
       </header>
 
       <section class="meta">
-        <div class="meta-row"><b>${t("doctorWorkspace.print.patient")}:</b> ${patientName}</div>
+        <div class="meta-row"><b>${t("doctorWorkspace.print.patient")}:</b> ${escapeHtml(patientName)}</div>
         <div class="meta-row"><b>${t("doctorWorkspace.print.date")}:</b> ${dateLabel}</div>
         <div class="meta-row"><b>${t("doctorWorkspace.print.doctor")}:</b> #${targetAppointment.doctorId}</div>
         <div class="meta-row"><b>${t("doctorWorkspace.print.appointment")}:</b> #${targetAppointment.id}</div>
@@ -276,17 +255,17 @@ export const DoctorWorkspacePage: React.FC = () => {
 
       <section class="section">
         <div class="section-title">${t("doctorWorkspace.print.diagnosis")}</div>
-        <div class="text">${form.diagnosis || "—"}</div>
+        <div class="text">${escapeHtml(form.diagnosis) || "—"}</div>
       </section>
 
       <section class="section">
         <div class="section-title">${t("doctorWorkspace.print.treatment")}</div>
-        <div class="text">${form.treatment || "—"}</div>
+        <div class="text">${escapeHtml(form.treatment) || "—"}</div>
       </section>
 
       <section class="section">
         <div class="section-title">${t("doctorWorkspace.print.prescription")}</div>
-        <div class="text">${form.notes || "—"}</div>
+        <div class="text">${escapeHtml(form.notes) || "—"}</div>
       </section>
 
       <section class="section">
@@ -388,48 +367,38 @@ export const DoctorWorkspacePage: React.FC = () => {
           />
         ) : null}
 
+        {appointment && user?.role && hasPermission(user.role, "questionnaires", "read") ? (
+          <PatientQuestionnairesPanel
+            patient={{ id: appointment.patientId, fullName: patientName }}
+            appointmentId={appointment.id}
+          />
+        ) : null}
+
         <div className="my-2 border-t border-slate-200" />
 
         <section className="space-y-2">
           <h2 className="text-sm font-semibold text-slate-900">{t("doctorWorkspace.actions.title")}</h2>
 
-          <button
-            type="button"
-            onClick={() => setServicePickerOpen((v) => !v)}
-            disabled={loading || submitting || !appointment || noServicesForDoctor}
-            className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700"
-          >
-            {t("doctorWorkspace.actions.addService")}
-          </button>
-          {noServicesForDoctor ? (
-            <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700">
-              {t("doctorWorkspace.errors.noServicesForDoctor")}
-            </p>
-          ) : null}
-          {servicePickerOpen ? (
-            <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
-              <select
-                value={selectedServiceId}
-                onChange={(e) => setSelectedServiceId(e.target.value)}
-                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none"
-              >
-                <option value="">{t("doctorWorkspace.actions.selectService")}</option>
-                {servicesCatalog.map((service) => (
-                  <option key={service.id} value={service.id}>
-                    {service.name}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => void addService()}
-                disabled={!selectedServiceId || submitting}
-                className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                {t("doctorWorkspace.actions.saveService")}
-              </button>
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t("serviceLines.label")}</p>
+              {appointment && canChangeAppointmentServices(user, appointment) ? (
+                <button
+                  type="button"
+                  onClick={() => setServicesModalOpen(true)}
+                  disabled={loading || submitting}
+                  className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                >
+                  {t("serviceLines.editAction")}
+                </button>
+              ) : null}
             </div>
-          ) : null}
+            <ul className="mt-2 space-y-1 text-sm text-slate-800">
+              {visitServices.map((line) => (
+                <li key={line.serviceId}>{line.name}</li>
+              ))}
+            </ul>
+          </div>
 
           <button
             type="button"
@@ -479,6 +448,20 @@ export const DoctorWorkspacePage: React.FC = () => {
           </button>
         </div>
       </footer>
+
+      {servicesModalOpen && appointment && token ? (
+        <AppointmentServicesModal
+          appointment={appointment}
+          token={token}
+          canEditPrices={canSetAppointmentCommercialPrice(user?.role)}
+          onClose={() => setServicesModalOpen(false)}
+          onSaved={(updated) => {
+            setAppointment(updated);
+            setServicesModalOpen(false);
+            setNotice(t("serviceLines.saved"));
+          }}
+        />
+      ) : null}
     </div>
   );
 };

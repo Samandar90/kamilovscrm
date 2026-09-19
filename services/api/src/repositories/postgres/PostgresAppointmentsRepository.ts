@@ -175,6 +175,9 @@ const attachAssignedServices = async (
   }
 };
 
+const withServices = async (row: AppointmentRow): Promise<Appointment> =>
+  (await attachAssignedServices([mapAppointmentRow(row)]))[0];
+
 const SELECT_LIST = `
   id,
   patient_id,
@@ -601,7 +604,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       return null;
     }
     await this.syncPrimaryAppointmentServiceRow(id);
-    return mapAppointmentRow(result.rows[0]);
+    return withServices(result.rows[0]);
   }
 
   async updatePrice(id: number, price: number): Promise<Appointment | null> {
@@ -621,7 +624,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       return null;
     }
     await this.syncPrimaryAppointmentServiceRow(id);
-    return mapAppointmentRow(result.rows[0]);
+    return withServices(result.rows[0]);
   }
 
   async cancel(
@@ -649,7 +652,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     if (result.rows.length === 0) {
       return null;
     }
-    return mapAppointmentRow(result.rows[0]);
+    return withServices(result.rows[0]);
   }
 
   async delete(id: number): Promise<boolean> {
@@ -925,7 +928,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
   async replaceServiceLines(
     appointmentId: number,
     lines: AppointmentServiceLineReplacement[],
-    options: { endAt?: string; updatedBy: number | null }
+    options: { endAt?: string; updatedBy: number | null; expectedUpdatedAt: string }
   ): Promise<Appointment | null> {
     const clinicId = requireClinicId();
     const [primary] = lines;
@@ -938,19 +941,23 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     const client = await dbPool.connect();
     try {
       await client.query("BEGIN");
-      // Row lock serializes concurrent edits and invoice creation checks for this appointment.
-      const locked = await client.query(
+      // Row lock serializes concurrent edits and invoice creation for this appointment; the
+      // version check rejects decisions made on data that changed in the meantime.
+      const locked = await client.query<{ fresh: boolean }>(
         `
-          SELECT id
+          SELECT date_trunc('milliseconds', updated_at) = $3::timestamptz AS fresh
           FROM appointments
           WHERE id = $1 AND clinic_id = $2 AND deleted_at IS NULL
           FOR UPDATE
         `,
-        [appointmentId, clinicId]
+        [appointmentId, clinicId, options.expectedUpdatedAt]
       );
       if (locked.rows.length === 0) {
         await client.query("ROLLBACK");
         return null;
+      }
+      if (locked.rows[0].fresh !== true) {
+        throw new ApiError(409, "Запись изменилась — обновите страницу и повторите");
       }
 
       const invoiced = await client.query<{ exists: boolean }>(
@@ -967,7 +974,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
         [appointmentId, clinicId]
       );
       if (invoiced.rows[0]?.exists === true) {
-        throw new ApiError(409, "По записи уже выставлен счёт — отмените его, чтобы изменить услуги");
+        throw new ApiError(409, "По записи уже выставлен счёт — услуги больше менять нельзя");
       }
 
       // Keep the original author of lines that stay on the appointment.
@@ -1114,6 +1121,6 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     if (result.rows.length === 0) {
       return null;
     }
-    return mapAppointmentRow(result.rows[0]);
+    return withServices(result.rows[0]);
   }
 }
