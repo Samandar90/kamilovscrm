@@ -23,7 +23,7 @@ beforeAll(async () => {
     CREATE TABLE services(id bigint primary key, clinic_id bigint, name text, price numeric);
     CREATE TABLE appointment_services(id bigserial primary key, appointment_id bigint, service_id bigint, price numeric, quantity numeric, created_by bigint);
     INSERT INTO clinics VALUES(1),(2); INSERT INTO patients VALUES(1); INSERT INTO services VALUES(3,1,'Приём',100000);`);
-  await db.exec(readFileSync(resolve(__dirname, "../../../../../packages/database/migrations/033_call_center_daily_workflow.sql"), "utf8"));
+  await db.exec(readFileSync(resolve(__dirname, "../../../migrations/033_call_center_daily_workflow.sql"), "utf8"));
 }, 30000);
 afterAll(() => db.close());
 

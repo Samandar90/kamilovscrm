@@ -82,7 +82,7 @@ beforeAll(async () => {
     CREATE TABLE doctors(id bigint primary key, clinic_id bigint not null, full_name text, deleted_at timestamptz);
     CREATE TABLE users(id bigint primary key, clinic_id bigint not null, full_name text);
     CREATE TABLE appointments(id bigint primary key, clinic_id bigint not null, patient_id bigint, doctor_id bigint, deleted_at timestamptz);`);
-  await db.exec(readFileSync(resolve(__dirname, "../../../../../packages/database/migrations/034_patient_questionnaires.sql"), "utf8"));
+  await db.exec(readFileSync(resolve(__dirname, "../../../migrations/034_patient_questionnaires.sql"), "utf8"));
   const app = express();
   app.use(express.json());
   app.use("/api/questionnaires", questionnairesRouter);

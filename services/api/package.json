@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node scripts/ensureTempCommonjs.js && ts-node-dev -r tsconfig-paths/register --respawn --transpile-only --cache-directory ./.ts-node-dev-cache src/server.ts",
     "build": "tsc && tsc-alias -p tsconfig.json",
-    "start": "node dist/server.js",
+    "start": "node scripts/db-migrate.cjs --baseline=031_call_reminders.sql && node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:migrate": "node scripts/db-migrate.cjs",

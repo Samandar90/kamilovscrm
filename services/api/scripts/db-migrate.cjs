@@ -20,8 +20,8 @@ const path = require("path");
 const { Client } = require("pg");
 
 const apiRoot = path.resolve(__dirname, "..");
-const repoRoot = path.resolve(apiRoot, "..", "..");
-const migrationsDir = path.join(repoRoot, "packages", "database", "migrations");
+// Inside the service root: Render does not ship files outside it to the build or the runtime.
+const migrationsDir = path.join(apiRoot, "migrations");
 const MIGRATION_FILE = /^\d{3}_.+\.sql$/i;
 /** Serializes concurrent runs (e.g. two deploys) on the same database. */
 const ADVISORY_LOCK_KEY = 7_340_202_601;

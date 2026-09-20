@@ -12,7 +12,7 @@ const cors = require("cors");
 
 if (process.env.NODE_ENV === "production") throw new Error("Preview must never run in production");
 const src = path.resolve(__dirname, "../src");
-const migrations = path.resolve(__dirname, "../../../packages/database/migrations");
+const migrations = path.resolve(__dirname, "../migrations");
 const db = new PGlite(); // Memory only: deliberately no database URL or filesystem path.
 let gate = Promise.resolve();
 async function acquire() {

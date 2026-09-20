@@ -59,9 +59,9 @@ beforeAll(async () => {
     CREATE TABLE doctors(id bigint primary key, clinic_id bigint not null, full_name text, active boolean default true, deleted_at timestamptz);
     CREATE TABLE users(id bigint primary key, clinic_id bigint not null, full_name text, role text, is_active boolean default true, deleted_at timestamptz);
     CREATE TABLE appointments(id bigint primary key, clinic_id bigint not null, patient_id bigint, doctor_id bigint, start_at timestamptz, status text, deleted_at timestamptz);`);
-  await db.exec(readFileSync(resolve(__dirname, "../../../../../packages/database/migrations/031_call_reminders.sql"), "utf8"));
-  await db.exec(readFileSync(resolve(__dirname, "../../../../../packages/database/migrations/032_call_center_workspace.sql"), "utf8"));
-  await db.exec(readFileSync(resolve(__dirname, "../../../../../packages/database/migrations/033_call_center_daily_workflow.sql"), "utf8"));
+  await db.exec(readFileSync(resolve(__dirname, "../../../migrations/031_call_reminders.sql"), "utf8"));
+  await db.exec(readFileSync(resolve(__dirname, "../../../migrations/032_call_center_workspace.sql"), "utf8"));
+  await db.exec(readFileSync(resolve(__dirname, "../../../migrations/033_call_center_daily_workflow.sql"), "utf8"));
   const app = express();
   app.use(express.json());
   app.use("/api/call-center", callCenterRouter);
