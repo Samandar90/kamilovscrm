@@ -14,24 +14,27 @@ const pathActive = (pathname: string, href: string): boolean => {
   return href !== "/" && pathname.startsWith(`${href}/`);
 };
 
-const flattenMoreLinks = (sections: NavigationSection[]): Array<{ label: string; path: string; Icon?: NavigationItem["icon"] }> => {
+const flattenMoreLinks = (
+  sections: NavigationSection[],
+  t: (key: string) => string
+): Array<{ label: string; path: string; Icon?: NavigationItem["icon"] }> => {
   const seen = new Set<string>();
   const out: Array<{ label: string; path: string; Icon?: NavigationItem["icon"] }> = [];
 
-  const push = (path: string | undefined, label: string, Icon?: NavigationItem["icon"]) => {
+  const push = ({ path, labelKey, label, icon }: NavigationItem) => {
     if (!path || BAR_PATHS.has(path) || seen.has(path)) return;
     seen.add(path);
-    out.push({ path, label, Icon });
+    out.push({ path, label: labelKey ? t(labelKey) : label, Icon: icon });
   };
 
   for (const sec of sections) {
     for (const item of sec.items) {
       if (item.children?.length) {
         for (const child of item.children) {
-          push(child.path, child.label, child.icon);
+          push(child);
         }
       } else {
-        push(item.path, item.label, item.icon);
+        push(item);
       }
     }
   }
@@ -55,7 +58,7 @@ export const MobileBottomNav: React.FC = () => {
   const location = useLocation();
   const sections = useNavigation();
   const [moreOpen, setMoreOpen] = React.useState(false);
-  const moreLinks = React.useMemo(() => flattenMoreLinks(sections), [sections]);
+  const moreLinks = React.useMemo(() => flattenMoreLinks(sections, t), [sections, t]);
   const pathname = location.pathname;
 
   const moreRouteActive = React.useMemo(
