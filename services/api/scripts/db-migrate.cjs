@@ -8,8 +8,11 @@
  *   npm run db:migrate -- --baseline=031_call_reminders.sql
  *
  * --baseline=<file> records every migration up to and including <file> as applied
- * WITHOUT running it. Use it once on a database whose schema was created outside
- * this log (production predates it); later files are applied normally.
+ * WITHOUT running it, on a database whose schema was created outside this log
+ * (production predates it): its log already records a later file, or it has tables
+ * but no log yet. Later files are applied normally. On a new or partly migrated
+ * database the flag is ignored and every file runs, so `npm start` (which passes it)
+ * also bootstraps an empty database.
  *
  * Requires: DATABASE_URL in .env or environment.
  */
@@ -23,6 +26,7 @@ const apiRoot = path.resolve(__dirname, "..");
 // Inside the service root: Render does not ship files outside it to the build or the runtime.
 const migrationsDir = path.join(apiRoot, "migrations");
 const MIGRATION_FILE = /^\d{3}_.+\.sql$/i;
+const compareNames = (a, b) => a.localeCompare(b, undefined, { numeric: true });
 /** Serializes concurrent runs (e.g. two deploys) on the same database. */
 const ADVISORY_LOCK_KEY = 7_340_202_601;
 
@@ -37,6 +41,20 @@ const parseBaseline = () => {
     process.exit(1);
   }
   return file;
+};
+
+/** Whether the schema predates the log, so files up to the baseline are already reflected in it. */
+const predatesLog = async (client, baseline) => {
+  const { rows } = await client.query(`
+    SELECT
+      (SELECT coalesce(array_agg(filename), '{}') FROM schema_migrations) AS recorded,
+      EXISTS (
+        SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'schema_migrations'
+      ) AS has_tables
+  `);
+  const { recorded, has_tables: hasTables } = rows[0];
+  if (recorded.length === 0) return hasTables;
+  return recorded.some((name) => compareNames(name, baseline) > 0);
 };
 
 async function main() {
@@ -54,7 +72,7 @@ async function main() {
   const files = fs
     .readdirSync(migrationsDir)
     .filter((f) => MIGRATION_FILE.test(f))
-    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    .sort(compareNames);
 
   if (files.length === 0) {
     console.error("No migration files matched pattern 001_name.sql in", migrationsDir);
@@ -81,6 +99,11 @@ async function main() {
       );
     `);
 
+    const baselineApplies = baseline !== null && (await predatesLog(client, baseline));
+    if (baseline && !baselineApplies) {
+      console.log("[baseline ignored] schema does not predate the log; applying every migration");
+    }
+
     for (const name of files) {
       const done = await client.query("SELECT 1 FROM schema_migrations WHERE filename = $1", [name]);
       if (done.rows.length > 0) {
@@ -88,7 +111,7 @@ async function main() {
         continue;
       }
 
-      if (baseline && name.localeCompare(baseline, undefined, { numeric: true }) <= 0) {
+      if (baselineApplies && compareNames(name, baseline) <= 0) {
         await client.query("INSERT INTO schema_migrations (filename) VALUES ($1)", [name]);
         console.log("[baseline]", name);
         continue;
