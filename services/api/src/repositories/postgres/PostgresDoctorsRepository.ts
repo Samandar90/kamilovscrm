@@ -17,6 +17,8 @@ type DoctorDbRow = {
   birth_date: string | Date | null;
   active: boolean;
   created_at: Date | string;
+  room: string | null;
+  queue_prefix: string | null;
 };
 
 const toIso = (value: Date | string): string => {
@@ -43,6 +45,8 @@ const mapRow = (row: DoctorDbRow, serviceIds: number[]): Doctor => ({
   active: row.active !== false,
   serviceIds,
   createdAt: toIso(row.created_at),
+  room: row.room ?? null,
+  queuePrefix: row.queue_prefix ?? null,
 });
 
 const loadServiceIds = async (
@@ -99,6 +103,8 @@ export class PostgresDoctorsRepository implements IDoctorsRepository {
           d.birth_date,
           d.active,
           d.created_at,
+          d.room,
+          d.queue_prefix,
           COALESCE(
             array_agg(svc.id::bigint ORDER BY svc.id)
               FILTER (WHERE svc.id IS NOT NULL),
@@ -116,7 +122,9 @@ export class PostgresDoctorsRepository implements IDoctorsRepository {
           d.phone,
           d.birth_date,
           d.active,
-          d.created_at
+          d.created_at,
+          d.room,
+          d.queue_prefix
         ORDER BY d.full_name ASC
       `,
       [clinicId]
@@ -141,7 +149,9 @@ export class PostgresDoctorsRepository implements IDoctorsRepository {
           phone,
           birth_date,
           active,
-          created_at
+          created_at,
+          room,
+          queue_prefix
         FROM doctors
         WHERE id = $1 AND clinic_id = $2
         LIMIT 1
@@ -167,8 +177,8 @@ export class PostgresDoctorsRepository implements IDoctorsRepository {
 
       const insertResult = await client.query<DoctorDbRow>(
         `
-          INSERT INTO doctors (clinic_id, full_name, specialty, percent, phone, birth_date, active)
-          VALUES ($1, $2, $3, $4, $5, $6::date, $7)
+          INSERT INTO doctors (clinic_id, full_name, specialty, percent, phone, birth_date, active, room, queue_prefix)
+          VALUES ($1, $2, $3, $4, $5, $6::date, $7, $8, $9)
           RETURNING
             id,
             full_name,
@@ -177,9 +187,21 @@ export class PostgresDoctorsRepository implements IDoctorsRepository {
             phone,
             birth_date,
             active,
-            created_at
+            created_at,
+            room,
+            queue_prefix
         `,
-        [clinicId, fullName, spec, data.percent, data.phone ?? null, data.birth_date ?? null, data.active]
+        [
+          clinicId,
+          fullName,
+          spec,
+          data.percent,
+          data.phone ?? null,
+          data.birth_date ?? null,
+          data.active,
+          data.room ?? null,
+          data.queuePrefix ?? null,
+        ]
       );
 
       const row = insertResult.rows[0];
@@ -204,7 +226,7 @@ export class PostgresDoctorsRepository implements IDoctorsRepository {
 
       const existing = await client.query<DoctorDbRow>(
         `
-          SELECT id, full_name, specialty, percent, phone, birth_date, active, created_at
+          SELECT id, full_name, specialty, percent, phone, birth_date, active, created_at, room, queue_prefix
           FROM doctors
           WHERE id = $1 AND clinic_id = $2
           FOR UPDATE
@@ -249,6 +271,16 @@ export class PostgresDoctorsRepository implements IDoctorsRepository {
         setClauses.push(`active = $${values.length}`);
       }
 
+      if (data.room !== undefined) {
+        values.push(data.room);
+        setClauses.push(`room = $${values.length}`);
+      }
+
+      if (data.queuePrefix !== undefined) {
+        values.push(data.queuePrefix);
+        setClauses.push(`queue_prefix = $${values.length}`);
+      }
+
       if (setClauses.length > 0) {
         values.push(id);
         values.push(clinicId);
@@ -265,7 +297,9 @@ export class PostgresDoctorsRepository implements IDoctorsRepository {
               phone,
               birth_date,
               active,
-              created_at
+              created_at,
+              room,
+              queue_prefix
           `,
           values
         );
@@ -285,7 +319,7 @@ export class PostgresDoctorsRepository implements IDoctorsRepository {
 
       const finalRow = await client.query<DoctorDbRow>(
         `
-          SELECT id, full_name, specialty, percent, phone, birth_date, active, created_at
+          SELECT id, full_name, specialty, percent, phone, birth_date, active, created_at, room, queue_prefix
           FROM doctors
           WHERE id = $1 AND clinic_id = $2
         `,

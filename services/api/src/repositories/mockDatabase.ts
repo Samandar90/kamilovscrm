@@ -37,6 +37,8 @@ export type DoctorRecord = {
   birth_date?: string | null;
   active: boolean;
   createdAt: string;
+  room?: string | null;
+  queuePrefix?: string | null;
 };
 
 export type ServiceRecord = {
