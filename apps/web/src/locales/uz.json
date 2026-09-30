@@ -324,6 +324,15 @@
     }
   },
   "appointments": {
+    "queue": {
+      "issued": "Navbat raqami berildi: {{code}}",
+      "printTicket": "Talonni chop etish",
+      "ticket": "Talon",
+      "dismiss": "Yopish",
+      "printFailed": "Talonni chop etib bo'lmadi",
+      "issue": "Raqam berish",
+      "issueFailed": "Navbat raqamini berib bo'lmadi"
+    },
     "today": "Bugun",
     "tomorrow": "Ertaga",
     "week": "Xafta",

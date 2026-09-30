@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Phone } from "lucide-react";
 import type { Appointment, AppointmentStatus, Service } from "../api/appointmentsFlowApi";
 import { getAllServices } from "../../../shared/lib/appointments/getAllServices";
+import { QueueCodeBadge } from "../../queue/components/QueueCodeBadge";
 import { buildUnifiedAppointmentActions } from "./appointmentActions";
 
 const getStatusLabel = (status: AppointmentStatus, t: any): string => {
@@ -46,6 +47,14 @@ type Props = {
   showCancelButton?: boolean;
   onCancelAppointment?: () => void;
   onCopyPatientPhone?: (phone: string) => void;
+  /** «Талон»: роль видит очередь (queue.read); кнопка только у записи «Пришёл» с номером. */
+  canPrintQueueTicket?: boolean;
+  isPrintingTicket?: boolean;
+  onPrintTicket?: () => void;
+  /** «Выдать номер»: роль выдаёт номера (queue.create); кнопка только у записи «Пришёл» без номера. */
+  canIssueQueueNumber?: boolean;
+  isIssuingQueueNumber?: boolean;
+  onIssueQueueNumber?: () => void;
 };
 
 export const AppointmentMobileCard: React.FC<Props> = ({
@@ -66,8 +75,17 @@ export const AppointmentMobileCard: React.FC<Props> = ({
   showCancelButton = false,
   onCancelAppointment,
   onCopyPatientPhone,
+  canPrintQueueTicket = false,
+  isPrintingTicket = false,
+  onPrintTicket,
+  canIssueQueueNumber = false,
+  isIssuingQueueNumber = false,
+  onIssueQueueNumber,
 }) => {
   const { t } = useTranslation();
+  const showTicketButton =
+    canPrintQueueTicket && appointment.status === "arrived" && Boolean(appointment.queueCode);
+  const showIssueButton = canIssueQueueNumber && appointment.status === "arrived" && !appointment.queueCode;
   const actions = buildUnifiedAppointmentActions({
     appointment,
     canCreateInvoice,
@@ -118,11 +136,14 @@ export const AppointmentMobileCard: React.FC<Props> = ({
               ) : null}
             </div>
           </div>
-          <span
-            className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusTone[appointment.status]}`}
-          >
-            {getStatusLabel(appointment.status, t)}
-          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <QueueCodeBadge code={appointment.queueCode} />
+            <span
+              className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusTone[appointment.status]}`}
+            >
+              {getStatusLabel(appointment.status, t)}
+            </span>
+          </div>
         </div>
         <div className="mt-2 text-xs text-slate-500">
           <p className="truncate">
@@ -150,6 +171,26 @@ export const AppointmentMobileCard: React.FC<Props> = ({
               {action.label}
             </button>
           ))}
+          {showIssueButton && onIssueQueueNumber ? (
+            <button
+              type="button"
+              onClick={onIssueQueueNumber}
+              disabled={isSubmitting || isIssuingQueueNumber}
+              className="inline-flex min-h-[40px] w-full items-center justify-center rounded-lg border border-sky-200 bg-sky-50 px-3 text-sm font-medium text-sky-800 transition-colors hover:bg-sky-100 disabled:opacity-50"
+            >
+              {t("appointments.queue.issue")}
+            </button>
+          ) : null}
+          {showTicketButton && onPrintTicket ? (
+            <button
+              type="button"
+              onClick={onPrintTicket}
+              disabled={isSubmitting || isPrintingTicket}
+              className="inline-flex min-h-[40px] w-full items-center justify-center rounded-lg border border-sky-200 bg-sky-50 px-3 text-sm font-medium text-sky-800 transition-colors hover:bg-sky-100 disabled:opacity-50"
+            >
+              {t("appointments.queue.ticket")}
+            </button>
+          ) : null}
           {showCancelButton && onCancelAppointment ? (
             <button
               type="button"

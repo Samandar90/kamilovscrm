@@ -22,7 +22,13 @@ export function buildUnifiedAppointmentActions({
   const actions: UnifiedAppointmentAction[] = [];
   const status = appointment.status;
 
-  if (status === "scheduled" || status === "arrived" || status === "confirmed") {
+  if (status === "scheduled" || status === "confirmed") {
+    // «Отметить приход»: the next status is arrived, which issues today's queue number on the server.
+    actions.push({ key: "start", label: t("appointment.markArrived"), tone: "primary" });
+    return actions;
+  }
+
+  if (status === "arrived") {
     actions.push({ key: "start", label: t("appointmentActions.startConsultation"), tone: "primary" });
     return actions;
   }

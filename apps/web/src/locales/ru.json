@@ -324,6 +324,15 @@
     }
   },
   "appointments": {
+    "queue": {
+      "issued": "Выдан номер {{code}}",
+      "printTicket": "Печать талона",
+      "ticket": "Талон",
+      "dismiss": "Скрыть",
+      "printFailed": "Не удалось напечатать талон",
+      "issue": "Выдать номер",
+      "issueFailed": "Не удалось выдать номер"
+    },
     "today": "Сегодня",
     "tomorrow": "Завтра",
     "week": "Неделя",
