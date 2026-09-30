@@ -78,6 +78,14 @@ export type AppointmentRecord = {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  queueNumber?: number | null;
+  /** Doctor's letter at issue time (mirrors appointments.queue_prefix). */
+  queuePrefix?: string | null;
+  queueCode?: string | null;
+  queueDate?: string | null;
+  queueIssuedAt?: string | null;
+  queueCalledAt?: string | null;
+  queueCallCount?: number;
 };
 
 export type AppointmentServiceRecord = {

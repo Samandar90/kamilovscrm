@@ -8,12 +8,25 @@ import type {
   AppointmentServiceLineReplacement,
   AppointmentUpdateInput,
 } from "./coreTypes";
+import type { QueueDirective } from "./queueTypes";
+
+/** Side effects of a write decided by AppointmentsService (see services/queue/queueRules.ts). */
+export type AppointmentWriteOptions = {
+  /** "issue": next number of the doctor's counter for `day`; "clear": drop the ticket; default "keep". */
+  queue?: QueueDirective;
+  /** Skip the slot-overlap check: a no-show returning to today's queue keeps its old, possibly taken slot. */
+  skipConflictCheck?: boolean;
+};
 
 export interface IAppointmentsRepository {
   findAll(filters?: AppointmentFilters): Promise<Appointment[]>;
   findById(id: number): Promise<Appointment | null>;
-  create(data: AppointmentCreateInput): Promise<Appointment>;
-  update(id: number, data: AppointmentUpdateInput): Promise<Appointment | null>;
+  create(data: AppointmentCreateInput, options?: AppointmentWriteOptions): Promise<Appointment>;
+  update(
+    id: number,
+    data: AppointmentUpdateInput,
+    options?: AppointmentWriteOptions
+  ): Promise<Appointment | null>;
   updatePrice(id: number, price: number): Promise<Appointment | null>;
   cancel(
     id: number,

@@ -27,7 +27,7 @@ export const services = {
   patients: new PatientsService(repositories.patients, repositories.appointments),
   doctors: new DoctorsService(repositories.doctors, repositories.services),
   services: new ServicesService(repositories.services),
-  appointments: new AppointmentsService(repositories.appointments),
+  appointments: new AppointmentsService(repositories.appointments, env.reportsTimezone),
   invoices: new InvoicesService(
     repositories.invoices,
     repositories.services,

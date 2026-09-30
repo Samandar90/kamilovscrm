@@ -1,4 +1,8 @@
-import type { IAppointmentsRepository } from "../interfaces/IAppointmentsRepository";
+import type {
+  AppointmentWriteOptions,
+  IAppointmentsRepository,
+} from "../interfaces/IAppointmentsRepository";
+import type { QueueDirective } from "../interfaces/queueTypes";
 import type {
   Appointment,
   AppointmentServiceAssignedSummary,
@@ -20,6 +24,9 @@ import {
 import { normalizeToLocalDateTime } from "../../utils/localDateTime";
 import { parseNumericFromPg, parseNumericInput, roundMoney2 } from "../../utils/numbers";
 import { requireClinicId } from "../../tenancy/clinicContext";
+import { formatQueueCode } from "../../services/queue/queueRules";
+import type { QueryClient } from "./queryPool";
+import { allocateQueueNumber } from "./queueAllocation";
 
 type AppointmentRow = {
   id: number;
@@ -43,6 +50,12 @@ type AppointmentRow = {
   notes: string | null;
   created_at: string | Date;
   updated_at: string | Date;
+  queue_number: number | null;
+  queue_prefix: string | null;
+  queue_date: string | null;
+  queue_issued_at: string | Date | null;
+  queue_called_at: string | Date | null;
+  queue_call_count: number | string | null;
 };
 
 type AppointmentServiceRow = {
@@ -120,6 +133,14 @@ const mapAppointmentRow = (row: AppointmentRow): Appointment => ({
   notes: row.notes,
   createdAt: toIsoUtc(row.created_at),
   updatedAt: toIsoUtc(row.updated_at),
+  // Queue number of the visit's day; the code uses the letter snapshot taken at issue time.
+  queueNumber: row.queue_number == null ? null : Number(row.queue_number),
+  queueCode:
+    row.queue_number == null ? null : formatQueueCode(row.queue_prefix, Number(row.queue_number)),
+  queueDate: row.queue_date ?? null,
+  queueIssuedAt: row.queue_issued_at ? toIsoUtc(row.queue_issued_at) : null,
+  queueCalledAt: row.queue_called_at ? toIsoUtc(row.queue_called_at) : null,
+  queueCallCount: Number(row.queue_call_count ?? 0),
 });
 
 const attachAssignedServices = async (
@@ -178,6 +199,39 @@ const attachAssignedServices = async (
 const withServices = async (row: AppointmentRow): Promise<Appointment> =>
   (await attachAssignedServices([mapAppointmentRow(row)]))[0];
 
+type QueueTicket = { queueNumber: number; queuePrefix: string | null; day: string };
+
+/** SET clauses writing a new ticket or removing it ("clear"); pushes their parameters onto `values`. */
+const queueSetClauses = (
+  ticket: QueueTicket | "clear",
+  values: Array<number | string | null>
+): string[] => {
+  if (ticket === "clear") {
+    return [
+      "queue_number = NULL",
+      "queue_prefix = NULL",
+      "queue_date = NULL",
+      "queue_issued_at = NULL",
+      "queue_called_at = NULL",
+      "queue_call_count = 0",
+    ];
+  }
+  values.push(ticket.queueNumber);
+  const numberParam = values.length;
+  values.push(ticket.queuePrefix);
+  const prefixParam = values.length;
+  values.push(ticket.day);
+  const dayParam = values.length;
+  return [
+    `queue_number = $${numberParam}`,
+    `queue_prefix = $${prefixParam}`,
+    `queue_date = $${dayParam}::date`,
+    "queue_issued_at = NOW()",
+    "queue_called_at = NULL",
+    "queue_call_count = 0",
+  ];
+};
+
 const SELECT_LIST = `
   id,
   patient_id,
@@ -199,7 +253,13 @@ const SELECT_LIST = `
   to_char(recommended_return_date, 'YYYY-MM-DD') AS recommended_return_date,
   notes,
   created_at,
-  updated_at
+  updated_at,
+  queue_number,
+  queue_prefix,
+  to_char(queue_date, 'YYYY-MM-DD') AS queue_date,
+  queue_issued_at,
+  queue_called_at,
+  queue_call_count
 `;
 
 export class PostgresAppointmentsRepository implements IAppointmentsRepository {
@@ -413,18 +473,23 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     return withServices ?? null;
   }
 
-  async create(data: AppointmentCreateInput): Promise<Appointment> {
+  async create(
+    data: AppointmentCreateInput,
+    options: AppointmentWriteOptions = {}
+  ): Promise<Appointment> {
     const clinicId = requireClinicId();
     const startAt = assertAppointmentTimestampForDb(data.startAt, "startAt");
     const endAt = assertAppointmentTimestampForDb(data.endAt, "endAt");
 
-    const hasConflict = await this.findConflicting(
-      data.doctorId,
-      startAt,
-      endAt
-    );
-    if (hasConflict) {
-      throw new ApiError(409, "У врача уже есть запись на это время");
+    if (!options.skipConflictCheck) {
+      const hasConflict = await this.findConflicting(
+        data.doctorId,
+        startAt,
+        endAt
+      );
+      if (hasConflict) {
+        throw new ApiError(409, "У врача уже есть запись на это время");
+      }
     }
 
     const client = await dbPool.connect();
@@ -478,7 +543,25 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
         ]
       );
 
-      const mapped = mapAppointmentRow(result.rows[0]);
+      let row = result.rows[0];
+      if (options.queue?.kind === "issue") {
+        // The new row is invisible to other transactions until COMMIT, so no row lock is needed here.
+        const ticket = await allocateQueueNumber(client, clinicId, data.doctorId, options.queue.day);
+        const values: Array<number | string | null> = [];
+        const clauses = queueSetClauses({ ...ticket, day: options.queue.day }, values);
+        values.push(Number(row.id), clinicId);
+        const numbered = await client.query<AppointmentRow>(
+          `
+            UPDATE appointments
+            SET ${clauses.join(", ")}
+            WHERE id = $${values.length - 1} AND clinic_id = $${values.length}
+            RETURNING ${SELECT_LIST}
+          `,
+          values
+        );
+        row = numbered.rows[0];
+      }
+      const mapped = mapAppointmentRow(row);
       const lines = await this.resolveInitialAppointmentServiceLines(data, mapped);
 
       for (const line of lines) {
@@ -505,7 +588,11 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     }
   }
 
-  async update(id: number, data: AppointmentUpdateInput): Promise<Appointment | null> {
+  async update(
+    id: number,
+    data: AppointmentUpdateInput,
+    options: AppointmentWriteOptions = {}
+  ): Promise<Appointment | null> {
     const clinicId = requireClinicId();
     const current = await this.findById(id);
     if (!current) {
@@ -515,14 +602,16 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     const nextDoctorId = data.doctorId ?? current.doctorId;
     const nextStartAt = data.startAt ?? current.startAt;
     const nextEndAt = data.endAt ?? current.endAt;
-    const hasConflict = await this.findConflicting(
-      nextDoctorId,
-      nextStartAt,
-      nextEndAt,
-      id
-    );
-    if (hasConflict) {
-      throw new ApiError(409, "У врача уже есть запись на это время");
+    if (!options.skipConflictCheck) {
+      const hasConflict = await this.findConflicting(
+        nextDoctorId,
+        nextStartAt,
+        nextEndAt,
+        id
+      );
+      if (hasConflict) {
+        throw new ApiError(409, "У врача уже есть запись на это время");
+      }
     }
 
     const setClauses: string[] = [];
@@ -583,28 +672,115 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       setClauses.push(`notes = $${values.length}`);
     }
 
-    if (setClauses.length === 0) {
+    const queue: QueueDirective = options.queue ?? { kind: "keep" };
+    if (setClauses.length === 0 && queue.kind === "keep") {
       return this.findById(id);
     }
 
     setClauses.push(`updated_at = NOW()`);
-    values.push(id);
-    values.push(clinicId);
-
-    const result = await dbPool.query<AppointmentRow>(
-      `
-        UPDATE appointments
-        SET ${setClauses.join(", ")}
-        WHERE id = $${values.length - 1} AND clinic_id = $${values.length} AND deleted_at IS NULL
-        RETURNING ${SELECT_LIST}
-      `,
-      values
-    );
-    if (result.rows.length === 0) {
+    const row = await this.updateInTransaction(clinicId, id, nextDoctorId, setClauses, values, queue);
+    if (!row) {
       return null;
     }
+    // Both helpers use the pool, so they run only after the transaction client was released.
     await this.syncPrimaryAppointmentServiceRow(id);
-    return withServices(result.rows[0]);
+    return withServices(row);
+  }
+
+  /**
+   * The row change and its queue ticket commit together. Between connect() and release() only `client`
+   * may be used: a pool query there waits for a second connection (and deadlocks a one-connection pool).
+   */
+  private async updateInTransaction(
+    clinicId: number,
+    id: number,
+    doctorId: number,
+    setClauses: string[],
+    values: Array<number | string | null>,
+    queue: QueueDirective
+  ): Promise<AppointmentRow | null> {
+    const client = await dbPool.connect();
+    try {
+      await client.query("BEGIN");
+      if (queue.kind === "issue") {
+        const ticket = await this.takeQueueTicket(client, clinicId, id, doctorId, queue.day);
+        if (ticket === "missing") {
+          await client.query("ROLLBACK");
+          return null;
+        }
+        if (ticket !== "held") {
+          setClauses.push(...queueSetClauses(ticket, values));
+        }
+      } else if (queue.kind === "clear") {
+        setClauses.push(...queueSetClauses("clear", values));
+      }
+      values.push(id);
+      values.push(clinicId);
+      const result = await client.query<AppointmentRow>(
+        `
+          UPDATE appointments
+          SET ${setClauses.join(", ")}
+          WHERE id = $${values.length - 1} AND clinic_id = $${values.length} AND deleted_at IS NULL
+          RETURNING ${SELECT_LIST}
+        `,
+        values
+      );
+      if (result.rows.length === 0) {
+        await client.query("ROLLBACK");
+        return null;
+      }
+      await client.query("COMMIT");
+      return result.rows[0];
+    } catch (err) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        /* noop */
+      }
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Locks the row and takes the next number of `doctorId` for `day`. "held": the row is already arrived
+   * with this doctor's number for `day` (a concurrent request issued it first), so no second number is
+   * taken. "missing": the row is gone or soft-deleted.
+   */
+  private async takeQueueTicket(
+    client: QueryClient,
+    clinicId: number,
+    id: number,
+    doctorId: number,
+    day: string
+  ): Promise<QueueTicket | "held" | "missing"> {
+    const locked = await client.query(
+      `
+        SELECT doctor_id, status, queue_number, to_char(queue_date, 'YYYY-MM-DD') AS queue_date
+        FROM appointments
+        WHERE id = $1 AND clinic_id = $2 AND deleted_at IS NULL
+        FOR UPDATE
+      `,
+      [id, clinicId]
+    );
+    const row = locked.rows[0] as
+      | { doctor_id: number | string; status: AppointmentStatus; queue_number: number | null; queue_date: string | null }
+      | undefined;
+    if (!row) {
+      return "missing";
+    }
+    // pg returns BIGINT as a string (PGlite as a number): compare doctor ids with Number().
+    if (
+      row.status === "arrived" &&
+      row.queue_number != null &&
+      row.queue_date === day &&
+      Number(row.doctor_id) === doctorId
+    ) {
+      return "held";
+    }
+    const ticket = await allocateQueueNumber(client, clinicId, doctorId, day);
+    return { ...ticket, day };
   }
 
   async updatePrice(id: number, price: number): Promise<Appointment | null> {

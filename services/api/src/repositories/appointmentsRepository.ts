@@ -1,4 +1,9 @@
-import type { IAppointmentsRepository } from "./interfaces/IAppointmentsRepository";
+import type {
+  AppointmentWriteOptions,
+  IAppointmentsRepository,
+} from "./interfaces/IAppointmentsRepository";
+import type { QueueDirective } from "./interfaces/queueTypes";
+import { formatQueueCode } from "../services/queue/queueRules";
 import { APPOINTMENT_BILLING_STATUSES, APPOINTMENT_STATUSES } from "./interfaces/coreTypes";
 import type {
   Appointment,
@@ -26,6 +31,46 @@ export type {
 };
 
 const toAppointment = (row: AppointmentRecord): Appointment => ({ ...row });
+
+/**
+ * Mirrors PostgresAppointmentsRepository: "issue" takes 1 + the highest number of the doctor on that day
+ * (the row's own old number included, like the Postgres counter) and snapshots the doctor's letter.
+ * Call it before `record` replaces the stored row.
+ */
+const applyQueueDirective = (
+  record: AppointmentRecord,
+  directive: QueueDirective | undefined
+): AppointmentRecord => {
+  if (!directive || directive.kind === "keep") return record;
+  if (directive.kind === "clear") {
+    return {
+      ...record,
+      queueNumber: null,
+      queuePrefix: null,
+      queueCode: null,
+      queueDate: null,
+      queueIssuedAt: null,
+      queueCalledAt: null,
+      queueCallCount: 0,
+    };
+  }
+  const db = getMockDb();
+  const taken = db.appointments
+    .filter((row) => row.doctorId === record.doctorId && row.queueDate === directive.day && row.queueNumber != null)
+    .map((row) => row.queueNumber as number);
+  const queueNumber = Math.max(0, ...taken) + 1;
+  const queuePrefix = db.doctors.find((doctor) => doctor.id === record.doctorId)?.queuePrefix ?? null;
+  return {
+    ...record,
+    queueNumber,
+    queuePrefix,
+    queueCode: formatQueueCode(queuePrefix, queueNumber),
+    queueDate: directive.day,
+    queueIssuedAt: new Date().toISOString(),
+    queueCalledAt: null,
+    queueCallCount: 0,
+  };
+};
 
 /** Mirrors the uq_invoices_active_appointment index: these invoices snapshot the service lines. */
 const ACTIVE_INVOICE_STATUSES = new Set(["draft", "issued", "partially_paid", "paid"]);
@@ -74,9 +119,12 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
     return attachServices([found])[0] ?? null;
   }
 
-  async create(input: AppointmentCreateInput): Promise<Appointment> {
+  async create(
+    input: AppointmentCreateInput,
+    options: AppointmentWriteOptions = {}
+  ): Promise<Appointment> {
     const now = new Date().toISOString();
-    const created: AppointmentRecord = {
+    const draft: AppointmentRecord = {
       id: nextId(),
       patientId: input.patientId,
       doctorId: input.doctorId,
@@ -99,6 +147,7 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
       createdAt: now,
       updatedAt: now,
     };
+    const created = applyQueueDirective(draft, options.queue);
     getMockDb().appointments.push(created);
     const db = getMockDb();
     const primaryQty = input.quantity ?? 1;
@@ -155,11 +204,18 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
     return toAppointment(created);
   }
 
-  async update(id: number, input: AppointmentUpdateInput): Promise<Appointment | null> {
+  async update(
+    id: number,
+    input: AppointmentUpdateInput,
+    options: AppointmentWriteOptions = {}
+  ): Promise<Appointment | null> {
     const db = getMockDb();
     const idx = db.appointments.findIndex((item) => item.id === id);
     if (idx < 0) return null;
-    db.appointments[idx] = { ...db.appointments[idx], ...input, updatedAt: new Date().toISOString() };
+    db.appointments[idx] = applyQueueDirective(
+      { ...db.appointments[idx], ...input, updatedAt: new Date().toISOString() },
+      options.queue
+    );
     const primary = db.appointmentServices
       .filter((item) => item.appointmentId === id)
       .sort((a, b) => a.id - b.id)[0];
