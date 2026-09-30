@@ -1,0 +1,535 @@
+/*
+ * Электронная очередь — ТВ-экран (/tv, /tv/:code).
+ * Plain CSS on purpose: TV browsers (Chromium 87–110) drop Tailwind 4 output (@layer, oklch, color-mix).
+ * Rules: every class starts with "qtv-"; colours are hex/rgba only; sizes are vw/vh/clamp/em;
+ * no @layer, :has(), container queries, aspect-ratio or other features newer than Chrome 87.
+ * Card contents use em, so one font-size per grid density (.qtv-cols-N) scales the whole card.
+ */
+
+body.qtv-body {
+  margin: 0;
+  background: #070b14;
+  overflow: hidden;
+}
+
+.qtv-root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #070b14;
+  color: #f8fafc;
+  font-family: "Inter", "Roboto", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.15;
+  -webkit-font-smoothing: antialiased;
+}
+
+.qtv-display {
+  cursor: none;
+}
+
+/* —— Header —— */
+.qtv-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.2vh 2vw;
+  background: #0f172a;
+  border-bottom: 0.3vh solid #1e293b;
+}
+
+.qtv-clinic {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: clamp(16px, 2.2vw, 64px);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qtv-title {
+  flex: 0 0 auto;
+  padding: 0 2vw;
+  font-size: clamp(16px, 2.4vw, 72px);
+  font-weight: 800;
+  color: #38bdf8;
+  text-align: center;
+}
+
+.qtv-clock {
+  flex: 1 1 0;
+  text-align: right;
+}
+
+.qtv-clock-time {
+  font-size: clamp(20px, 3vw, 96px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.qtv-clock-day {
+  font-size: clamp(10px, 1vw, 32px);
+  color: #94a3b8;
+}
+
+/* —— Cabinet grid —— */
+.qtv-main {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 1.5vh 1.5vw;
+}
+
+.qtv-grid {
+  display: grid;
+  grid-gap: 1.2vw;
+  gap: 1.2vw;
+  height: 100%;
+  font-size: 1.1vw;
+}
+
+.qtv-cols-1 {
+  font-size: 2.6vw;
+}
+
+.qtv-cols-2 {
+  font-size: 1.5vw;
+}
+
+.qtv-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: clamp(20px, 3.5vw, 110px);
+  color: #94a3b8;
+  text-align: center;
+}
+
+.qtv-pages {
+  position: absolute;
+  right: 1.5vw;
+  bottom: 0.3vh;
+  font-size: clamp(10px, 1vw, 28px);
+  color: #64748b;
+}
+
+.qtv-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.7em;
+  background: #0f1a2e;
+  border: 0.15em solid #1e2b45;
+  border-radius: 0.8em;
+}
+
+.qtv-card-head {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5em;
+}
+
+.qtv-room {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.6em;
+  margin-right: 0.7em;
+  padding: 0.2em 0.5em;
+  border-radius: 0.5em;
+  background: #1e3a8a;
+}
+
+.qtv-room-label {
+  font-size: 0.7em;
+  color: #bfdbfe;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.qtv-room-number {
+  font-size: 2.4em;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.qtv-doctor {
+  min-width: 0;
+}
+
+.qtv-doctor-name {
+  font-size: 1.15em;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qtv-doctor-specialty {
+  font-size: 0.85em;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qtv-current {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3em 0.6em;
+  border-radius: 0.6em;
+  text-align: center;
+}
+
+.qtv-current-serving {
+  background: #14532d;
+  border: 0.15em solid #22c55e;
+  color: #dcfce7;
+}
+
+.qtv-current-called {
+  background: #78350f;
+  border: 0.15em solid #f59e0b;
+  color: #fef3c7;
+  animation: qtv-glow 1.2s ease-in-out infinite alternate;
+}
+
+.qtv-current-free {
+  background: #111827;
+  border: 0.15em dashed #334155;
+  color: #64748b;
+}
+
+.qtv-current-label {
+  font-size: 0.85em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.qtv-current-code {
+  font-size: 3.4em;
+  font-weight: 900;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.qtv-current-name {
+  max-width: 100%;
+  font-size: 1.3em;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qtv-next {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin-top: 0.5em;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.qtv-next-label {
+  flex: 0 0 auto;
+  margin-right: 0.5em;
+  font-size: 0.8em;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.qtv-next-list {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.qtv-chip {
+  margin-right: 0.4em;
+  padding: 0.1em 0.45em;
+  border-radius: 0.4em;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 1.05em;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.qtv-chip-more {
+  background: transparent;
+  color: #94a3b8;
+}
+
+.qtv-next-empty {
+  font-size: 0.9em;
+  color: #64748b;
+}
+
+/* —— Footer: recent calls —— */
+.qtv-footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 1vh 2vw;
+  background: #0f172a;
+  border-top: 0.3vh solid #1e293b;
+  font-size: clamp(12px, 1.5vw, 48px);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.qtv-footer-label {
+  flex: 0 0 auto;
+  margin-right: 1.5vw;
+  font-size: 0.8em;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.qtv-footer-list {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.qtv-recent {
+  margin-right: 2vw;
+}
+
+.qtv-recent-code {
+  margin-right: 0.4em;
+  font-weight: 800;
+  color: #fbbf24;
+}
+
+.qtv-recent-room {
+  color: #e2e8f0;
+}
+
+/* —— Banners and overlays —— */
+.qtv-offline {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  z-index: 30;
+  transform: translateX(-50%);
+  padding: 0.6vh 2vw;
+  border-radius: 0 0 1vw 1vw;
+  background: #b91c1c;
+  color: #ffffff;
+  font-size: clamp(14px, 1.6vw, 48px);
+  font-weight: 800;
+}
+
+.qtv-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.9);
+}
+
+.qtv-overlay-card {
+  max-width: 90vw;
+  padding: 4vh 6vw;
+  border: 0.4vw solid #f59e0b;
+  border-radius: 2vw;
+  background: #0f172a;
+  box-shadow: 0 0 6vw rgba(245, 158, 11, 0.35);
+  text-align: center;
+  animation: qtv-pop 0.35s ease-out both;
+}
+
+.qtv-overlay-label {
+  font-size: clamp(18px, 3vw, 96px);
+  font-weight: 700;
+  color: #fde68a;
+}
+
+.qtv-overlay-code {
+  font-size: clamp(64px, 16vw, 480px);
+  font-weight: 900;
+  line-height: 1;
+  color: #fbbf24;
+  font-variant-numeric: tabular-nums;
+}
+
+.qtv-overlay-name {
+  margin-top: 1vh;
+  font-size: clamp(24px, 4.5vw, 140px);
+  font-weight: 700;
+}
+
+.qtv-overlay-room {
+  margin-top: 1.5vh;
+  font-size: clamp(24px, 4.5vw, 140px);
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+.qtv-gate {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.8);
+  cursor: auto;
+}
+
+.qtv-start-button {
+  padding: 2.5vh 4vw;
+  border: 0.4vw solid #86efac;
+  border-radius: 1.5vw;
+  background: #22c55e;
+  color: #052e16;
+  font-family: inherit;
+  font-size: clamp(20px, 3vw, 96px);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.qtv-start-button:focus {
+  outline: 0.5vw solid #fbbf24;
+  outline-offset: 0.5vw;
+}
+
+.qtv-gate-hint {
+  max-width: 80vw;
+  margin: 3vh 0 0;
+  font-size: clamp(14px, 1.6vw, 48px);
+  color: #cbd5e1;
+  text-align: center;
+}
+
+.qtv-message {
+  align-items: center;
+  justify-content: center;
+  padding: 4vw;
+}
+
+.qtv-message-text {
+  max-width: 80vw;
+  margin: 0 0 3vh;
+  font-size: clamp(20px, 3.2vw, 100px);
+  font-weight: 700;
+  line-height: 1.3;
+  color: #fca5a5;
+  text-align: center;
+}
+
+/* —— Launch page (/tv) —— */
+.qtv-launch {
+  align-items: center;
+  justify-content: center;
+}
+
+.qtv-launch-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5vh 5vw;
+  border: 0.2vw solid #1e293b;
+  border-radius: 2vw;
+  background: #0f172a;
+}
+
+.qtv-launch-title {
+  margin: 0 0 3vh;
+  font-size: clamp(20px, 3vw, 96px);
+  font-weight: 800;
+  text-align: center;
+}
+
+.qtv-code-input {
+  width: 9em;
+  max-width: 90vw;
+  margin: 0 0 3vh;
+  padding: 1.5vh 1.5vw;
+  border: 0.3vw solid #334155;
+  border-radius: 1vw;
+  background: #020617;
+  color: #f8fafc;
+  font-family: inherit;
+  font-size: clamp(28px, 5vw, 160px);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.qtv-code-input:focus {
+  outline: none;
+  border-color: #38bdf8;
+}
+
+.qtv-button {
+  padding: 1.8vh 3vw;
+  border: 0.3vw solid #38bdf8;
+  border-radius: 1vw;
+  background: #0ea5e9;
+  color: #03121f;
+  font-family: inherit;
+  font-size: clamp(18px, 2.4vw, 72px);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.qtv-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.qtv-button:focus {
+  outline: 0.4vw solid #fbbf24;
+  outline-offset: 0.4vw;
+}
+
+@keyframes qtv-glow {
+  from {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+  to {
+    box-shadow: 0 0 1.2em 0.2em rgba(245, 158, 11, 0.55);
+  }
+}
+
+@keyframes qtv-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
