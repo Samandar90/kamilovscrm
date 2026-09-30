@@ -21,6 +21,8 @@ import { QuestionnairesService } from "../services/questionnairesService";
 import { PostgresQuestionnairesRepository } from "../repositories/postgres/PostgresQuestionnairesRepository";
 import { QueueService } from "../services/queueService";
 import { PostgresQueueRepository } from "../repositories/postgres/PostgresQueueRepository";
+import { QueueDisplaysService } from "../services/queueDisplaysService";
+import { PostgresQueueDisplaysRepository } from "../repositories/postgres/PostgresQueueDisplaysRepository";
 import { dbPool } from "../config/database";
 import { env } from "../config/env";
 import { repositories } from "./repositories";
@@ -60,4 +62,9 @@ export const services = {
     repositories.appointments
   ),
   queue: new QueueService(queueRepository, env.reportsTimezone),
+  queueDisplays: new QueueDisplaysService(
+    new PostgresQueueDisplaysRepository(dbPool),
+    queueRepository,
+    env.reportsTimezone
+  ),
 };

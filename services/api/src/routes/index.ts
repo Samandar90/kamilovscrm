@@ -28,6 +28,7 @@ import { uziTemplatesRouter } from "./uziTemplatesRoutes";
 import { attendanceRouter } from "./attendanceRoutes";
 import { callCenterRouter } from "./callCenterRoutes";
 import { questionnairesRouter } from "./questionnairesRoutes";
+import { publicRouter } from "./publicRoutes";
 import { queueRouter } from "./queueRoutes";
 
 const router = Router();
@@ -53,6 +54,8 @@ router.get(
 );
 
 router.use("/auth", authRouter);
+// Публичные эндпоинты (ТВ-экран очереди): без requireAuth и без гейта подписки — проверки внутри, по коду экрана.
+router.use("/public", publicRouter);
 router.use("/platform", platformRouter);
 if (env.allowDevBootstrap) {
   router.use("/dev", devRouter);

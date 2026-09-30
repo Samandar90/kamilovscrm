@@ -1,4 +1,13 @@
 import { Router } from "express";
+// Отдельный алиас: импорт не конфликтует с тем, что уже импортировано из permissionMiddleware ниже.
+import { allowPermission as allowQueuePermission } from "../middleware/permissionMiddleware";
+import {
+  createQueueDisplayController,
+  deleteQueueDisplayController,
+  listQueueDisplaysController,
+  rotateQueueDisplayCodeController,
+  updateQueueDisplayController,
+} from "../controllers/queueController";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { requireAuth } from "../middleware/authMiddleware";
 import { checkPermission } from "../middleware/permissionMiddleware";
@@ -39,6 +48,17 @@ router.post(
   checkPermission("queue", "update"),
   validateQueueDoctorIdParam,
   asyncHandler(callNextQueueEntryController)
+);
+
+// ТВ-экраны: только superadmin. allowPermission не пропускает superadmin автоматически — он указан в QUEUE_DISPLAY_MANAGE явно.
+router.get("/displays", allowQueuePermission("QUEUE_DISPLAY_MANAGE"), asyncHandler(listQueueDisplaysController));
+router.post("/displays", allowQueuePermission("QUEUE_DISPLAY_MANAGE"), asyncHandler(createQueueDisplayController));
+router.patch("/displays/:id", allowQueuePermission("QUEUE_DISPLAY_MANAGE"), asyncHandler(updateQueueDisplayController));
+router.delete("/displays/:id", allowQueuePermission("QUEUE_DISPLAY_MANAGE"), asyncHandler(deleteQueueDisplayController));
+router.post(
+  "/displays/:id/rotate-code",
+  allowQueuePermission("QUEUE_DISPLAY_MANAGE"),
+  asyncHandler(rotateQueueDisplayCodeController)
 );
 
 export { router as queueRouter };
