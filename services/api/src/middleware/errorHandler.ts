@@ -33,6 +33,9 @@ const mapPostgresError = (err: PostgresLikeError): ApiError | null => {
   if (err.constraint === "uq_invoices_active_appointment") {
     return new ApiError(409, "An active invoice for this appointment already exists");
   }
+  if (err.constraint === "ux_appointments_queue_ticket") {
+    return new ApiError(409, "Номер очереди уже занят, повторите действие");
+  }
 
   switch (err.code) {
     case "22P02":
