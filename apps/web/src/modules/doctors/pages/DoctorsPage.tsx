@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, Search, Stethoscope, X } from "lucide-react";
+import { DoorOpen, Plus, Search, Stethoscope, X } from "lucide-react";
 import { requestJson } from "../../../api/http";
 import { useAuth } from "../../../auth/AuthContext";
 import { hasPermission } from "../../../auth/permissions";
@@ -11,6 +11,7 @@ import { CollapsibleChips } from "../../../shared/ui/CollapsibleChips";
 import { useDebounce } from "../../../shared/lib/useDebounce";
 import { PhoneInput } from "../../../shared/ui/PhoneInput";
 import { phoneToApiValue, storedPhoneToNormalized } from "../../../utils/phoneInput";
+import { normalizeQueuePrefixInput, validateDoctorQueueFields } from "../utils/queueFields";
 
 type Doctor = {
   id: number;
@@ -21,6 +22,10 @@ type Doctor = {
   birth_date?: string | null;
   active: boolean;
   serviceIds?: number[];
+  /** Cabinet shown on the TV and the ticket (≤ 20 chars). */
+  room?: string | null;
+  /** One upper-case letter used in ticket codes ("К-05"). */
+  queuePrefix?: string | null;
 };
 
 type ServiceRef = {
@@ -36,6 +41,8 @@ type DoctorFormState = {
   birthDate: string;
   active: boolean;
   serviceIds: number[];
+  room: string;
+  queuePrefix: string;
 };
 
 const initialFormState: DoctorFormState = {
@@ -46,6 +53,8 @@ const initialFormState: DoctorFormState = {
   birthDate: "",
   active: true,
   serviceIds: [],
+  room: "",
+  queuePrefix: "",
 };
 
 type DoctorServicesChipsProps = {
@@ -157,6 +166,8 @@ export const DoctorsPage: React.FC = () => {
       birthDate: doctor.birth_date ?? "",
       active: doctor.active,
       serviceIds: doctor.serviceIds ?? [],
+      room: doctor.room ?? "",
+      queuePrefix: doctor.queuePrefix ?? "",
     });
     setFormError(null);
     setModalOpen(true);
@@ -171,6 +182,9 @@ export const DoctorsPage: React.FC = () => {
     if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
       return t("doctors.validation.percentRange");
     }
+    const queueFieldsError = validateDoctorQueueFields(formState.room, formState.queuePrefix);
+    if (queueFieldsError === "roomTooLong") return t("doctors.validation.roomTooLong");
+    if (queueFieldsError === "queuePrefixOneLetter") return t("doctors.validation.queuePrefixOneLetter");
     return null;
   };
 
@@ -197,6 +211,8 @@ export const DoctorsPage: React.FC = () => {
         birth_date: formState.birthDate || null,
         active: formState.active,
         serviceIds: formState.serviceIds,
+        room: formState.room.trim() || null,
+        queuePrefix: formState.queuePrefix.trim() || null,
       };
       const isEdit = Boolean(editingDoctorId);
       if (isEdit) {
@@ -244,6 +260,15 @@ export const DoctorsPage: React.FC = () => {
   };
 
   const busy = loading || isSaving || isDeletingId !== null;
+  /** Card line: "Кабинет 5 · К", "Кабинет 5", or "Буква очереди: К" when only the letter is set. */
+  const doctorQueueLine = (doctor: Doctor): string | null => {
+    const room = doctor.room?.trim();
+    const prefix = doctor.queuePrefix?.trim();
+    if (room && prefix) return `${t("doctors.roomShort", { room })} · ${prefix}`;
+    if (room) return t("doctors.roomShort", { room });
+    if (prefix) return `${t("doctors.queuePrefix")}: ${prefix}`;
+    return null;
+  };
   const serviceNameById = React.useMemo(
     () => Object.fromEntries(services.map((service) => [service.id, service.name])),
     [services]
@@ -353,6 +378,12 @@ export const DoctorsPage: React.FC = () => {
                       <Stethoscope className="h-3.5 w-3.5 text-[#94a3b8]" strokeWidth={1.75} />
                       {doctor.speciality}
                     </p>
+                    {doctorQueueLine(doctor) ? (
+                      <p className="mt-1 flex items-center gap-1.5 text-sm text-[#64748b]">
+                        <DoorOpen className="h-3.5 w-3.5 text-[#94a3b8]" strokeWidth={1.75} />
+                        {doctorQueueLine(doctor)}
+                      </p>
+                    ) : null}
                   </div>
                   <span
                     className={`inline-flex shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${
@@ -485,6 +516,34 @@ export const DoctorsPage: React.FC = () => {
                   aria-label="Дата рождения врача"
                   disabled={isSaving}
                 />
+              </label>
+              <label className="text-sm text-[#334155]">
+                {t("doctors.room")}
+                <input
+                  id="doctor-room"
+                  className="mt-1 h-11 w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:bg-white focus:ring-1 focus:ring-[#16a34a]/25"
+                  value={formState.room}
+                  maxLength={20}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, room: event.target.value }))}
+                  placeholder="5"
+                  autoComplete="off"
+                  disabled={isSaving}
+                />
+              </label>
+              <label className="text-sm text-[#334155]">
+                {t("doctors.queuePrefix")}
+                <input
+                  id="doctor-queue-prefix"
+                  className="mt-1 h-11 w-full rounded-[10px] border border-[#e2e8f0] bg-[#f8fafc] px-3 text-sm text-[#0f172a] outline-none transition focus:border-[#16a34a] focus:bg-white focus:ring-1 focus:ring-[#16a34a]/25"
+                  value={formState.queuePrefix}
+                  onChange={(event) =>
+                    setFormState((prev) => ({ ...prev, queuePrefix: normalizeQueuePrefixInput(event.target.value) }))
+                  }
+                  placeholder="К"
+                  autoComplete="off"
+                  disabled={isSaving}
+                />
+                <span className="mt-1 block text-xs text-[#94a3b8]">{t("doctors.queuePrefixHint")}</span>
               </label>
               <label className="flex items-center gap-2 pt-7 text-sm text-[#334155]">
                 <input

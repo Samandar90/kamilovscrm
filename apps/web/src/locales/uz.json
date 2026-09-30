@@ -572,6 +572,10 @@
     "searchServices": "Xizmatlarni qidirish…",
     "confirmDeactivate": "{{name}} shifokorni faolsizlantirasizmi?",
     "confirmActivate": "{{name}} shifokorni faollashtirasizmi?",
+    "room": "Xona",
+    "roomShort": "Xona {{room}}",
+    "queuePrefix": "Navbat harfi",
+    "queuePrefixHint": "Ixtiyoriy. Bitta harf: K → K-01, K-02… raqamlar",
     "emptyState": {
       "noDoctors": "Hozircha shifokorlar yo'q",
       "noDoctorsDesc": "Ishni boshlash uchun birinchi shifokorni qo'shing",
@@ -586,7 +590,9 @@
     "validation": {
       "nameRequired": "To'liq ismni kiriting",
       "specialityRequired": "Mutaxassislikni kiriting",
-      "percentRange": "Foiz 0 dan 100 gacha bo'lishi kerak"
+      "percentRange": "Foiz 0 dan 100 gacha bo'lishi kerak",
+      "roomTooLong": "Xona — 20 belgidan oshmasin",
+      "queuePrefixOneLetter": "Navbat harfi — faqat bitta harf"
     },
     "messages": {
       "doctorAdded": "Shifokor qo'shildi",

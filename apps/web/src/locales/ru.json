@@ -572,6 +572,10 @@
     "searchServices": "Поиск услуг…",
     "confirmDeactivate": "Деактивировать врача {{name}}?",
     "confirmActivate": "Активировать врача {{name}}?",
+    "room": "Кабинет",
+    "roomShort": "Кабинет {{room}}",
+    "queuePrefix": "Буква очереди",
+    "queuePrefixHint": "Необязательно. Одна буква: К → номера К-01, К-02…",
     "emptyState": {
       "noDoctors": "Врачей пока нет",
       "noDoctorsDesc": "Добавьте первого врача, чтобы начать работу",
@@ -586,7 +590,9 @@
     "validation": {
       "nameRequired": "Укажите ФИО",
       "specialityRequired": "Укажите специальность",
-      "percentRange": "Процент должен быть от 0 до 100"
+      "percentRange": "Процент должен быть от 0 до 100",
+      "roomTooLong": "Кабинет — не больше 20 символов",
+      "queuePrefixOneLetter": "Буква очереди — ровно одна буква"
     },
     "messages": {
       "doctorAdded": "Врач добавлен",
