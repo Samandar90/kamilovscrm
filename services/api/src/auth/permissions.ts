@@ -30,6 +30,9 @@ export const PERMISSION_MODULES = [
   "callcenter",
   // Анкеты пациентов: общая база для всех врачей. Шаблоны — отдельная политика QUESTIONNAIRE_TEMPLATE_MANAGE.
   "questionnaires",
+  // Электронная очередь: номера и вызов пациентов. Врач/медсестра — только своя очередь (проверка в сервисе).
+  // Экраны (ТВ) — отдельная политика QUEUE_DISPLAY_MANAGE.
+  "queue",
 ] as const;
 
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];
@@ -52,6 +55,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     services: ["read"],
     appointments: ["read", "create", "update", "delete"],
     questionnaires: ["read", "create", "update"],
+    queue: ["read", "create", "update"],
     ai: ["read", "create"],
   },
 
@@ -61,6 +65,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     services: ["read"],
     appointments: ["read", "create", "update"],
     questionnaires: ["read", "create", "update"],
+    queue: ["read", "update"],
     ai: ["read", "create"],
   },
 
@@ -68,6 +73,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     patients: ["read", "create"],
     appointments: ["read", "update"],
     questionnaires: ["read", "create", "update"],
+    queue: ["read", "update"],
     ai: ["read", "create"],
   },
 
@@ -107,6 +113,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     services: ["read"],
     appointments: ["read", "create", "update", "delete"],
     questionnaires: ["read", "create", "update", "delete"],
+    queue: ["read"],
     invoices: ["read"],
     payments: ["read"],
     expenses: ["read", "create", "update", "delete"],
@@ -119,6 +126,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
   director: {
     patients: ["read"],
     appointments: ["read"],
+    queue: ["read"],
     invoices: ["read"],
     payments: ["read"],
     expenses: ["read"],
@@ -175,6 +183,8 @@ export const PERMISSIONS = {
   QUESTIONNAIRE_DELETE: roleList("questionnaires", "delete"),
   /** Конструктор шаблонов анкет. Врач правит только свои шаблоны (проверка в сервисе). */
   QUESTIONNAIRE_TEMPLATE_MANAGE: ["superadmin", "manager", "doctor"] as const satisfies readonly UserRole[],
+  /** ТВ-экраны электронной очереди (создание, код, удаление) — только superadmin клиники. */
+  QUEUE_DISPLAY_MANAGE: ["superadmin"] as const satisfies readonly UserRole[],
 
   /** /services/mine — врач сам ведёт свой список услуг (выбор из каталога и создание новой). */
   DOCTOR_OWN_SERVICES: ["doctor"] as const satisfies readonly UserRole[],
