@@ -2007,6 +2007,56 @@
   },
   "queue": {
     "title": "Elektron navbat",
-    "subtitle": "Bugungi bemorlar navbati xonalar bo'yicha"
+    "subtitle": "Bugungi bemorlar navbati xonalar bo'yicha",
+    "displays": {
+      "title": "TV ekranlar",
+      "subtitle": "Zaldagi televizor ekranni kodli havola orqali ochadi. Kod faqat yaratishda va yangi kod berilganda ko'rsatiladi.",
+      "add": "Yangi ekran",
+      "empty": "Hozircha ekranlar yo'q. Ekran yarating va havolani televizorda oching.",
+      "allDoctors": "Bugun navbati bor barcha shifokorlar",
+      "namesOn": "Ismlar bilan",
+      "namesOff": "Ismlarsiz",
+      "voiceOn": "Ovoz bilan",
+      "voiceOff": "Ovozsiz",
+      "rotate": "Yangi kod",
+      "confirmRotate": "«{{name}}» ekraniga yangi kod berilsinmi? Eski havola ishlamay qoladi.",
+      "confirmDelete": "«{{name}}» ekrani o'chirilsinmi? Shu havoladagi televizor o'chadi.",
+      "codeTitle": "«{{name}}» ekran kodi",
+      "codeHint": "Havolani televizorda oching yoki /tv sahifasida kodni kiriting. Kod qayta ko'rsatilmaydi — uni hozir saqlab qo'ying.",
+      "linkLabel": "Ekran havolasi",
+      "copyLink": "Havolani nusxalash",
+      "copied": "Havola nusxalandi",
+      "copyFailed": "Nusxalab bo'lmadi — havolani belgilab, qo'lda nusxalang",
+      "openScreen": "Ekranni ochish",
+      "done": "Tayyor",
+      "tvHint": "Televizorda {{url}} sahifasini oching va ekran kodini kiriting.",
+      "saved": "Ekran saqlandi",
+      "deleted": "Ekran o'chirildi",
+      "loadFailed": "Ekranlarni yuklab bo'lmadi",
+      "actionFailed": "Amalni bajarib bo'lmadi",
+      "languages": {
+        "uz_ru": "O'zbek va rus",
+        "uz": "O'zbek",
+        "ru": "Rus"
+      },
+      "form": {
+        "createTitle": "Yangi ekran",
+        "editTitle": "Ekran sozlamalari",
+        "name": "Nomi",
+        "namePlaceholder": "Zal, 1-qavat",
+        "doctors": "Qaysi xonalar ko'rsatilsin",
+        "allDoctors": "Bugun navbati bor barcha shifokorlar",
+        "pickDoctors": "Faqat tanlangan shifokorlar",
+        "noDoctors": "Hozircha shifokorlar yo'q",
+        "noRoom": "Xona ko'rsatilmagan",
+        "noRoomWarning": "Shifokorning xonasi ko'rsatilmagan: {{names}}. Ekranda «Xona —» chiqadi, ovoz esa xona raqamini aytmaydi.",
+        "language": "Yozuvlar va ovoz tili",
+        "showNames": "Bemor ismlarini ko'rsatish («Alisher K.»)",
+        "voice": "Chaqiruvni ovoz bilan e'lon qilish",
+        "nameRequired": "Ekran nomini kiriting",
+        "doctorsRequired": "Kamida bitta shifokorni tanlang",
+        "saveFailed": "Ekranni saqlab bo'lmadi"
+      }
+    }
   }
 }
