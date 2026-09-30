@@ -2008,6 +2008,56 @@
   "queue": {
     "title": "Elektron navbat",
     "subtitle": "Bugungi bemorlar navbati xonalar bo'yicha",
+    "cabinet": {
+      "room": "Xona {{room}}",
+      "noRoom": "Xona —",
+      "waiting": "Kutmoqda: {{total}}",
+      "done": "Qabul qilindi: {{total}}",
+      "noWaiting": "Kutayotganlar yo'q",
+      "missed": "Kelmaganlar"
+    },
+    "states": {
+      "waiting": "Kutmoqda",
+      "called": "Chaqirildi",
+      "calledTimes": "Chaqirildi ×{{times}}",
+      "serving": "Qabulda",
+      "missed": "Kelmadi",
+      "done": "Qabul qilindi"
+    },
+    "actions": {
+      "callNext": "Keyingisini chaqirish · {{code}}",
+      "call": "Chaqirish",
+      "recall": "Qayta chaqirish",
+      "start": "Qabulni boshlash",
+      "notCame": "Kelmadi",
+      "returnToQueue": "Navbatga qaytarish",
+      "complete": "Qabulni yakunlash",
+      "openWorkspace": "Qabulni ochish",
+      "displays": "Ekranlar",
+      "confirmNotCame": "{{code}} «Kelmadi» deb belgilansinmi? Bemor navbatdan chiqadi; uni «Navbatga qaytarish» tugmasi bilan qaytarish mumkin.",
+      "confirmComplete": "{{code}} qabuli yakunlansinmi? Tashxis va davolashni qabul kartasida to'ldirish mumkin."
+    },
+    "entry": {
+      "time": "Yozuv: {{time}}",
+      "wait": "{{minutes}} daq. kutmoqda",
+      "noNumber": "Raqamsiz"
+    },
+    "empty": {
+      "title": "Bugun hozircha navbat yo'q",
+      "description": "Qabulxona bemorni «Keldi» deb belgilaganda raqam avtomatik beriladi."
+    },
+    "errors": {
+      "loadFailed": "Navbatni yangilab bo'lmadi",
+      "actionFailed": "Amalni bajarib bo'lmadi"
+    },
+    "notices": {
+      "called": "{{code}} chaqirildi",
+      "nobodyWaiting": "Kutayotgan bemorlar yo'q",
+      "started": "Qabul boshlandi: {{code}}",
+      "missed": "{{code}} «Kelmadi» deb belgilandi",
+      "returned": "Bemor yana navbatda: {{code}}",
+      "completed": "Qabul yakunlandi: {{code}}"
+    },
     "displays": {
       "title": "TV ekranlar",
       "subtitle": "Zaldagi televizor ekranni kodli havola orqali ochadi. Kod faqat yaratishda va yangi kod berilganda ko'rsatiladi.",
