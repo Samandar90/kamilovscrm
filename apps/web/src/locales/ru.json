@@ -226,7 +226,8 @@
     "doctorWorkspace": "Рабочее место врача",
     "systemArchitecture": "Архитектура системы",
     "attendance": "Посещаемость",
-    "callCenter": "Колл-центр"
+    "callCenter": "Колл-центр",
+    "queue": "Очередь"
   },
   "patients": {
     "source": {
@@ -1988,5 +1989,9 @@
       "labelRequired": "Заполните текст вопроса {{number}}",
       "optionsInvalid": "Вопрос «{{label}}»: нужно минимум 2 разных варианта ответа"
     }
+  },
+  "queue": {
+    "title": "Электронная очередь",
+    "subtitle": "Номера пациентов по кабинетам на сегодня"
   }
 }

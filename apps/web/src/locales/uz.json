@@ -226,7 +226,8 @@
     "doctorWorkspace": "Shifokorning ish joyidagi",
     "systemArchitecture": "Tizim arxitekturasi",
     "attendance": "Davomat",
-    "callCenter": "Call-markaz"
+    "callCenter": "Call-markaz",
+    "queue": "Navbat"
   },
   "patients": {
     "source": {
@@ -1988,5 +1989,9 @@
       "labelRequired": "{{number}}-savol matnini kiriting",
       "optionsInvalid": "«{{label}}» savoli: kamida 2 ta turli javob varianti kerak"
     }
+  },
+  "queue": {
+    "title": "Elektron navbat",
+    "subtitle": "Bugungi bemorlar navbati xonalar bo'yicha"
   }
 }
