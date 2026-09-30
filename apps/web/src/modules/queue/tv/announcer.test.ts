@@ -90,7 +90,10 @@ const clipBytes = (): ArrayBuffer => {
 
 let missing: Set<string>;
 let htmlFallback: Set<string>;
-const fetchMock = vi.fn(async (url: string) => {
+let stalled: Set<string>;
+const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
+  // A stalled socket: never settles, and ignores the abort signal (the worst case).
+  if (stalled.has(url)) return new Promise<Response>(() => undefined);
   if (missing.has(url)) return new Response("not found", { status: 404 });
   if (htmlFallback.has(url)) return new Response("<!doctype html><html></html>", { status: 200 });
   return new Response(clipBytes(), { status: 200 });
@@ -102,6 +105,7 @@ beforeEach(() => {
   resumeBehaviour = "resolve";
   missing = new Set();
   htmlFallback = new Set();
+  stalled = new Set();
   fetchMock.mockClear();
   vi.stubGlobal("fetch", fetchMock);
   // Delegate lazily so the fake timers installed above are the ones used.
@@ -120,8 +124,13 @@ afterEach(() => {
 const UZ = ["navbat_raqami", "20", "7", "xona_raqami", "5"];
 const RU = ["nomer", "20", "7", "proydite_v_kabinet_nomer", "5"];
 
-async function announce(announcer: ReturnType<typeof createAnnouncer>, groups: string[][], langs: Array<"uz" | "ru">) {
-  const done = announcer.announce(groups, langs);
+async function announce(
+  announcer: ReturnType<typeof createAnnouncer>,
+  groups: string[][],
+  langs: Array<"uz" | "ru">,
+  signal?: AbortSignal,
+) {
+  const done = announcer.announce(groups, langs, signal ? { signal } : undefined);
   await vi.advanceTimersByTimeAsync(20_000);
   await done;
 }
@@ -253,5 +262,60 @@ describe("createAnnouncer", () => {
     await vi.advanceTimersByTimeAsync(1000);
     await preloading;
     expect(fetchMock).toHaveBeenCalledTimes(39); // the announced clips were not downloaded twice
+  });
+
+  it("gives up on a clip download that stalls for 8 s: chime only, and the clip is fetched again next time", async () => {
+    stalled.add("/queue-voice/ru/nomer.mp3");
+    const announcer = createAnnouncer();
+    await announcer.unlock();
+    let finished = false;
+    const done = announcer.announce([RU], ["ru"]).then(() => {
+      finished = true;
+    });
+    await vi.advanceTimersByTimeAsync(7_999);
+    expect(finished).toBe(false); // still waiting for the stalled clip
+    await vi.advanceTimersByTimeAsync(2_000); // 8 s download timeout + the rest of the chime
+    expect(finished).toBe(true);
+    await done;
+    expect(scheduled.map((item) => item.kind)).toEqual(["tone", "tone"]);
+    const init = fetchMock.mock.calls[0][1];
+    expect(init?.signal?.aborted).toBe(true); // a real fetch would have been cancelled
+
+    stalled.clear();
+    scheduled = [];
+    await announce(announcer, [RU], ["ru"]);
+    expect(fetchMock.mock.calls.slice(5).map(([url]) => url)).toEqual(["/queue-voice/ru/nomer.mp3"]);
+    expect(scheduled.filter((item) => item.kind === "clip")).toHaveLength(5);
+  });
+
+  it("plays nothing for an announcement cancelled before it starts", async () => {
+    const announcer = createAnnouncer();
+    await announcer.unlock();
+    const controller = new AbortController();
+    controller.abort();
+    await announce(announcer, [RU], ["ru"], controller.signal);
+    expect(scheduled).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("schedules no speech once the announcement is cancelled while its clips are loading", async () => {
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    fetchMock.mockImplementationOnce(async () => {
+      await held;
+      return new Response(clipBytes(), { status: 200 });
+    });
+    const announcer = createAnnouncer();
+    await announcer.unlock();
+    const controller = new AbortController();
+    const done = announcer.announce([RU], ["ru"], { signal: controller.signal });
+    await vi.advanceTimersByTimeAsync(1000);
+    controller.abort(); // the overlay of this call has ended
+    release();
+    await vi.advanceTimersByTimeAsync(20_000);
+    await done;
+    expect(scheduled.map((item) => item.kind)).toEqual(["tone", "tone"]); // the chime had already played
   });
 });

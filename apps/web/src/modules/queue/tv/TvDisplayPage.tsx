@@ -29,16 +29,26 @@ function settleWithin(promise: Promise<unknown>, ms: number): Promise<void> {
   });
 }
 
-/** Chime + voice for one call; voice follows the display settings. Never rejects, never hangs longer than 20 s. */
-function speakCall(announcer: Announcer, display: QueueDisplayState["display"], call: QueueDisplayCall): Promise<void> {
+/**
+ * Chime + voice for one call; voice follows the display settings. Never rejects, never hangs longer than 20 s.
+ * When it gives up (or the caller aborts `speech`), the announcement is cancelled, so a late one never talks over
+ * the next call.
+ */
+function speakCall(
+  announcer: Announcer,
+  display: QueueDisplayState["display"],
+  call: QueueDisplayCall,
+  speech: AbortController | null,
+): Promise<void> {
   const langs = display.voiceEnabled ? voiceLangs(display.language) : [];
   const groups = langs.map((lang) => announcementClipIds(lang, call.number, call.room));
+  const signal = speech ? speech.signal : undefined;
   const run = async () => {
     // After the start button, unlock() only re-resumes a context the browser suspended; without audio → silence.
     if (!announcer.isUnlocked() && !(await announcer.unlock())) return;
-    await announcer.announce(groups, langs);
+    await announcer.announce(groups, langs, { signal });
   };
-  return settleWithin(run(), SPEECH_TIMEOUT_MS);
+  return settleWithin(run(), SPEECH_TIMEOUT_MS).then(() => speech?.abort());
 }
 
 function TvClock({ skewMs, timeZone }: { skewMs: number; timeZone: string }) {
@@ -232,13 +242,16 @@ export function TvDisplayPage() {
     });
     const announcer = announcerRef.current;
     const display = displayRef.current;
-    const spoken = startedRef.current && announcer && display ? speakCall(announcer, display, activeCall) : Promise.resolve();
+    const speech = typeof AbortController === "function" ? new AbortController() : null;
+    const spoken =
+      startedRef.current && announcer && display ? speakCall(announcer, display, activeCall, speech) : Promise.resolve();
     void Promise.all([shown, spoken]).then(() => {
       if (!finished) setCalls((queue) => queue.slice(1));
     });
     return () => {
       finished = true;
       if (timer !== undefined) window.clearTimeout(timer);
+      speech?.abort();
     };
     // Re-run only when the call at the head of the queue changes, not on every poll.
   }, [activeKey]);

@@ -160,7 +160,32 @@ describe("TvDisplayPage", () => {
     expect(mocks.announcer.announce).toHaveBeenCalledWith(
       [["navbat_raqami", "6", "xona_raqami", "3"], ["nomer", "6", "proydite_v_kabinet_nomer", "3"]],
       ["uz", "ru"],
+      { signal: expect.any(AbortSignal) },
     );
+  });
+
+  it("cancels an announcement that is still pending after 20 s and moves on to the next call", async () => {
+    vi.useFakeTimers({ now: new Date("2026-09-30T06:00:00.000Z") });
+    mocks.announcer.announce.mockImplementation(() => new Promise<void>(() => undefined)); // e.g. a stalled clip
+    await render();
+    await act(async () => {
+      startButton()[0].props.onClick();
+    });
+    const fresh: QueueDisplayCall = { ...oldCall, key: "12:2", calledAt: "2026-09-30T06:00:01.000Z" };
+    mocks.display = { state: sample("2026-09-30T06:00:02.000Z", [fresh, oldCall]), error: null, offline: false };
+    await rerender();
+    expect(view!.root.findAllByProps({ className: "qtv-overlay" })).toHaveLength(1);
+    const signal: AbortSignal = mocks.announcer.announce.mock.calls[0][2].signal;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(19_999);
+    });
+    expect(signal.aborted).toBe(false);
+    expect(view!.root.findAllByProps({ className: "qtv-overlay" })).toHaveLength(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(signal.aborted).toBe(true); // a late announce() must not start speaking over the next call
+    expect(view!.root.findAllByProps({ className: "qtv-overlay" })).toHaveLength(0);
   });
 
   it("preloads the voice once the screen is started, and again only when the display language changes", async () => {

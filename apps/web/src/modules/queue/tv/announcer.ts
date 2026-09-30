@@ -6,8 +6,11 @@ export type Announcer = {
   /** Call from a click/keydown handler (autoplay policy). Resolves true when audio can play. */
   unlock(): Promise<boolean>;
   isUnlocked(): boolean;
-  /** Chime, then clipGroups[i] spoken in langs[i]; resolves when playback has ended. Never rejects on missing clips. */
-  announce(clipGroups: string[][], langs: VoiceLang[]): Promise<void>;
+  /**
+   * Chime, then clipGroups[i] spoken in langs[i]; resolves when playback has ended. Never rejects on missing clips.
+   * Once `signal` is aborted no speech is scheduled any more (an already aborted signal plays nothing at all).
+   */
+  announce(clipGroups: string[][], langs: VoiceLang[], options?: { signal?: AbortSignal }): Promise<void>;
   /**
    * Downloads, decodes and trims every clip of `langs` in the background, one at a time; failures are ignored (and
    * retried by the next announcement). Never rejects. Announcements never wait for it: they fetch what they need.
@@ -31,6 +34,8 @@ const AFTER_CHIME_S = 0.25;
 const LANGUAGE_GAP_S = 0.7;
 const TRIM_PAD_S = 0.015;
 const RESUME_WAIT_MS = 400;
+/** A clip download (or decode) taking longer than this is given up, so one stalled socket cannot mute every call. */
+export const CLIP_TIMEOUT_MS = 8000;
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -121,18 +126,34 @@ export function createAnnouncer(baseUrl = "/queue-voice"): Announcer {
     const key = `${lang}/${id}`;
     const cached = clips.get(key);
     if (cached) return cached;
-    const loading = (async (): Promise<AudioBuffer | null> => {
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    const download = (async (): Promise<AudioBuffer | null> => {
       try {
-        const response = await fetch(`${baseUrl}/${lang}/${encodeURIComponent(id)}.mp3`);
+        const response = await fetch(
+          `${baseUrl}/${lang}/${encodeURIComponent(id)}.mp3`,
+          controller ? { signal: controller.signal } : undefined,
+        );
         if (!response.ok) return null;
         const bytes = await response.arrayBuffer();
         // decodeAudioData detaches (empties) the ArrayBuffer it receives: always hand it a copy.
         return trimSilence(audio, await decodeAudio(audio, bytes.slice(0)));
       } catch {
-        // Network error, or a missing file: the SPA fallback answers with index.html, which fails to decode.
+        // Network error, abort, or a missing file: the SPA fallback answers with index.html, which fails to decode.
         return null;
       }
     })();
+    // Race against a timer as well as aborting: the timeout must hold even if the engine ignores the signal.
+    let timer: number | undefined;
+    const timedOut = new Promise<null>((resolve) => {
+      timer = window.setTimeout(() => {
+        controller?.abort();
+        resolve(null);
+      }, CLIP_TIMEOUT_MS);
+    });
+    const loading = Promise.race([download, timedOut]).then((buffer) => {
+      window.clearTimeout(timer);
+      return buffer;
+    });
     clips.set(key, loading);
     void loading.then((buffer) => {
       if (!buffer) clips.delete(key); // retry on the next announcement
@@ -157,9 +178,10 @@ export function createAnnouncer(baseUrl = "/queue-voice"): Announcer {
     return isRunning(audio);
   };
 
-  const announce = async (clipGroups: string[][], langs: VoiceLang[]): Promise<void> => {
+  const announce = async (clipGroups: string[][], langs: VoiceLang[], options?: { signal?: AbortSignal }): Promise<void> => {
     const audio = ctx;
-    if (!audio || !isRunning(audio)) return;
+    const signal = options?.signal;
+    if (!audio || !isRunning(audio) || signal?.aborted) return;
     // Start downloading the speech now, so it loads while the chime plays.
     const phrases = langs.map(async (lang, index) => {
       const ids = clipGroups[index] ?? [];
@@ -170,7 +192,9 @@ export function createAnnouncer(baseUrl = "/queue-voice"): Announcer {
     });
     const chimeEnd = scheduleChime(audio, audio.currentTime + START_DELAY_S);
     const loaded = await Promise.all(phrases);
-    let at = Math.max(chimeEnd + AFTER_CHIME_S, audio.currentTime + START_DELAY_S);
+    // The caller gave up on this call (its overlay has ended): speaking now would talk over the next call.
+    if (signal?.aborted) return;
+    let at =Math.max(chimeEnd + AFTER_CHIME_S, audio.currentTime + START_DELAY_S);
     let end = chimeEnd;
     let spokenBefore = false;
     for (const phrase of loaded) {
