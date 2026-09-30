@@ -261,6 +261,23 @@ describe("electronic queue numbers", () => {
     });
     expect(getMockDb().appointments.find((row) => row.id === saved.id)?.status).toBe("no_show");
   });
+
+  it("lets the repository skip the slot check only for a returning no-show's unchanged slot", async () => {
+    // A future clinic day: moving a slot calls ensureStartAtNotInPast, which uses the real clock.
+    const laterDay = "2099-03-10";
+    const laterService = new AppointmentsService(repository, "Asia/Tashkent", () => new Date(`${laterDay}T06:00:00Z`));
+    seedVisit(511, `${laterDay} 10:00:00`, `${laterDay} 10:30:00`);
+    seedVisit(512, `${laterDay} 10:30:00`, `${laterDay} 11:00:00`);
+    seedVisit(513, `${laterDay} 11:00:00`, `${laterDay} 11:30:00`);
+    for (const row of getMockDb().appointments) row.status = "no_show";
+    getMockDb().doctorServices.push({ doctorId: 5, serviceId: 3 });
+    const update = vi.spyOn(repository, "update");
+    await laterService.update(reception, 511, { status: "arrived" });
+    await laterService.update(reception, 512, { status: "arrived", startAt: `${laterDay} 12:00:00` });
+    await laterService.update(reception, 513, { status: "arrived", doctorId: 5 });
+    expect(update.mock.calls.map((call) => call[2]?.skipConflictCheck)).toEqual([true, false, false]);
+    update.mockRestore();
+  });
 });
 
 describe("invoice snapshot of the visit's services", () => {

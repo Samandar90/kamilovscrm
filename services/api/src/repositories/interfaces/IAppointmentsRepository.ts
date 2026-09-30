@@ -14,7 +14,10 @@ import type { QueueDirective } from "./queueTypes";
 export type AppointmentWriteOptions = {
   /** "issue": next number of the doctor's counter for `day`; "clear": drop the ticket; default "keep". */
   queue?: QueueDirective;
-  /** Skip the slot-overlap check: a no-show returning to today's queue keeps its old, possibly taken slot. */
+  /**
+   * Skip the slot-overlap check. Only for a no-show returning to today's queue in its UNCHANGED slot
+   * (same time and doctor), which may be taken by now; a moved slot is always checked.
+   */
   skipConflictCheck?: boolean;
 };
 

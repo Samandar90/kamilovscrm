@@ -644,9 +644,20 @@ export class AppointmentsService {
     const today = clinicToday(this.timeZone, this.now());
     // A no-show who came back goes to the end of today's queue with a new number.
     const isReturnToQueue = current.status === "no_show" && mergedStatus === "arrived";
-    if (isReturnToQueue && mergedStartAt.slice(0, 10) !== today) {
+    // Both the visit's own day and its day after this change must be today: a no-show of another day
+    // cannot come back by being moved to today in the same request.
+    if (
+      isReturnToQueue &&
+      (current.startAt.slice(0, 10) !== today || mergedStartAt.slice(0, 10) !== today)
+    ) {
       throw new ApiError(400, "Вернуть в очередь можно только запись на сегодня");
     }
+    // Queue order, not the original slot, governs a returning patient: that slot may be taken by now.
+    // Only the unchanged slot skips the overlap checks; a new time or doctor is checked like any booking.
+    const skipSlotCheck =
+      isReturnToQueue &&
+      mergedStartAt === current.startAt &&
+      mergedDoctorId === current.doctorId;
 
     // Booked services were validated when added; recheck them only for a new doctor so that
     // later catalog changes do not block status updates of existing visits.
@@ -659,8 +670,7 @@ export class AppointmentsService {
       { requireActiveService: false }
     );
 
-    // Queue order, not the original slot, governs a returning patient: the slot may be taken by now.
-    if (ACTIVE_APPOINTMENT_STATUSES.has(mergedStatus) && !isReturnToQueue) {
+    if (ACTIVE_APPOINTMENT_STATUSES.has(mergedStatus) && !skipSlotCheck) {
       await ensureNoDoctorConflict(
         this.appointmentsRepository,
         mergedDoctorId,
@@ -687,7 +697,7 @@ export class AppointmentsService {
     );
     const updated = await this.appointmentsRepository.update(id, updatedPayload, {
       queue,
-      skipConflictCheck: isReturnToQueue,
+      skipConflictCheck: skipSlotCheck,
     });
     if (updated) invalidateClinicFactsCache();
     if (!updated) {

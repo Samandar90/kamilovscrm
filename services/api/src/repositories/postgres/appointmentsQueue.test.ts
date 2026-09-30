@@ -278,3 +278,46 @@ describe("repository queue writes", () => {
     ).toMatchObject({ status: "arrived", queueCode: "К-01" });
   });
 });
+
+describe("returning a no-show that also moves its slot", () => {
+  // A clinic "today" in the future: ensureStartAtNotInPast uses the real clock, so a moved slot must be ahead of it.
+  const DAY = "2099-03-10";
+  const DAY_BEFORE = "2099-03-09";
+  const laterSvc = new AppointmentsService(repo, "Asia/Tashkent", () => new Date(`${DAY}T06:00:00Z`));
+  const reception = { userId: 2, clinicId: 1, username: "reception", role: "reception" as const };
+  const returnToQueue = (id: number, patch: { startAt?: string; doctorId?: number }) =>
+    runWithClinicContext(1, () => laterSvc.update(reception, id, { status: "arrived", ...patch }));
+
+  beforeEach(async () => {
+    await db.exec(`INSERT INTO appointments(id, clinic_id, patient_id, doctor_id, service_id, price, start_at, end_at, status) VALUES
+      (301, 1, 100, 10, 3, 100000, '${DAY} 10:00:00', '${DAY} 10:30:00', 'no_show'),
+      (302, 1, 101, 10, 3, 100000, '${DAY} 16:00:00', '${DAY} 16:30:00', 'scheduled'),
+      (303, 1, 102, 11, 3, 100000, '${DAY} 10:00:00', '${DAY} 10:30:00', 'scheduled'),
+      (304, 1, 103, 10, 3, 100000, '${DAY_BEFORE} 10:00:00', '${DAY_BEFORE} 10:30:00', 'no_show');`);
+  });
+
+  it("checks the slot again when the same request moves the visit to another time", async () => {
+    await expect(returnToQueue(301, { startAt: `${DAY} 16:00:00` })).rejects.toMatchObject({
+      status: 409,
+      message: "У врача уже есть запись на это время",
+    });
+    // A free new time passes the checks and still takes a number.
+    expect(await returnToQueue(301, { startAt: `${DAY} 18:00:00` })).toMatchObject({ status: "arrived", queueCode: "К-01", queueDate: DAY });
+  });
+
+  it("checks the slot again when the same request moves the visit to another doctor", async () => {
+    await expect(returnToQueue(301, { doctorId: 11 })).rejects.toMatchObject({
+      status: 409,
+      message: "У врача уже есть запись на это время",
+    });
+    expect(await counters()).toEqual([]);
+  });
+
+  it("refuses to return a no-show of another day by moving it to today in the same request", async () => {
+    await expect(returnToQueue(304, { startAt: `${DAY} 12:00:00` })).rejects.toMatchObject({
+      status: 400,
+      message: "Вернуть в очередь можно только запись на сегодня",
+    });
+    expect(await counters()).toEqual([]);
+  });
+});
