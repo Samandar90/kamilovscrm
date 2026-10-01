@@ -30,6 +30,8 @@ export const TV_LABELS = {
   enterCode: { uz: "Ekran kodini kiriting", ru: "Введите код экрана" },
   openScreen: { uz: "Ekranni ochish", ru: "Открыть экран" },
   codePlaceholder: { uz: "XXXXX-XXXXX", ru: "XXXXX-XXXXX" },
+  /** Shown while voice is on: listeners must be told the announcements are synthesized (OpenAI usage policies). */
+  voiceNote: { uz: "Ovoz sun’iy intellekt yordamida yaratilgan", ru: "Голос синтезирован ИИ" },
 } as const;
 
 export type TvLabelKey = keyof typeof TV_LABELS;

@@ -3,13 +3,17 @@ import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import {
+  DEFAULT_OPENAI_VOICE,
   DEFAULT_VOICES,
+  OPENAI_INSTRUCTIONS,
   buildSsml,
   escapeXml,
+  openAiVoiceFor,
   parseArgs,
   planClips,
   retryDelayMs,
   synthesizeClip,
+  synthesizeClipOpenAi,
   ttsEndpoint,
   voiceFor,
 } from "./queueVoice.mjs";
@@ -55,11 +59,20 @@ describe("voices and flags", () => {
     expect(voiceFor("uz", { AZURE_VOICE_UZ: "uz-UZ-SardorNeural" })).toBe("uz-UZ-SardorNeural");
   });
 
-  it("parses --dry-run, --force and --only, and refuses anything else", () => {
-    expect(parseArgs([])).toEqual({ dryRun: false, force: false, only: null });
-    expect(parseArgs(["--dry-run", "--force", "--only=ru"])).toEqual({ dryRun: true, force: true, only: "ru" });
+  it("parses --dry-run, --force, --only and --provider, and refuses anything else", () => {
+    expect(parseArgs([])).toEqual({ dryRun: false, force: false, only: null, provider: "azure" });
+    expect(parseArgs(["--dry-run", "--force", "--only=ru"])).toEqual({ dryRun: true, force: true, only: "ru", provider: "azure" });
+    expect(parseArgs(["--provider=openai"]).provider).toBe("openai");
     expect(() => parseArgs(["--only=en"])).toThrow('--only must be uz or ru, got "en"');
+    expect(() => parseArgs(["--provider=google"])).toThrow('--provider must be azure or openai, got "google"');
     expect(() => parseArgs(["--dryrun"])).toThrow('Unknown argument "--dryrun"');
+  });
+
+  it("uses the OpenAI voice marin unless OPENAI_TTS_VOICE is set", () => {
+    expect(DEFAULT_OPENAI_VOICE).toBe("marin");
+    expect(openAiVoiceFor({})).toBe("marin");
+    expect(openAiVoiceFor({ OPENAI_TTS_VOICE: "  " })).toBe("marin");
+    expect(openAiVoiceFor({ OPENAI_TTS_VOICE: "cedar" })).toBe("cedar");
   });
 
   it("builds the regional endpoint and refuses a malformed region", () => {
@@ -174,10 +187,76 @@ describe("synthesizeClip", () => {
   });
 });
 
+const synthOpenAi = (fetchImpl, { lang = "uz", text = " yigirma ", sleep = vi.fn(async () => {}) } = {}) =>
+  synthesizeClipOpenAi({ fetchImpl, apiKey: "test-openai-key", lang, text, sleep });
+
+describe("synthesizeClipOpenAi", () => {
+  it("posts JSON to /v1/audio/speech with the bearer key, model, voice, language instructions and mp3 format", async () => {
+    const fetchImpl = vi.fn(async () => reply(200, { body: "ID3-openai" }));
+    const audio = await synthOpenAi(fetchImpl);
+    expect(audio.toString()).toBe("ID3-openai");
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe("https://api.openai.com/v1/audio/speech");
+    expect(init.method).toBe("POST");
+    expect(init.headers).toEqual({ Authorization: "Bearer test-openai-key", "Content-Type": "application/json" });
+    expect(JSON.parse(init.body)).toEqual({
+      model: "gpt-4o-mini-tts",
+      voice: "marin",
+      input: "yigirma",
+      instructions: OPENAI_INSTRUCTIONS.uz,
+      response_format: "mp3",
+    });
+  });
+
+  it("asks for Uzbek or Russian pronunciation by language", async () => {
+    expect(OPENAI_INSTRUCTIONS.uz).toContain("Uzbek");
+    expect(OPENAI_INSTRUCTIONS.ru).toContain("Russian");
+    const fetchImpl = vi.fn(async () => reply(200, { body: "ok" }));
+    await synthOpenAi(fetchImpl, { lang: "ru", text: "Номер" });
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).toMatchObject({ input: "Номер", instructions: OPENAI_INSTRUCTIONS.ru });
+    await expect(synthOpenAi(fetchImpl, { lang: "en" })).rejects.toThrow('Unknown language "en"');
+  });
+
+  it("retries 429 (Retry-After), 5xx and network errors like the Azure path", async () => {
+    const sleep = vi.fn(async () => {});
+    const throttled = vi.fn().mockResolvedValueOnce(reply(429, { headers: { "retry-after": "2" } })).mockResolvedValueOnce(reply(200, { body: "ok" }));
+    expect((await synthOpenAi(throttled, { sleep })).toString()).toBe("ok");
+    expect(sleep).toHaveBeenCalledWith(2000);
+
+    const busy = vi.fn(async () => reply(503, { body: "busy" }));
+    await expect(synthOpenAi(busy)).rejects.toThrow("OpenAI TTS failed with HTTP 503: busy");
+    expect(busy).toHaveBeenCalledTimes(6);
+
+    const flaky = vi.fn().mockRejectedValueOnce(new Error("ECONNRESET")).mockResolvedValueOnce(reply(200, { body: "ok" }));
+    expect((await synthOpenAi(flaky)).toString()).toBe("ok");
+  });
+
+  it("explains a rejected key at once and fails on other 4xx or empty audio", async () => {
+    const denied = vi.fn(async () => reply(401));
+    await expect(synthOpenAi(denied)).rejects.toThrow("OpenAI rejected the key (HTTP 401). Check OPENAI_API_KEY");
+    expect(denied).toHaveBeenCalledTimes(1);
+    await expect(synthOpenAi(vi.fn(async () => reply(400, { body: "bad voice" })))).rejects.toThrow("OpenAI TTS failed with HTTP 400: bad voice");
+    await expect(synthOpenAi(vi.fn(async () => reply(200)))).rejects.toThrow("OpenAI TTS returned empty audio");
+  });
+});
+
 describe("generate-queue-voice.mjs CLI", () => {
-  // The Azure variables are blanked so a developer's shell key can never reach the network from a test.
+  // Every TTS key is blanked so a developer's shell key can never reach the network from a test.
   const runCli = (args) =>
-    spawnSync(process.execPath, [CLI, ...args], { encoding: "utf8", env: { ...process.env, AZURE_SPEECH_KEY: "", AZURE_SPEECH_REGION: "" } });
+    spawnSync(process.execPath, [CLI, ...args], {
+      encoding: "utf8",
+      env: { ...process.env, AZURE_SPEECH_KEY: "", AZURE_SPEECH_REGION: "", OPENAI_API_KEY: "" },
+    });
+
+  it("--provider=openai refuses to run without OPENAI_API_KEY, and its dry run is quick", () => {
+    const refused = runCli(["--provider=openai", "--force"]);
+    expect(refused.status).toBe(1);
+    expect(refused.stderr).toContain("[voice] Set OPENAI_API_KEY");
+    const dry = runCli(["--provider=openai", "--dry-run", "--force"]);
+    expect(dry.status).toBe(0);
+    expect(dry.stdout.trim().split(/\r?\n/).at(-1)).toBe("[voice] Dry run: 69 clip(s), about 1 min with a key.");
+  });
 
   it("--dry-run --force lists all 69 clips without a key", () => {
     const result = runCli(["--dry-run", "--force"]);
