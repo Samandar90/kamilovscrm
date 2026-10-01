@@ -17,7 +17,7 @@ describe("tvLabel", () => {
     expect(Object.keys(TV_LABELS).sort()).toEqual([
       "cabinet", "called", "codePlaceholder", "doctor", "enterCode", "free", "inactive", "invitation", "next",
       "noQueue", "noQueueYet", "notFound", "offline", "openScreen", "queueTitle", "recentCalls", "serving",
-      "startButton", "startHint",
+      "startButton", "startHint", "voiceNote",
     ]);
     for (const [key, label] of Object.entries(TV_LABELS)) {
       expect(label.uz.trim(), key).not.toBe("");

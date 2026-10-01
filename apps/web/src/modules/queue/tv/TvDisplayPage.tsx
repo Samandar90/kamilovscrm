@@ -323,6 +323,7 @@ export function TvDisplayPage() {
             </span>
           ))}
         </span>
+        {state?.display.voiceEnabled ? <span className="qtv-footer-note">{tvLabel("voiceNote", language)}</span> : null}
       </footer>
       {offline ? (
         <div className="qtv-offline" role="status">

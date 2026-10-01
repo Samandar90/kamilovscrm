@@ -1,15 +1,32 @@
 /**
- * Pure helpers of scripts/generate-queue-voice.mjs: Azure neural TTS → public/queue-voice/<lang>/<id>.mp3.
+ * Pure helpers of scripts/generate-queue-voice.mjs: Azure neural TTS or OpenAI TTS → public/queue-voice/<lang>/<id>.mp3.
  * No file system and no global fetch here, so vitest checks them directly (see queueVoice.test.mjs).
  */
 
 export const LANGS = ["uz", "ru"];
+export const PROVIDERS = ["azure", "openai"];
 export const DEFAULT_VOICES = { uz: "uz-UZ-MadinaNeural", ru: "ru-RU-SvetlanaNeural" };
 export const OUTPUT_FORMAT = "audio-24khz-48kbitrate-mono-mp3";
 /** Free tier F0 allows 20 requests per 60 s: one request every 3.5 s stays under it (69 clips ≈ 4 min). */
 export const THROTTLE_MS = 3500;
 /** 429 and 5xx are retried up to this many times (6 attempts in total). */
 export const MAX_RETRIES = 5;
+
+export const OPENAI_SPEECH_URL = "https://api.openai.com/v1/audio/speech";
+export const OPENAI_TTS_MODEL = "gpt-4o-mini-tts";
+/** marin and cedar are OpenAI's best-quality built-in voices; one voice for both languages keeps the TV consistent. */
+export const DEFAULT_OPENAI_VOICE = "marin";
+/** OpenAI's rate limits are far above 69 short requests; a short pause keeps the run polite. */
+export const OPENAI_THROTTLE_MS = 300;
+/** gpt-4o-mini-tts follows delivery instructions; each clip is one word or phrase, so the language must be stated. */
+export const OPENAI_INSTRUCTIONS = {
+  uz:
+    "Read the text aloud in Uzbek (Latin script) with natural native Uzbek pronunciation, like a calm, clear announcer " +
+    "of the electronic queue in a Tashkent clinic. Numbers are Uzbek words. Say exactly the given words and nothing else.",
+  ru:
+    "Read the text aloud in Russian with natural native pronunciation, like a calm, clear announcer of the electronic " +
+    "queue in a clinic. Say exactly the given words and nothing else.",
+};
 
 const XML_LANG = { uz: "uz-UZ", ru: "ru-RU" };
 const VOICE_ENV = { uz: "AZURE_VOICE_UZ", ru: "AZURE_VOICE_RU" };
@@ -53,9 +70,18 @@ export function voiceFor(lang, env = {}) {
   return custom || DEFAULT_VOICES[lang];
 }
 
-/** CLI flags: --dry-run, --force, --only=uz|ru. Anything else is an error (a typo must not start a paid run). */
+/** OpenAI voice: OPENAI_TTS_VOICE when set, else marin. */
+export function openAiVoiceFor(env = {}) {
+  const custom = typeof env.OPENAI_TTS_VOICE === "string" ? env.OPENAI_TTS_VOICE.trim() : "";
+  return custom || DEFAULT_OPENAI_VOICE;
+}
+
+/**
+ * CLI flags: --dry-run, --force, --only=uz|ru, --provider=azure|openai (default azure).
+ * Anything else is an error (a typo must not start a paid run).
+ */
 export function parseArgs(argv) {
-  const options = { dryRun: false, force: false, only: null };
+  const options = { dryRun: false, force: false, only: null, provider: "azure" };
   for (const arg of argv) {
     if (arg === "--dry-run") options.dryRun = true;
     else if (arg === "--force") options.force = true;
@@ -63,7 +89,11 @@ export function parseArgs(argv) {
       const lang = arg.slice("--only=".length);
       if (!LANGS.includes(lang)) throw new Error(`--only must be uz or ru, got "${lang}"`);
       options.only = lang;
-    } else throw new Error(`Unknown argument "${arg}". Use --dry-run, --force, --only=uz|ru`);
+    } else if (arg.startsWith("--provider=")) {
+      const provider = arg.slice("--provider=".length);
+      if (!PROVIDERS.includes(provider)) throw new Error(`--provider must be azure or openai, got "${provider}"`);
+      options.provider = provider;
+    } else throw new Error(`Unknown argument "${arg}". Use --dry-run, --force, --only=uz|ru, --provider=azure|openai`);
   }
   return options;
 }
@@ -115,26 +145,17 @@ export function retryDelayMs(attempt, retryAfter, nowMs = Date.now()) {
 }
 
 /**
- * Synthesizes one SSML document and returns the mp3 bytes. 401/403 fail at once with a hint (wrong key or region);
- * 429, 5xx and network errors are retried up to `maxRetries` times; other statuses fail with Azure's message.
+ * POSTs one TTS request and returns the audio bytes. 401/403 fail at once with `authHint`; 429, 5xx and network
+ * errors are retried up to `maxRetries` times (Retry-After honoured); other statuses fail with the service's message.
+ * `provider` names the service in every error.
  */
-export async function synthesizeClip({ fetchImpl, region, key, ssml, sleep, onRetry = () => {}, maxRetries = MAX_RETRIES }) {
-  const url = ttsEndpoint(region);
+async function postForAudio({ fetchImpl, url, init, provider, authHint, sleep, onRetry, maxRetries }) {
   for (let attempt = 1; ; attempt += 1) {
     let response;
     try {
-      response = await fetchImpl(url, {
-        method: "POST",
-        headers: {
-          "Ocp-Apim-Subscription-Key": key,
-          "Content-Type": "application/ssml+xml",
-          "X-Microsoft-OutputFormat": OUTPUT_FORMAT,
-          "User-Agent": "clinic-crm-queue-voice",
-        },
-        body: ssml,
-      });
+      response = await fetchImpl(url, init);
     } catch (error) {
-      if (attempt > maxRetries) throw new Error(`Azure TTS is unreachable: ${error.message}`);
+      if (attempt > maxRetries) throw new Error(`${provider} TTS is unreachable: ${error.message}`);
       const waitMs = retryDelayMs(attempt, null);
       onRetry({ attempt, status: 0, waitMs });
       await sleep(waitMs);
@@ -142,13 +163,11 @@ export async function synthesizeClip({ fetchImpl, region, key, ssml, sleep, onRe
     }
     if (response.ok) {
       const audio = Buffer.from(await response.arrayBuffer());
-      if (audio.length === 0) throw new Error("Azure TTS returned empty audio (check the voice name)");
+      if (audio.length === 0) throw new Error(`${provider} TTS returned empty audio (check the voice name)`);
       return audio;
     }
     if (response.status === 401 || response.status === 403) {
-      throw new Error(
-        `Azure rejected the key (HTTP ${response.status}). Check AZURE_SPEECH_KEY and that AZURE_SPEECH_REGION ("${region}") is the region of that Speech resource.`
-      );
+      throw new Error(`${provider} rejected the key (HTTP ${response.status}). ${authHint}`);
     }
     if (isRetryableStatus(response.status) && attempt <= maxRetries) {
       const waitMs = retryDelayMs(attempt, response.headers.get("retry-after"));
@@ -157,6 +176,67 @@ export async function synthesizeClip({ fetchImpl, region, key, ssml, sleep, onRe
       continue;
     }
     const detail = (await response.text().catch(() => "")).trim().slice(0, 300);
-    throw new Error(`Azure TTS failed with HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
+    throw new Error(`${provider} TTS failed with HTTP ${response.status}${detail ? `: ${detail}` : ""}`);
   }
+}
+
+/** Synthesizes one SSML document with Azure and returns the mp3 bytes (retry rules: see postForAudio). */
+export async function synthesizeClip({ fetchImpl, region, key, ssml, sleep, onRetry = () => {}, maxRetries = MAX_RETRIES }) {
+  return postForAudio({
+    fetchImpl,
+    url: ttsEndpoint(region),
+    init: {
+      method: "POST",
+      headers: {
+        "Ocp-Apim-Subscription-Key": key,
+        "Content-Type": "application/ssml+xml",
+        "X-Microsoft-OutputFormat": OUTPUT_FORMAT,
+        "User-Agent": "clinic-crm-queue-voice",
+      },
+      body: ssml,
+    },
+    provider: "Azure",
+    authHint: `Check AZURE_SPEECH_KEY and that AZURE_SPEECH_REGION ("${region}") is the region of that Speech resource.`,
+    sleep,
+    onRetry,
+    maxRetries,
+  });
+}
+
+/**
+ * Synthesizes one clip with OpenAI gpt-4o-mini-tts and returns the mp3 bytes (retry rules: see postForAudio).
+ * OpenAI's usage policies require telling listeners the voice is AI-generated: the TV shows that note while voice is on.
+ */
+export async function synthesizeClipOpenAi({
+  fetchImpl,
+  apiKey,
+  lang,
+  text,
+  voice = DEFAULT_OPENAI_VOICE,
+  model = OPENAI_TTS_MODEL,
+  sleep,
+  onRetry = () => {},
+  maxRetries = MAX_RETRIES,
+}) {
+  assertLang(lang);
+  return postForAudio({
+    fetchImpl,
+    url: OPENAI_SPEECH_URL,
+    init: {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        voice,
+        input: String(text).trim(),
+        instructions: OPENAI_INSTRUCTIONS[lang],
+        response_format: "mp3",
+      }),
+    },
+    provider: "OpenAI",
+    authHint: "Check OPENAI_API_KEY (an active key of the OpenAI project).",
+    sleep,
+    onRetry,
+    maxRetries,
+  });
 }

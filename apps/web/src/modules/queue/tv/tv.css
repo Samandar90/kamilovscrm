@@ -325,6 +325,15 @@ body.qtv-body {
   color: #e2e8f0;
 }
 
+/* Disclosure that the announcements are synthesized; pushed to the right end of the footer. */
+.qtv-footer-note {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 2vw;
+  font-size: 0.6em;
+  color: #64748b;
+}
+
 /* —— Banners and overlays —— */
 .qtv-offline {
   position: fixed;

@@ -112,6 +112,15 @@ describe("TvDisplayPage", () => {
     expect(view!.root.findAllByProps({ className: "qtv-card" })).toHaveLength(2);
     // calls already present at the first poll are never announced
     expect(view!.root.findAllByProps({ className: "qtv-overlay" })).toHaveLength(0);
+    // synthesized announcements are disclosed on screen while the voice is on
+    expect(text).toContain("Ovoz sun’iy intellekt yordamida yaratilgan / Голос синтезирован ИИ");
+  });
+
+  it("does not show the synthesized-voice note when the display has voice turned off", async () => {
+    const quiet = sample("2026-09-30T06:00:00.000Z", [oldCall]);
+    mocks.display = { state: { ...quiet, display: { ...quiet.display, voiceEnabled: false } }, error: null, offline: false };
+    await render();
+    expect(view!.root.findAllByProps({ className: "qtv-footer-note" })).toHaveLength(0);
   });
 
   it("shows the start gate; pressing it goes fullscreen, unlocks audio and remembers the start", async () => {
