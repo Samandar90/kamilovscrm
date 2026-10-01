@@ -17,4 +17,4 @@
 - Локально проверять только на стенде (`VITE_API_URL=http://127.0.0.1:4401`): `apps/web/.env` указывает на production.
 - Ключи OpenAI и Azure не печатать и не коммитить. Клипы OpenAI генерируются с `--env-file=../../services/api/.env`; ключ Azure — только в переменных текущего окна терминала.
 - ТВ: Chromium ≥ 87; надёжнее мини-ПК с Chrome в режиме киоска (`--kiosk --autoplay-policy=no-user-gesture-required`).
-- Каждый коммит в `main` выкладывает и API (Render), и web (Vercel).
+- Коммит в `main` выкладывает web (Vercel); API (Render, корень `services/api`) перевыкладывается только при изменениях в `services/api`.
