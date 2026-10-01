@@ -22,6 +22,11 @@ export function writeStartedFlag(): void {
   }
 }
 
+/** Stands down the boot watchdog in index.html: the TV app has mounted, so it must never reload a working screen. */
+export function markTvBooted(): void {
+  (window as Window & { __qtvBooted?: boolean }).__qtvBooted = true;
+}
+
 /** Must run synchronously inside the click/keydown handler (fullscreen needs a user gesture). */
 export function requestFullscreen(): void {
   if (typeof document === "undefined") return;
