@@ -66,6 +66,9 @@ export const CALL_CENTER_ROLES = rolesWithPermission("callcenter", "read");
 /** База анкет пациентов (общая для всех врачей). */
 export const QUESTIONNAIRE_ROLES = rolesWithPermission("questionnaires", "read");
 
+/** Страница «Очередь»: все, у кого есть queue.read (manager/director — только просмотр). */
+export const QUEUE_ROLES = rolesWithPermission("queue", "read");
+
 /** «Мои услуги»: врач сам ведёт список своих услуг. */
 export const MY_SERVICES_ROLES: UserRole[] = [...PERMISSIONS.DOCTOR_OWN_SERVICES];
 
@@ -167,3 +170,19 @@ export const canDeleteQuestionnaires = (role: UserRole | undefined | null): bool
 
 export const canManageQuestionnaireTemplates = (role: UserRole | undefined | null): boolean =>
   !!role && roleHasPermissionKey(role, "QUESTIONNAIRE_TEMPLATE_MANAGE");
+
+/** Электронная очередь: просмотр очереди, талон. */
+export const canReadQueue = (role: UserRole | undefined | null): boolean =>
+  !!role && hasPermission(role, "queue", "read");
+
+/** Выдать номер / вернуть в очередь (регистратура). */
+export const canIssueQueue = (role: UserRole | undefined | null): boolean =>
+  !!role && hasPermission(role, "queue", "create");
+
+/** Вызвать пациента / «Вызвать следующего» (врач и медсестра — только своя очередь, проверяет API). */
+export const canCallQueue = (role: UserRole | undefined | null): boolean =>
+  !!role && hasPermission(role, "queue", "update");
+
+/** ТВ-экраны очереди — только superadmin. */
+export const canManageQueueDisplays = (role: UserRole | undefined | null): boolean =>
+  !!role && roleHasPermissionKey(role, "QUEUE_DISPLAY_MANAGE");

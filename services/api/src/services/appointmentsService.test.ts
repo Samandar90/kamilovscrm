@@ -199,6 +199,87 @@ describe("multiple services per appointment", () => {
   });
 });
 
+describe("electronic queue numbers", () => {
+  const reception = { ...operator, role: "reception" as const };
+  const today = "2026-09-30";
+  // 06:00 UTC is 11:00 in Tashkent: the clinic day is 2026-09-30 whatever the real date is.
+  const queueService = new AppointmentsService(repository, "Asia/Tashkent", () => new Date("2026-09-30T06:00:00Z"));
+  /** Visits of the fixed day go straight into the mock DB: create() refuses past times by the real clock. */
+  const seedVisit = (id: number, startAt: string, endAt: string, doctorId = 2) => {
+    getMockDb().appointments.push({
+      id, patientId: 1, doctorId, serviceId: 3, price: 100000, startAt, endAt, status: "scheduled", billingStatus: "draft",
+      cancelReason: null, cancelledAt: null, cancelledBy: null, diagnosis: null, treatment: null, notes: null, createdAt, updatedAt: createdAt,
+    });
+  };
+
+  beforeEach(() => {
+    getMockDb().doctors[0].queuePrefix = "К";
+    getMockDb().doctors.push({ id: 5, name: "Врач без буквы", speciality: "Хирург", percent: 10, active: true, createdAt });
+  });
+
+  it("numbers today's arrivals per doctor with the doctor's letter and keeps the number on repeat", async () => {
+    seedVisit(501, `${today} 10:00:00`, `${today} 10:30:00`);
+    seedVisit(502, `${today} 10:30:00`, `${today} 11:00:00`);
+    seedVisit(503, `${today} 10:00:00`, `${today} 10:30:00`, 5);
+    expect(await queueService.update(reception, 501, { status: "arrived" })).toMatchObject({ queueNumber: 1, queueCode: "К-01", queueDate: today, queueCallCount: 0 });
+    expect(await queueService.update(reception, 502, { status: "arrived" })).toMatchObject({ queueNumber: 2, queueCode: "К-02" });
+    expect(await queueService.update(reception, 503, { status: "arrived" })).toMatchObject({ queueNumber: 1, queueCode: "01" });
+    expect(await queueService.update(reception, 501, { status: "arrived" })).toMatchObject({ queueNumber: 1, queueCode: "К-01" });
+  });
+
+  it("does not number an arrival for another day", async () => {
+    const saved = await queueService.create(reception, input);
+    const arrived = await queueService.update(reception, saved.id, { status: "arrived" });
+    expect(arrived?.status).toBe("arrived");
+    expect(arrived?.queueNumber ?? null).toBeNull();
+  });
+
+  it("ignores queue fields sent by a client", async () => {
+    seedVisit(501, `${today} 10:00:00`, `${today} 10:30:00`);
+    const payload = { status: "arrived", queueNumber: 99, queueCode: "Z-99", queueDate: "2020-01-01", queuePrefix: "Z" };
+    expect(await queueService.update(reception, 501, payload as never)).toMatchObject({ queueNumber: 1, queueCode: "К-01", queueDate: today });
+    await expect(queueService.update(reception, 501, { queueNumber: 5 } as never)).rejects.toMatchObject({ status: 400 });
+    expect(getMockDb().appointments.find((row) => row.id === 501)).toMatchObject({ queueNumber: 1 });
+  });
+
+  it("returns a no-show to the end of today's queue even when the slot is taken meanwhile", async () => {
+    seedVisit(501, `${today} 10:00:00`, `${today} 10:30:00`);
+    seedVisit(502, `${today} 10:30:00`, `${today} 11:00:00`);
+    await queueService.update(reception, 501, { status: "arrived" });
+    await queueService.update(reception, 502, { status: "arrived" });
+    await queueService.update(reception, 501, { status: "no_show" });
+    seedVisit(504, `${today} 10:00:00`, `${today} 10:30:00`);
+    expect(await queueService.update(reception, 501, { status: "arrived" })).toMatchObject({ status: "arrived", queueNumber: 3, queueCode: "К-03" });
+  });
+
+  it("refuses to return a no-show of another day to the queue", async () => {
+    const saved = await queueService.create(reception, input);
+    await queueService.update(reception, saved.id, { status: "no_show" });
+    await expect(queueService.update(reception, saved.id, { status: "arrived" })).rejects.toMatchObject({
+      status: 400,
+      message: "Вернуть в очередь можно только запись на сегодня",
+    });
+    expect(getMockDb().appointments.find((row) => row.id === saved.id)?.status).toBe("no_show");
+  });
+
+  it("lets the repository skip the slot check only for a returning no-show's unchanged slot", async () => {
+    // A future clinic day: moving a slot calls ensureStartAtNotInPast, which uses the real clock.
+    const laterDay = "2099-03-10";
+    const laterService = new AppointmentsService(repository, "Asia/Tashkent", () => new Date(`${laterDay}T06:00:00Z`));
+    seedVisit(511, `${laterDay} 10:00:00`, `${laterDay} 10:30:00`);
+    seedVisit(512, `${laterDay} 10:30:00`, `${laterDay} 11:00:00`);
+    seedVisit(513, `${laterDay} 11:00:00`, `${laterDay} 11:30:00`);
+    for (const row of getMockDb().appointments) row.status = "no_show";
+    getMockDb().doctorServices.push({ doctorId: 5, serviceId: 3 });
+    const update = vi.spyOn(repository, "update");
+    await laterService.update(reception, 511, { status: "arrived" });
+    await laterService.update(reception, 512, { status: "arrived", startAt: `${laterDay} 12:00:00` });
+    await laterService.update(reception, 513, { status: "arrived", doctorId: 5 });
+    expect(update.mock.calls.map((call) => call[2]?.skipConflictCheck)).toEqual([true, false, false]);
+    update.mockRestore();
+  });
+});
+
 describe("invoice snapshot of the visit's services", () => {
   const reception = { ...operator, role: "reception" as const };
   const invoices = new InvoicesService(new MockInvoicesRepository(), new MockServicesRepository(), repository);

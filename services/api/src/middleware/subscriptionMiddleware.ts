@@ -4,10 +4,30 @@ import { dbPool } from "../config/database";
 import { env } from "../config/env";
 import { requireClinicId } from "../tenancy/clinicContext";
 
-type SubRow = {
-  subscription_status: string;
+export type SubscriptionFields = {
+  subscription_status: string | null;
   subscription_ends_at: Date | string | null;
 };
+
+/**
+ * Почему клиника заблокирована: "suspended" | "expired", null — подписка активна.
+ * Единое правило для гейта дата-роутов и публичного ТВ-экрана очереди:
+ * suspended важнее всего; expired — явный статус или дата окончания в прошлом.
+ * Нераспознаваемая дата окончания игнорируется (как раньше).
+ */
+export function getSubscriptionBlock(row: SubscriptionFields, nowMs: number): "suspended" | "expired" | null {
+  if (row.subscription_status === "suspended") {
+    return "suspended";
+  }
+  const endsAtMs = row.subscription_ends_at
+    ? new Date(row.subscription_ends_at).getTime()
+    : null;
+  const expiredByDate = endsAtMs != null && Number.isFinite(endsAtMs) && nowMs > endsAtMs;
+  if (row.subscription_status === "expired" || expiredByDate) {
+    return "expired";
+  }
+  return null;
+}
 
 /**
  * Гейт активной подписки. Вешается на дата-роуты ПОСЛЕ requireAuth
@@ -31,9 +51,9 @@ export const requireActiveSubscription = async (
 
   const clinicId = requireClinicId();
 
-  let row: SubRow | undefined;
+  let row: SubscriptionFields | undefined;
   try {
-    const result = await dbPool.query<SubRow>(
+    const result = await dbPool.query<SubscriptionFields>(
       `SELECT subscription_status, subscription_ends_at FROM clinics WHERE id = $1 LIMIT 1`,
       [clinicId]
     );
@@ -50,17 +70,11 @@ export const requireActiveSubscription = async (
     return;
   }
 
-  if (row.subscription_status === "suspended") {
+  const block = getSubscriptionBlock(row, Date.now());
+  if (block === "suspended") {
     throw new ApiError(402, "Подписка приостановлена. Обратитесь к администратору.");
   }
-
-  const endsAtMs = row.subscription_ends_at
-    ? new Date(row.subscription_ends_at).getTime()
-    : null;
-  const expiredByDate =
-    endsAtMs != null && Number.isFinite(endsAtMs) && Date.now() > endsAtMs;
-
-  if (row.subscription_status === "expired" || expiredByDate) {
+  if (block === "expired") {
     throw new ApiError(402, "Срок подписки истёк. Продлите подписку, чтобы продолжить работу.");
   }
 

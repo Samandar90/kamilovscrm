@@ -40,6 +40,7 @@ import { DashboardMorningBriefingSection } from "../components/DashboardMorningB
 import { DashboardTodaySummary } from "../components/DashboardTodaySummary";
 import { dashboardApi } from "../api/dashboardApi";
 import { useDashboardData } from "../hooks/useDashboardData";
+import { arrivalToastMessage } from "../utils/arrivalToast";
 import { primaryActionButtonClass } from "../../../shared/ui/buttonStyles";
 import { cn } from "../../../ui/utils/cn";
 import { getServicesCached } from "../../../shared/cache/servicesCache";
@@ -261,7 +262,12 @@ export const DashboardPage: React.FC = () => {
       const row = appointments.find((a) => a.id === appointmentId);
       if (!row) return;
 
-      if (action === "arrived") await dashboardApi.markArrived(appointmentId);
+      if (action === "arrived") {
+        const updated = await dashboardApi.markArrived(appointmentId);
+        // «Выдан номер К-05» in the dashboard's usual 2.5 s toast; no number (another day) → no toast, as before.
+        const issuedMessage = arrivalToastMessage(updated, t);
+        if (issuedMessage) setToast(issuedMessage);
+      }
       if (action === "completed") await dashboardApi.completeAppointment(appointmentId);
       if (action === "invoice") {
         if (invoiceByAppointment[appointmentId]) return;

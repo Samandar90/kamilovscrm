@@ -6,6 +6,7 @@ import { coercePriceToNumber } from "../../../shared/lib/money";
 import { getAllServices } from "../../../shared/lib/appointments/getAllServices";
 import { formatSum } from "../../../utils/formatMoney";
 import { ActionButtons, SectionCard, StatusBadge } from "../../../shared/ui";
+import { QueueCodeBadge } from "../../queue/components/QueueCodeBadge";
 import { buildUnifiedAppointmentActions } from "./appointmentActions";
 
 type WorkflowStage =
@@ -53,6 +54,14 @@ type Props = {
   canEditAppointmentPrice: boolean;
   onOpenDoctorWorkspace: () => void;
   onCardClick: () => void;
+  /** «Талон»: роль видит очередь (queue.read); кнопка только у записи «Пришёл» с номером. */
+  canPrintQueueTicket: boolean;
+  isPrintingTicket: boolean;
+  onPrintTicket: () => void;
+  /** «Выдать номер»: роль выдаёт номера (queue.create); кнопка только у записи «Пришёл» без номера. */
+  canIssueQueueNumber: boolean;
+  isIssuingQueueNumber: boolean;
+  onIssueQueueNumber: () => void;
 };
 
 export const AppointmentCard: React.FC<Props> = ({
@@ -80,6 +89,12 @@ export const AppointmentCard: React.FC<Props> = ({
   canEditAppointmentPrice,
   onOpenDoctorWorkspace,
   onCardClick,
+  canPrintQueueTicket,
+  isPrintingTicket,
+  onPrintTicket,
+  canIssueQueueNumber,
+  isIssuingQueueNumber,
+  onIssueQueueNumber,
 }) => {
   const { t } = useTranslation();
 
@@ -102,14 +117,19 @@ export const AppointmentCard: React.FC<Props> = ({
           : appointment.status === "in_consultation"
             ? "warning"
             : "neutral";
-  const statusLabel =
-    appointment.status === "in_consultation"
-      ? t("appointment.status.in_consultation")
-      : appointment.status === "completed"
-        ? t("appointment.status.completed")
-        : appointment.status === "cancelled"
-          ? t("appointment.status.cancelled")
-          : t("appointment.status.scheduled");
+  const statusLabelMap: Record<Appointment["status"], string> = {
+    scheduled: t("appointments.statusLabels.scheduled"),
+    confirmed: t("appointments.statusLabels.confirmed"),
+    arrived: t("appointments.statusLabels.arrived"),
+    in_consultation: t("appointments.statusLabels.in_consultation"),
+    completed: t("appointments.statusLabels.completed"),
+    cancelled: t("appointments.statusLabels.cancelled"),
+    no_show: t("appointments.statusLabels.no_show"),
+  };
+  const statusLabel = statusLabelMap[appointment.status] ?? appointment.status;
+  const showTicketButton =
+    canPrintQueueTicket && appointment.status === "arrived" && Boolean(appointment.queueCode);
+  const showIssueButton = canIssueQueueNumber && appointment.status === "arrived" && !appointment.queueCode;
   const isCancelled = appointment.status === "cancelled";
   const isCompleted = appointment.status === "completed";
   const actionsDisabled = isSubmitting || isCancelled;
@@ -172,8 +192,11 @@ export const AppointmentCard: React.FC<Props> = ({
       >
         <div className="flex flex-col gap-3">
           <div className="flex items-start justify-between gap-3">
-            <div className="rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-2.5 py-1.5 text-sm font-semibold tabular-nums text-[#111827]">
-              {timeLabel}
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg border border-[#e5e7eb] bg-[#f9fafb] px-2.5 py-1.5 text-sm font-semibold tabular-nums text-[#111827]">
+                {timeLabel}
+              </div>
+              <QueueCodeBadge code={appointment.queueCode} />
             </div>
             <StatusBadge
               tone={statusTone}
@@ -258,6 +281,26 @@ export const AppointmentCard: React.FC<Props> = ({
                   {action.label}
                 </button>
               ))}
+              {showIssueButton ? (
+                <button
+                  type="button"
+                  className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-800 shadow-sm transition hover:bg-sky-100 disabled:opacity-50"
+                  disabled={isSubmitting || isIssuingQueueNumber}
+                  onClick={onIssueQueueNumber}
+                >
+                  {t("appointments.queue.issue")}
+                </button>
+              ) : null}
+              {showTicketButton ? (
+                <button
+                  type="button"
+                  className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-800 shadow-sm transition hover:bg-sky-100 disabled:opacity-50"
+                  disabled={isSubmitting || isPrintingTicket}
+                  onClick={onPrintTicket}
+                >
+                  {t("appointments.queue.ticket")}
+                </button>
+              ) : null}
               {showCancelButton ? (
                 <button
                   type="button"

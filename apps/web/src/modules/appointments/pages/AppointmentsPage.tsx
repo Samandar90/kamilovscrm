@@ -7,8 +7,10 @@ import { hasPermission } from "../../../auth/permissions";
 import {
   canCreateAppointmentWithPatientPicker,
   canCreatePatients,
+  canIssueQueue,
   canReadBilling,
   canReadPatients,
+  canReadQueue,
   canSetAppointmentCommercialPrice,
   canUpdateAppointments,
 } from "../../../auth/roleGroups";
@@ -53,6 +55,10 @@ import { Button } from "../../../ui/Button";
 import { coercePriceToNumber } from "../../../shared/lib/money";
 import { getAllServices } from "../../../shared/lib/appointments/getAllServices";
 import { formatSum } from "../../../utils/formatMoney";
+import { queueApi } from "../../queue/api/queueApi";
+import { QueueCodeBadge } from "../../queue/components/QueueCodeBadge";
+import { printQueueTicket } from "../../queue/print/printTicket";
+import { issueQueueNumber, withIssuedQueueNumber } from "../utils/queueIssue";
 
 const secondaryActionButtonClass =
   "inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl bg-gray-100 px-4 py-2 " +
@@ -60,6 +66,10 @@ const secondaryActionButtonClass =
   "hover:scale-[1.02] hover:bg-gray-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50";
 const MOBILE_WINDOW_INITIAL = 40;
 const MOBILE_WINDOW_STEP = 40;
+/** «Выдан номер К-05» stays long enough to press «Печать талона» (the plain toast hides after 2.5 s). */
+const ISSUED_TICKET_VISIBLE_MS = 30_000;
+
+type IssuedTicketState = { appointmentId: number; code: string };
 
 type AppointmentDetailsModalState = {
   open: boolean;
@@ -279,6 +289,8 @@ export const AppointmentsPage: React.FC = () => {
   const readBilling = canReadBilling(ur);
   const canHardDeleteAppointment = ur === "superadmin";
   const canCreateInvoice = !!ur && hasPermission(ur, "invoices", "create");
+  const canPrintQueueTicket = canReadQueue(ur);
+  const canIssueQueueNumber = canIssueQueue(ur);
 
   const [appointments, setAppointments] = React.useState<Appointment[]>([]);
   const [invoicesByAppointmentId, setInvoicesByAppointmentId] = React.useState<
@@ -305,6 +317,9 @@ export const AppointmentsPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [toast, setToast] = React.useState<string | null>(null);
+  const [issuedTicket, setIssuedTicket] = React.useState<IssuedTicketState | null>(null);
+  const [printingTicketId, setPrintingTicketId] = React.useState<number | null>(null);
+  const [issuingQueueId, setIssuingQueueId] = React.useState<number | null>(null);
   const [rangeTab, setRangeTab] = React.useState<RangeTab>("today");
   const [customDate, setCustomDate] = React.useState(() => todayYmd());
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -408,6 +423,12 @@ export const AppointmentsPage: React.FC = () => {
     const timer = window.setTimeout(() => setToast(null), 2500);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  React.useEffect(() => {
+    if (!issuedTicket) return;
+    const timer = window.setTimeout(() => setIssuedTicket(null), ISSUED_TICKET_VISIBLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [issuedTicket]);
 
   React.useEffect(() => {
     if (!fullModalOpen) return;
@@ -664,7 +685,12 @@ export const AppointmentsPage: React.FC = () => {
       setDetailsModal((d) =>
         d.appointment?.id === updated.id ? { open: d.open, appointment: updated } : d
       );
-      setToast(t("appointments.messages.statusUpdated"));
+      if (nextStatus === "arrived" && updated.queueCode) {
+        // The server issued today's queue number in the same request (records for another day get none).
+        setIssuedTicket({ appointmentId: updated.id, code: updated.queueCode });
+      } else {
+        setToast(t("appointments.messages.statusUpdated"));
+      }
       void loadData({ silent: true });
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t("appointments.errors.updateError"));
@@ -695,6 +721,38 @@ export const AppointmentsPage: React.FC = () => {
 
   const openConsultation = (appointment: Appointment) => {
     navigate(`/doctor-workspace/${appointment.id}`);
+  };
+
+  const printTicket = async (appointmentId: number) => {
+    if (!canPrintQueueTicket) return;
+    setPrintingTicketId(appointmentId);
+    setError(null);
+    try {
+      const ticket = await queueApi.ticket(appointmentId);
+      printQueueTicket(ticket);
+    } catch {
+      setError(t("appointments.queue.printFailed"));
+    } finally {
+      setPrintingTicketId(null);
+    }
+  };
+
+  const handleIssueQueueNumber = async (appointment: Appointment) => {
+    if (!canIssueQueueNumber) return;
+    setIssuingQueueId(appointment.id);
+    setError(null);
+    const result = await issueQueueNumber(appointment.id, t("appointments.queue.issueFailed"));
+    setIssuingQueueId(null);
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+    const { code, entry } = result;
+    const patch = (row: Appointment) => (row.id === appointment.id ? withIssuedQueueNumber(row, entry) : row);
+    setAppointments((prev) => prev.map(patch));
+    setDetailsModal((d) => (d.appointment ? { open: d.open, appointment: patch(d.appointment) } : d));
+    setIssuedTicket({ appointmentId: appointment.id, code });
+    void loadData({ silent: true });
   };
 
   const handleServicesSaved = (updated: Appointment) => {
@@ -1047,6 +1105,30 @@ export const AppointmentsPage: React.FC = () => {
             {toast}
           </SectionCard>
         )}
+        {issuedTicket && (
+          <SectionCard className="flex flex-wrap items-center gap-3 border-[#bfdbfe] bg-[#eff6ff] p-4 text-sm text-[#1e3a8a]">
+            <span className="font-semibold">{t("appointments.queue.issued", { code: issuedTicket.code })}</span>
+            <div className="ml-auto flex flex-wrap gap-2">
+              {canPrintQueueTicket ? (
+                <button
+                  type="button"
+                  disabled={printingTicketId === issuedTicket.appointmentId}
+                  onClick={() => void printTicket(issuedTicket.appointmentId)}
+                  className="rounded-lg bg-[#2563eb] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#1d4ed8] disabled:opacity-50"
+                >
+                  {t("appointments.queue.printTicket")}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setIssuedTicket(null)}
+                className="rounded-lg border border-[#bfdbfe] bg-white px-3 py-1.5 text-xs font-medium text-[#1e3a8a] shadow-sm transition hover:bg-[#dbeafe]"
+              >
+                {t("appointments.queue.dismiss")}
+              </button>
+            </div>
+          </SectionCard>
+        )}
         {error && !fullModalOpen && !quickModalOpen && (
           <SectionCard className="border-[#fecaca] bg-[#fef2f2] p-4 text-sm text-[#991b1b]">
             {error}
@@ -1125,6 +1207,12 @@ export const AppointmentsPage: React.FC = () => {
                       setCancelModal({ open: true, appointment, reason: "" })
                     }
                     onCopyPatientPhone={(phone) => void copyPatientPhone(phone)}
+                    canIssueQueueNumber={canIssueQueueNumber}
+                    isIssuingQueueNumber={issuingQueueId === appointment.id}
+                    onIssueQueueNumber={() => void handleIssueQueueNumber(appointment)}
+                    canPrintQueueTicket={canPrintQueueTicket}
+                    isPrintingTicket={printingTicketId === appointment.id}
+                    onPrintTicket={() => void printTicket(appointment.id)}
                   />
                 );
               })}
@@ -1183,6 +1271,12 @@ export const AppointmentsPage: React.FC = () => {
                     showCancelButton={shouldOfferCancel(appointment)}
                     onOpenDoctorWorkspace={() => openConsultation(appointment)}
                     onCardClick={() => setDetailsModal({ open: true, appointment })}
+                    canIssueQueueNumber={canIssueQueueNumber}
+                    isIssuingQueueNumber={issuingQueueId === appointment.id}
+                    onIssueQueueNumber={() => void handleIssueQueueNumber(appointment)}
+                    canPrintQueueTicket={canPrintQueueTicket}
+                    isPrintingTicket={printingTicketId === appointment.id}
+                    onPrintTicket={() => void printTicket(appointment.id)}
                   />
                 );
               })}
@@ -1309,6 +1403,8 @@ export const AppointmentsPage: React.FC = () => {
               showActions &&
               (ap.status === "scheduled" || ap.status === "confirmed" || ap.status === "arrived");
             const showCancelBtn = showActions && shouldOfferCancel(ap);
+            const showTicketBtn = canPrintQueueTicket && ap.status === "arrived" && Boolean(ap.queueCode);
+            const showIssueBtn = canIssueQueueNumber && ap.status === "arrived" && !ap.queueCode;
             const showEditServices = canChangeAppointmentServices(user, ap);
             const rowClass = "flex flex-col gap-0.5 border-b border-slate-100 py-3 last:border-b-0";
             const labelClass = "text-[11px] font-semibold uppercase tracking-[0.06em] text-slate-500";
@@ -1321,9 +1417,12 @@ export const AppointmentsPage: React.FC = () => {
                       <h3 className="text-lg font-semibold tracking-tight text-slate-900">{t("appointments.detailsTitle")}</h3>
                       <p className="mt-0.5 text-xs text-slate-500">{t("appointments.visitCard")}</p>
                     </div>
-                    <StatusBadge tone={appointmentStatusToneForBadge(ap.status)} className="shrink-0">
-                      {appointmentStatusDetailedRu(ap.status, t)}
-                    </StatusBadge>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <QueueCodeBadge code={ap.queueCode} />
+                      <StatusBadge tone={appointmentStatusToneForBadge(ap.status)} className="shrink-0">
+                        {appointmentStatusDetailedRu(ap.status, t)}
+                      </StatusBadge>
+                    </div>
                   </div>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-2">
@@ -1437,7 +1536,9 @@ export const AppointmentsPage: React.FC = () => {
                           onClick={() => void updateStatus(ap)}
                           className="inline-flex min-h-[40px] items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
                         >
-                          {t("appointments.startConsultation")}
+                          {ap.status === "arrived"
+                            ? t("appointments.startConsultation")
+                            : t("appointment.markArrived")}
                         </button>
                       ) : null}
                       {showCancelBtn ? (
@@ -1455,7 +1556,27 @@ export const AppointmentsPage: React.FC = () => {
                       ) : null}
                     </div>
                   ) : null}
-                  <div className="flex justify-end pt-1">
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    {showIssueBtn ? (
+                      <button
+                        type="button"
+                        disabled={isSubmitting || issuingQueueId === ap.id}
+                        onClick={() => void handleIssueQueueNumber(ap)}
+                        className="mr-auto inline-flex min-h-[40px] items-center justify-center rounded-xl border border-sky-200 bg-sky-50 px-4 text-sm font-semibold text-sky-800 shadow-sm transition hover:bg-sky-100 disabled:opacity-50"
+                      >
+                        {t("appointments.queue.issue")}
+                      </button>
+                    ) : null}
+                    {showTicketBtn ? (
+                      <button
+                        type="button"
+                        disabled={printingTicketId === ap.id}
+                        onClick={() => void printTicket(ap.id)}
+                        className="mr-auto inline-flex min-h-[40px] items-center justify-center rounded-xl border border-sky-200 bg-sky-50 px-4 text-sm font-semibold text-sky-800 shadow-sm transition hover:bg-sky-100 disabled:opacity-50"
+                      >
+                        {t("appointments.queue.ticket")}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="rounded-xl px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"

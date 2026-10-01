@@ -65,6 +65,10 @@ export type Doctor = {
   active: boolean;
   serviceIds: number[];
   createdAt: string;
+  /** Кабинет (до 20 символов): ТВ-экран очереди и талон. */
+  room?: string | null;
+  /** Буква очереди врача, одна заглавная буква («К» → талон «К-05»). */
+  queuePrefix?: string | null;
 };
 
 export type DoctorCreateInput = Omit<Doctor, "id" | "createdAt" | "serviceIds"> & {
@@ -124,6 +128,16 @@ export type Appointment = {
   createdAt: string;
   updatedAt: string;
   services?: AppointmentServiceAssignedSummary[];
+  /** Electronic queue ticket (null = no number). Written only by the queue rules, never from a request body. */
+  queueNumber?: number | null;
+  /** formatQueueCode(letter snapshot, number), e.g. "К-05". */
+  queueCode?: string | null;
+  /** Clinic calendar day of the ticket, "YYYY-MM-DD". */
+  queueDate?: string | null;
+  /** ISO instants. */
+  queueIssuedAt?: string | null;
+  queueCalledAt?: string | null;
+  queueCallCount?: number;
 };
 
 export type AppointmentFilters = {

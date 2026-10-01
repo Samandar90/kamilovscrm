@@ -37,6 +37,16 @@ export type Appointment = {
   treatment: string | null;
   recommendedReturnDate?: string | null;
   notes: string | null;
+  /** Electronic queue — written only by the API (issued when the visit becomes "arrived" today). */
+  queueNumber?: number | null;
+  /** Ready ticket code, e.g. "К-05" (doctor letter snapshot taken at issue time). */
+  queueCode?: string | null;
+  /** Clinic day "YYYY-MM-DD" the number belongs to. */
+  queueDate?: string | null;
+  /** ISO instants. */
+  queueIssuedAt?: string | null;
+  queueCalledAt?: string | null;
+  queueCallCount?: number;
   services?: Array<{
     serviceId: number;
     name: string;

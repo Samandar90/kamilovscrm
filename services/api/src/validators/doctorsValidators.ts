@@ -53,6 +53,37 @@ const normalizeDoctorPayload = (body: Record<string, unknown>): void => {
   if (body.birthDate != null && body.birth_date == null) {
     body.birth_date = body.birthDate;
   }
+  // `!== undefined` (not `!= null`) so that `queue_prefix: null` can clear the letter too.
+  if (body.queue_prefix !== undefined && body.queuePrefix === undefined) {
+    body.queuePrefix = body.queue_prefix;
+  }
+};
+
+const ROOM_ERROR = "Field 'room' must be a string up to 20 characters";
+const QUEUE_PREFIX_ERROR = "Field 'queuePrefix' must be a single letter";
+
+/** undefined → not sent; null / blank → null; otherwise the trimmed room, at most 20 characters (code points, like char_length). */
+const parseOptionalRoom = (value: unknown): string | null | undefined => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== "string") throw new ApiError(400, ROOM_ERROR);
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  if ([...trimmed].length > 20) throw new ApiError(400, ROOM_ERROR);
+  return trimmed;
+};
+
+/** undefined → not sent; null / blank → null; otherwise exactly one letter, upper-cased. */
+const parseOptionalQueuePrefix = (value: unknown): string | null | undefined => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== "string") throw new ApiError(400, QUEUE_PREFIX_ERROR);
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  if (!/^\p{L}$/u.test(trimmed)) throw new ApiError(400, QUEUE_PREFIX_ERROR);
+  const upper = trimmed.toUpperCase();
+  // A few letters upper-case to two ("ß" → "SS"); keep the original so the DB CHECK (one character) holds.
+  return [...upper].length === 1 ? upper : trimmed;
 };
 
 const parseOptionalPhone = (value: unknown): string | null | undefined => {
@@ -123,6 +154,11 @@ export const validateCreateDoctor = (req: Request, _res: Response, next: NextFun
   }
   body.birth_date = normalizedBirthDate;
 
+  const normalizedRoom = parseOptionalRoom(body.room);
+  if (normalizedRoom !== undefined) body.room = normalizedRoom;
+  const normalizedQueuePrefix = parseOptionalQueuePrefix(body.queuePrefix);
+  if (normalizedQueuePrefix !== undefined) body.queuePrefix = normalizedQueuePrefix;
+
   if (serviceIds !== undefined) {
     validateServiceIds(serviceIds);
   }
@@ -135,7 +171,7 @@ export const validateUpdateDoctor = (req: Request, _res: Response, next: NextFun
   normalizeDoctorPayload(body);
   req.body = body;
 
-  const { name, fullName, speciality, specialty, percent, active, serviceIds, phone, birth_date } =
+  const { name, fullName, speciality, specialty, percent, active, serviceIds, phone, birth_date, room, queuePrefix } =
     body;
 
   if (name !== undefined && (typeof name !== "string" || name.trim() === "")) {
@@ -180,6 +216,14 @@ export const validateUpdateDoctor = (req: Request, _res: Response, next: NextFun
     body.birth_date = normalizedBirthDate;
   }
 
+  if (room !== undefined) {
+    body.room = parseOptionalRoom(room);
+  }
+
+  if (queuePrefix !== undefined) {
+    body.queuePrefix = parseOptionalQueuePrefix(queuePrefix);
+  }
+
   if (serviceIds !== undefined) {
     validateServiceIds(serviceIds);
   }
@@ -193,7 +237,9 @@ export const validateUpdateDoctor = (req: Request, _res: Response, next: NextFun
     active !== undefined ||
     serviceIds !== undefined ||
     phone !== undefined ||
-    birth_date !== undefined;
+    birth_date !== undefined ||
+    room !== undefined ||
+    queuePrefix !== undefined;
 
   if (!hasAnyField) {
     throw new ApiError(400, "At least one field must be provided for update");

@@ -33,6 +33,9 @@ export const PERMISSION_MODULES = [
   "callcenter",
   // Анкеты пациентов: общая база для всех врачей. Шаблоны — отдельная политика QUESTIONNAIRE_TEMPLATE_MANAGE.
   "questionnaires",
+  // Электронная очередь: номера у врачей на день и вызов пациентов. ТВ-экраны — отдельная политика QUEUE_DISPLAY_MANAGE.
+  // Врач и медсестра работают только с очередью своего врача (проверка в сервисе).
+  "queue",
 ] as const;
 
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];
@@ -51,6 +54,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     services: ["read"],
     appointments: ["read", "create", "update", "delete"],
     questionnaires: ["read", "create", "update"],
+    queue: ["read", "create", "update"],
     ai: ["read", "create"],
   },
 
@@ -60,6 +64,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     services: ["read"],
     appointments: ["read", "create", "update"],
     questionnaires: ["read", "create", "update"],
+    queue: ["read", "update"],
     ai: ["read", "create"],
   },
 
@@ -67,6 +72,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     patients: ["read", "create"],
     appointments: ["read", "update"],
     questionnaires: ["read", "create", "update"],
+    queue: ["read", "update"],
     ai: ["read", "create"],
   },
 
@@ -104,6 +110,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     services: ["read"],
     appointments: ["read", "create", "update", "delete"],
     questionnaires: ["read", "create", "update", "delete"],
+    queue: ["read"],
     invoices: ["read"],
     payments: ["read"],
     expenses: ["read", "create", "update", "delete"],
@@ -115,6 +122,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
   director: {
     patients: ["read"],
     appointments: ["read"],
+    queue: ["read"],
     invoices: ["read"],
     payments: ["read"],
     expenses: ["read"],
@@ -177,6 +185,8 @@ export const PERMISSIONS = {
   QUESTIONNAIRE_UPDATE: roleList("questionnaires", "update"),
   QUESTIONNAIRE_DELETE: roleList("questionnaires", "delete"),
   QUESTIONNAIRE_TEMPLATE_MANAGE: ["superadmin", "manager", "doctor"] as const satisfies readonly UserRole[],
+  /** ТВ-экраны очереди: создание, новый код, удаление. */
+  QUEUE_DISPLAY_MANAGE: ["superadmin"] as const satisfies readonly UserRole[],
   DOCTOR_OWN_SERVICES: ["doctor"] as const satisfies readonly UserRole[],
   FINANCIAL_PORTAL_ACCESS: uniqRoles([
     ...rolesWithPermission("invoices", "read"),

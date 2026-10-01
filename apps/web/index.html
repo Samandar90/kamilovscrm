@@ -6,6 +6,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/logo.png" />
+    <!-- TV boot watchdog: if the app bundle never starts on a hall TV (failed download at power-on), reload in 2 min.
+         Plain ES5 outside the bundle on purpose; the TV app sets window.__qtvBooted on mount (markTvBooted). -->
+    <script id="tv-boot-watchdog">
+      (function (w) {
+        var path = String(w.location.pathname || "").toLowerCase();
+        if (path !== "/tv" && path.indexOf("/tv/") !== 0) return;
+        function arm() {
+          w.setTimeout(function () {
+            if (w.__qtvBooted === true) return;
+            // Offline: a reload would strand the TV on the browser's error page with no script left to retry.
+            if (w.navigator.onLine === false) arm();
+            else w.location.reload();
+          }, 120000);
+        }
+        arm();
+      })(window);
+    </script>
   </head>
   <body>
     <div id="root"></div>

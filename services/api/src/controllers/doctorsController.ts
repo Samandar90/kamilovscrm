@@ -18,8 +18,19 @@ export const getDoctorByIdController = async (req: Request, res: Response) => {
 
 export const createDoctorController = async (req: Request, res: Response) => {
   const auth = getAuthPayload(req);
-  const { fullName, specialty, percent, phone, birth_date, active, serviceIds, name, speciality } =
-    req.body ?? {};
+  const {
+    fullName,
+    specialty,
+    percent,
+    phone,
+    birth_date,
+    active,
+    serviceIds,
+    name,
+    speciality,
+    room,
+    queuePrefix,
+  } = req.body ?? {};
   const created = await services.doctors.create(auth, {
     name: (name ?? fullName) as string,
     speciality: (speciality ?? specialty) as string,
@@ -28,14 +39,27 @@ export const createDoctorController = async (req: Request, res: Response) => {
     birth_date: (birth_date ?? null) as string | null,
     active: Boolean(active),
     serviceIds: Array.isArray(serviceIds) ? serviceIds : [],
+    room: (room ?? null) as string | null,
+    queuePrefix: (queuePrefix ?? null) as string | null,
   });
   return res.status(201).json(created);
 };
 
 export const updateDoctorController = async (req: Request, res: Response) => {
   const auth = getAuthPayload(req);
-  const { fullName, specialty, percent, phone, birth_date, active, serviceIds, name, speciality } =
-    req.body ?? {};
+  const {
+    fullName,
+    specialty,
+    percent,
+    phone,
+    birth_date,
+    active,
+    serviceIds,
+    name,
+    speciality,
+    room,
+    queuePrefix,
+  } = req.body ?? {};
   const payload = {
     ...(name !== undefined || fullName !== undefined ? { name: (name ?? fullName) as string } : {}),
     ...(speciality !== undefined || specialty !== undefined
@@ -46,6 +70,8 @@ export const updateDoctorController = async (req: Request, res: Response) => {
     ...(birth_date !== undefined ? { birth_date: (birth_date ?? null) as string | null } : {}),
     ...(active !== undefined ? { active: Boolean(active) } : {}),
     ...(serviceIds !== undefined && Array.isArray(serviceIds) ? { serviceIds } : {}),
+    ...(room !== undefined ? { room: (room ?? null) as string | null } : {}),
+    ...(queuePrefix !== undefined ? { queuePrefix: (queuePrefix ?? null) as string | null } : {}),
   };
   const updated = await services.doctors.update(auth, Number(req.params.id), payload);
   if (!updated) throw new ApiError(404, "Doctor not found");

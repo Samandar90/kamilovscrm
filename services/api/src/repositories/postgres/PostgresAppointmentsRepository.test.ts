@@ -22,8 +22,12 @@ beforeAll(async () => {
       created_at timestamptz default now(), updated_at timestamptz default now(), deleted_at timestamptz);
     CREATE TABLE services(id bigint primary key, clinic_id bigint, name text, price numeric);
     CREATE TABLE appointment_services(id bigserial primary key, appointment_id bigint, service_id bigint, price numeric, quantity numeric, created_by bigint);
-    INSERT INTO clinics VALUES(1),(2); INSERT INTO patients VALUES(1); INSERT INTO services VALUES(3,1,'Приём',100000);`);
+    CREATE TABLE doctors(id bigint primary key, clinic_id bigint);
+    INSERT INTO clinics VALUES(1),(2); INSERT INTO patients VALUES(1); INSERT INTO services VALUES(3,1,'Приём',100000);
+    INSERT INTO doctors VALUES(2,1);`);
   await db.exec(readFileSync(resolve(__dirname, "../../../migrations/033_call_center_daily_workflow.sql"), "utf8"));
+  // SELECT_LIST reads the electronic-queue columns; 035 alters doctors and appointments (both created above).
+  await db.exec(readFileSync(resolve(__dirname, "../../../migrations/035_electronic_queue.sql"), "utf8"));
 }, 30000);
 afterAll(() => db.close());
 
@@ -37,6 +41,25 @@ describe("appointment recommended return date SQL", () => {
       expect((await repo.update(saved.id, { recommendedReturnDate: "2099-10-01" }))?.recommendedReturnDate).toBe("2099-10-01");
       expect((await repo.update(saved.id, { recommendedReturnDate: null }))?.recommendedReturnDate).toBeNull();
     });
+  });
+  it("maps queue columns and derives the ticket code from the letter snapshot", async () => {
+    const rows = await db.query<{ id: number }>(
+      `INSERT INTO appointments(clinic_id,patient_id,doctor_id,service_id,start_at,end_at,status,queue_number,queue_prefix,queue_date,queue_issued_at,queue_call_count)
+       VALUES(1,1,2,3,'2099-11-02 10:00:00+00','2099-11-02 10:30:00+00','arrived',5,'К','2099-11-02','2099-11-02 05:01:02+00',2),
+             (1,1,2,3,'2099-11-02 11:00:00+00','2099-11-02 11:30:00+00','scheduled',NULL,NULL,NULL,NULL,0) RETURNING id`
+    );
+    const [numbered, plain] = await runWithClinicContext(1, () =>
+      Promise.all(rows.rows.map((row) => repo.findById(Number(row.id))))
+    );
+    expect(numbered).toMatchObject({
+      queueNumber: 5,
+      queueCode: "К-05",
+      queueDate: "2099-11-02",
+      queueIssuedAt: "2099-11-02T05:01:02.000Z",
+      queueCalledAt: null,
+      queueCallCount: 2,
+    });
+    expect(plain).toMatchObject({ queueNumber: null, queueCode: null, queueDate: null, queueIssuedAt: null, queueCallCount: 0 });
   });
   it("does not update a return date in another clinic", async () => {
     const rows = await db.query<{ id: number }>("INSERT INTO appointments(clinic_id,patient_id,doctor_id,service_id,start_at,end_at,status) VALUES(1,1,2,3,'2099-11-01 10:00:00+00','2099-11-01 10:30:00+00','completed') RETURNING id");

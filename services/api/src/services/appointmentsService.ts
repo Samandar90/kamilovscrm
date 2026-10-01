@@ -35,6 +35,7 @@ import {
   parseLocalDateTime,
 } from "../utils/localDateTime";
 import { parseNumericInput, roundMoney2 } from "../utils/numbers";
+import { clinicToday, planQueueChange } from "./queue/queueRules";
 
 const ACTIVE_APPOINTMENT_STATUSES = new Set<AppointmentStatus>([
   "scheduled",
@@ -69,7 +70,8 @@ const ALLOWED_STATUS_TRANSITIONS: Record<AppointmentStatus, AppointmentStatus[]>
   in_consultation: ["completed", "cancelled"],
   completed: [],
   cancelled: [],
-  no_show: [],
+  // Return to the queue: allowed only for a visit of today (checked in update).
+  no_show: ["arrived"],
 };
 
 const normalizeOptionalString = (
@@ -347,8 +349,34 @@ const normalizeUpdateInput = (
   return normalized;
 };
 
+/** Queue fields are written only by the queue rules, never from a request body. */
+const QUEUE_PAYLOAD_KEYS = [
+  "queueNumber",
+  "queueCode",
+  "queueDate",
+  "queueIssuedAt",
+  "queueCalledAt",
+  "queueCallCount",
+  "queuePrefix",
+] as const;
+
+const stripQueueKeys = (payload: AppointmentCreateInput | AppointmentUpdateInput): void => {
+  const record = payload as Record<string, unknown>;
+  for (const key of QUEUE_PAYLOAD_KEYS) {
+    delete record[key];
+  }
+};
+
 export class AppointmentsService {
-  constructor(private readonly appointmentsRepository: IAppointmentsRepository) {}
+  /**
+   * `timeZone` is the clinic calendar (env.reportsTimezone) that decides "today" for queue numbers;
+   * `now` is injectable so tests can pin the clinic day.
+   */
+  constructor(
+    private readonly appointmentsRepository: IAppointmentsRepository,
+    private readonly timeZone: string = "Asia/Tashkent",
+    private readonly now: () => Date = () => new Date()
+  ) {}
 
   async list(
     auth: AuthTokenPayload,
@@ -411,6 +439,7 @@ export class AppointmentsService {
           }
         : rawIn;
     const normalizedPayload = normalizeCreateInput(mergedForNormalize);
+    stripQueueKeys(normalizedPayload);
     normalizedPayload.startAt = assertAppointmentTimestampForDb(
       normalizedPayload.startAt,
       "startAt"
@@ -485,7 +514,17 @@ export class AppointmentsService {
       );
     }
 
-    const created = await this.appointmentsRepository.create(payloadToCreate);
+    // A walk-in created as "arrived" for today gets its queue number in the same transaction.
+    const queue = planQueueChange(
+      null,
+      {
+        status: payloadToCreate.status,
+        doctorId: payloadToCreate.doctorId,
+        startAt: payloadToCreate.startAt,
+      },
+      clinicToday(this.timeZone, this.now())
+    );
+    const created = await this.appointmentsRepository.create(payloadToCreate, { queue });
     invalidateClinicFactsCache();
     if (shouldRedactAppointmentClinicalFields(auth.role)) {
       return redactAppointmentClinicalFields(created);
@@ -507,6 +546,7 @@ export class AppointmentsService {
     }
 
     const normalizedPayload = normalizeUpdateInput(payload);
+    stripQueueKeys(normalizedPayload);
     // Services have one write path (replaceServices) that keeps lines, price and slot consistent.
     if (normalizedPayload.serviceId !== undefined && normalizedPayload.serviceId !== current.serviceId) {
       throw new ApiError(400, "Услуги записи меняются через PUT /appointments/:id/services");
@@ -601,6 +641,24 @@ export class AppointmentsService {
     ensureValidDateRange(mergedStartAt, mergedEndAt);
     ensureStatusTransitionAllowed(current.status, mergedStatus);
 
+    const today = clinicToday(this.timeZone, this.now());
+    // A no-show who came back goes to the end of today's queue with a new number.
+    const isReturnToQueue = current.status === "no_show" && mergedStatus === "arrived";
+    // Both the visit's own day and its day after this change must be today: a no-show of another day
+    // cannot come back by being moved to today in the same request.
+    if (
+      isReturnToQueue &&
+      (current.startAt.slice(0, 10) !== today || mergedStartAt.slice(0, 10) !== today)
+    ) {
+      throw new ApiError(400, "Вернуть в очередь можно только запись на сегодня");
+    }
+    // Queue order, not the original slot, governs a returning patient: that slot may be taken by now.
+    // Only the unchanged slot skips the overlap checks; a new time or doctor is checked like any booking.
+    const skipSlotCheck =
+      isReturnToQueue &&
+      mergedStartAt === current.startAt &&
+      mergedDoctorId === current.doctorId;
+
     // Booked services were validated when added; recheck them only for a new doctor so that
     // later catalog changes do not block status updates of existing visits.
     const doctorChanged = mergedDoctorId !== current.doctorId;
@@ -612,7 +670,7 @@ export class AppointmentsService {
       { requireActiveService: false }
     );
 
-    if (ACTIVE_APPOINTMENT_STATUSES.has(mergedStatus)) {
+    if (ACTIVE_APPOINTMENT_STATUSES.has(mergedStatus) && !skipSlotCheck) {
       await ensureNoDoctorConflict(
         this.appointmentsRepository,
         mergedDoctorId,
@@ -626,7 +684,21 @@ export class AppointmentsService {
       nextBillingStatus === undefined
         ? normalizedPayload
         : { ...normalizedPayload, billingStatus: nextBillingStatus };
-    const updated = await this.appointmentsRepository.update(id, updatedPayload);
+    const queue = planQueueChange(
+      {
+        status: current.status,
+        doctorId: current.doctorId,
+        startAt: current.startAt,
+        queueNumber: current.queueNumber ?? null,
+        queueDate: current.queueDate ?? null,
+      },
+      { status: mergedStatus, doctorId: mergedDoctorId, startAt: mergedStartAt },
+      today
+    );
+    const updated = await this.appointmentsRepository.update(id, updatedPayload, {
+      queue,
+      skipConflictCheck: skipSlotCheck,
+    });
     if (updated) invalidateClinicFactsCache();
     if (!updated) {
       return null;

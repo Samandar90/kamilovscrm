@@ -19,15 +19,22 @@ import { CallCenterWorkspaceService } from "../services/callCenterWorkspaceServi
 import { PostgresCallCenterWorkspaceRepository } from "../repositories/postgres/PostgresCallCenterWorkspaceRepository";
 import { QuestionnairesService } from "../services/questionnairesService";
 import { PostgresQuestionnairesRepository } from "../repositories/postgres/PostgresQuestionnairesRepository";
+import { QueueService } from "../services/queueService";
+import { PostgresQueueRepository } from "../repositories/postgres/PostgresQueueRepository";
+import { QueueDisplaysService } from "../services/queueDisplaysService";
+import { PostgresQueueDisplaysRepository } from "../repositories/postgres/PostgresQueueDisplaysRepository";
 import { dbPool } from "../config/database";
 import { env } from "../config/env";
 import { repositories } from "./repositories";
+
+// Один репозиторий очереди на сотрудников и публичный ТВ-экран.
+const queueRepository = new PostgresQueueRepository(dbPool);
 
 export const services = {
   patients: new PatientsService(repositories.patients, repositories.appointments),
   doctors: new DoctorsService(repositories.doctors, repositories.services),
   services: new ServicesService(repositories.services),
-  appointments: new AppointmentsService(repositories.appointments),
+  appointments: new AppointmentsService(repositories.appointments, env.reportsTimezone),
   invoices: new InvoicesService(
     repositories.invoices,
     repositories.services,
@@ -53,5 +60,11 @@ export const services = {
   questionnaires: new QuestionnairesService(
     new PostgresQuestionnairesRepository(dbPool, env.reportsTimezone),
     repositories.appointments
+  ),
+  queue: new QueueService(queueRepository, env.reportsTimezone),
+  queueDisplays: new QueueDisplaysService(
+    new PostgresQueueDisplaysRepository(dbPool),
+    queueRepository,
+    env.reportsTimezone
   ),
 };
