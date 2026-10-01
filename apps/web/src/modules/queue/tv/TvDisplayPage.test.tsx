@@ -116,6 +116,30 @@ describe("TvDisplayPage", () => {
     expect(text).toContain("Ovoz sun’iy intellekt yordamida yaratilgan / Голос синтезирован ИИ");
   });
 
+  it("lists waiting patients one per row with their masked names, and the rest beyond the list as +N", async () => {
+    await render();
+    const rows = view!.root.findAllByProps({ className: "qtv-next-row" });
+    expect(rows.map((row) => row.findAllByType("span").map((span) => span.props.children))).toEqual([
+      ["К-06", "Мадина А."],
+      ["К-07"],
+    ]);
+    expect(view!.root.findByProps({ className: "qtv-next-more" }).props.children).toBe("+2");
+  });
+
+  it("lists four waiting rows per card when seven or more cabinets share the screen, and counts the rest", async () => {
+    const base = sample("2026-09-30T06:00:00.000Z", [oldCall]);
+    const waiting = ["К-06", "К-07", "К-08", "К-09", "К-10"].map((code) => ({ code, name: "Мадина А." }));
+    const cabinets = Array.from({ length: 7 }, (_, index) => ({ ...base.cabinets[0], doctorId: index + 1, waiting, waitingCount: 6 }));
+    mocks.display = { state: { ...base, cabinets }, error: null, offline: false };
+    await render();
+    const cards = view!.root.findAllByProps({ className: "qtv-card" });
+    expect(cards).toHaveLength(7);
+    for (const card of cards) {
+      expect(card.findAllByProps({ className: "qtv-next-row" })).toHaveLength(4);
+      expect(card.findByProps({ className: "qtv-next-more" }).props.children).toBe("+2");
+    }
+  });
+
   it("does not show the synthesized-voice note when the display has voice turned off", async () => {
     const quiet = sample("2026-09-30T06:00:00.000Z", [oldCall]);
     mocks.display = { state: { ...quiet, display: { ...quiet.display, voiceEnabled: false } }, error: null, offline: false };

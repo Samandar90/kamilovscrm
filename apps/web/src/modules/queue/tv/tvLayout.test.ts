@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CABINETS_PER_PAGE, gridColumns, pageCabinets } from "./tvLayout";
+import { CABINETS_PER_PAGE, gridColumns, pageCabinets, waitingRowsShown } from "./tvLayout";
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 
@@ -25,5 +25,13 @@ describe("gridColumns", () => {
     [0, 1], [1, 1], [2, 2], [3, 2], [4, 2], [5, 3], [6, 3], [7, 3], [8, 3], [9, 3], [12, 3],
   ])("%i cabinets → %i columns", (count, columns) => {
     expect(gridColumns(count)).toBe(columns);
+  });
+});
+
+describe("waitingRowsShown", () => {
+  it.each([
+    [1, 5], [2, 5], [3, 4],
+  ])("%i grid rows → %i waiting rows", (gridRows, shown) => {
+    expect(waitingRowsShown(gridRows)).toBe(shown);
   });
 });

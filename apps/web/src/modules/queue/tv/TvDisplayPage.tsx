@@ -6,7 +6,7 @@ import { createCallTracker } from "./callTracker";
 import { normalizeCodeInput } from "./codeInput";
 import { readStartedFlag, requestFullscreen, requestWakeLock, writeStartedFlag, type WakeLockHandle } from "./tvDevice";
 import { TV_LABELS, tvLabel } from "./tvLabels";
-import { CABINETS_PER_PAGE, gridColumns, pageCabinets } from "./tvLayout";
+import { CABINETS_PER_PAGE, gridColumns, pageCabinets, waitingRowsShown } from "./tvLayout";
 import { formatClock, formatDay, msUntilDailyReload } from "./tvTime";
 import { useQueueDisplay } from "./useQueueDisplay";
 import { announcementClipIds, voiceLangs } from "./voicePhrases";
@@ -66,9 +66,18 @@ function TvClock({ skewMs, timeZone }: { skewMs: number; timeZone: string }) {
   );
 }
 
-function CabinetCard({ cabinet, language }: { cabinet: QueueDisplayCabinet; language: QueueDisplayLanguage }) {
+function CabinetCard({
+  cabinet,
+  language,
+  maxWaiting,
+}: {
+  cabinet: QueueDisplayCabinet;
+  language: QueueDisplayLanguage;
+  maxWaiting: number;
+}) {
   const current = cabinet.current;
-  const more = cabinet.waitingCount - cabinet.waiting.length;
+  const waiting = cabinet.waiting.slice(0, maxWaiting);
+  const more = cabinet.waitingCount - waiting.length;
   return (
     <section className="qtv-card">
       <div className="qtv-card-head">
@@ -81,29 +90,36 @@ function CabinetCard({ cabinet, language }: { cabinet: QueueDisplayCabinet; lang
           {cabinet.specialty ? <div className="qtv-doctor-specialty">{cabinet.specialty}</div> : null}
         </div>
       </div>
-      {current ? (
-        <div className={current.state === "serving" ? "qtv-current qtv-current-serving" : "qtv-current qtv-current-called"}>
-          <div className="qtv-current-label">{tvLabel(current.state === "serving" ? "serving" : "called", language)}</div>
-          {current.code ? <div className="qtv-current-code">{current.code}</div> : null}
-          {current.name ? <div className="qtv-current-name">{current.name}</div> : null}
-        </div>
-      ) : (
-        <div className="qtv-current qtv-current-free">
-          <div className="qtv-current-label">{tvLabel("free", language)}</div>
-        </div>
-      )}
-      <div className="qtv-next">
-        <span className="qtv-next-label">{tvLabel("next", language)}</span>
-        {cabinet.waiting.length === 0 ? (
-          <span className="qtv-next-empty">{tvLabel("noQueue", language)}</span>
+      <div className="qtv-card-body">
+        {current ? (
+          <div className={current.state === "serving" ? "qtv-current qtv-current-serving" : "qtv-current qtv-current-called"}>
+            <div className="qtv-current-label">{tvLabel(current.state === "serving" ? "serving" : "called", language)}</div>
+            {current.code ? <div className="qtv-current-code">{current.code}</div> : null}
+            {current.name ? <div className="qtv-current-name">{current.name}</div> : null}
+          </div>
         ) : (
-          <span className="qtv-next-list">
-            {cabinet.waiting.map((entry) => (
-              <span key={entry.code} className="qtv-chip">{entry.code}</span>
-            ))}
-            {more > 0 ? <span className="qtv-chip qtv-chip-more">{`+${more}`}</span> : null}
-          </span>
+          <div className="qtv-current qtv-current-free">
+            <div className="qtv-current-label">{tvLabel("free", language)}</div>
+          </div>
         )}
+        <div className="qtv-next">
+          <div className="qtv-next-head">
+            <span className="qtv-next-label">{tvLabel("next", language)}</span>
+            {more > 0 ? <span className="qtv-next-more">{`+${more}`}</span> : null}
+          </div>
+          {waiting.length === 0 ? (
+            <span className="qtv-next-empty">{tvLabel("noQueue", language)}</span>
+          ) : (
+            <div className="qtv-next-list">
+              {waiting.map((entry) => (
+                <div key={entry.code} className="qtv-next-row">
+                  <span className="qtv-next-code">{entry.code}</span>
+                  {entry.name ? <span className="qtv-next-name">{entry.name}</span> : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -307,7 +323,7 @@ export function TvDisplayPage() {
             style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}
           >
             {page.map((cabinet) => (
-              <CabinetCard key={cabinet.doctorId} cabinet={cabinet} language={language} />
+              <CabinetCard key={cabinet.doctorId} cabinet={cabinet} language={language} maxWaiting={waitingRowsShown(rows)} />
             ))}
           </div>
         )}

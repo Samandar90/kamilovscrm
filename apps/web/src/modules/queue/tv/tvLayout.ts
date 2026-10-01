@@ -16,3 +16,8 @@ export function gridColumns(count: number): number {
   if (count <= 4) return 2;
   return 3;
 }
+
+/** Waiting rows (code + name) a cabinet card lists: four when the page has three rows of cards (7–9 cabinets), else five. */
+export function waitingRowsShown(gridRows: number): number {
+  return gridRows >= 3 ? 4 : 5;
+}
