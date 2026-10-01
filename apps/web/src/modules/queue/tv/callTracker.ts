@@ -6,7 +6,8 @@ const MAX_REMEMBERED_KEYS = 2000;
 /**
  * Detects the calls to announce from successive polls of the TV endpoint.
  * - The first ingest only remembers keys: a freshly opened screen never replays old calls.
- * - A key is announced once. A re-call bumps callCount, so it arrives with a new key and is announced again.
+ * - A key is announced once. A re-call bumps callCount, and a newly issued number (return to the queue) changes the
+ *   ticket, so either arrives with a new key and is announced again.
  * - A call older than `freshMs` by the server clock (`serverTime`) is remembered but not announced
  *   (e.g. the screen was offline for a while).
  * - The result is ordered by calledAt ascending (the order of the overlay queue).

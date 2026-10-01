@@ -117,13 +117,23 @@ describe("buildDisplayState", () => {
     const state = build([doctor({ doctorId: 10 })], rows);
     expect(state.recentCalls).toHaveLength(20);
     expect(state.recentCalls[0]).toEqual({
-      key: "903:2", code: "03", number: 3, name: "Алишер К.", room: null, doctorName: "", calledAt: "2026-09-30T05:57:00.000Z",
+      key: "2026-09-30:99:3:2", code: "03", number: 3, name: "Алишер К.", room: null, doctorName: "", calledAt: "2026-09-30T05:57:00.000Z",
     });
     expect(state.recentCalls[1]).toEqual({
-      key: "521:1", code: "К-22", number: 22, name: "Алишер К.", room: "5", doctorName: "Алиева Нигора", calledAt: "2026-09-30T04:21:00.000Z",
+      key: "2026-09-30:10:22:1", code: "К-22", number: 22, name: "Алишер К.", room: "5", doctorName: "Алиева Нигора", calledAt: "2026-09-30T04:21:00.000Z",
     });
-    expect(state.recentCalls.map((c) => c.key)).not.toContain("900:1");
-    expect(state.recentCalls.map((c) => c.key)).not.toContain("901:1");
-    expect(state.recentCalls[19].key).toBe("503:1");
+    expect(state.recentCalls.map((c) => c.key)).not.toContain("2026-09-30:10:30:1");
+    // The unnumbered row has no ticket, so it cannot have a key: check it by its call time instead.
+    expect(state.recentCalls.map((c) => c.calledAt)).not.toContain("2026-09-30T05:58:00.000Z");
+    expect(state.recentCalls[19].key).toBe("2026-09-30:10:4:1");
+  });
+
+  it("a re-issued ticket of the same appointment gets a new key", () => {
+    // «Вернуть в очередь» or a doctor change gives the same appointment a new number and resets callCount to 0.
+    const first = build([doctor({ doctorId: 10 })], [row({ appointmentId: 103, queueNumber: 3, calledAt: "2026-09-30T05:00:00.000Z", callCount: 1 })]);
+    const again = build([doctor({ doctorId: 10 })], [row({ appointmentId: 103, queueNumber: 7, calledAt: "2026-09-30T05:50:00.000Z", callCount: 1 })]);
+    expect(first.recentCalls[0].key).toBe("2026-09-30:10:3:1");
+    expect(again.recentCalls[0].key).toBe("2026-09-30:10:7:1");
+    expect(again.recentCalls[0].key).not.toBe(first.recentCalls[0].key);
   });
 });

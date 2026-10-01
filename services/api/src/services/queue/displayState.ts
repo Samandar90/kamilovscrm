@@ -66,7 +66,9 @@ export function buildDisplayState(input: {
       const doctor = doctorById.get(row.doctorId);
       const queueNumber = row.queueNumber as number;
       return {
-        key: `${row.appointmentId}:${row.callCount}`,
+        // One key per call: (doctor, queue date, number) is a unique ticket and the count grows on each re-call. Not the
+        // appointment id: a new number (return to queue, doctor change) resets the count and would repeat a seen key.
+        key: `${row.queueDate ?? ""}:${row.doctorId}:${queueNumber}:${row.callCount}`,
         code: formatQueueCode(row.queuePrefix, queueNumber),
         number: queueNumber,
         name: nameOf(row.patientName),

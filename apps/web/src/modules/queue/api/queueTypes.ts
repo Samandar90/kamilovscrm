@@ -89,7 +89,7 @@ export type QueueDisplayCabinet = {
 };
 
 export type QueueDisplayCall = {
-  /** `${appointmentId}:${callCount}` — a re-call produces a new key. */
+  /** `${queueDate}:${doctorId}:${number}:${callCount}` — a re-call or a newly issued number gives a new key. Opaque to the TV. */
   key: string;
   code: string;
   number: number;

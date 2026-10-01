@@ -52,6 +52,7 @@ const pool = {
 };
 // Fixed clock: 2026-09-30 11:00 in Tashkent.
 const clock = () => new Date("2026-09-30T06:00:00Z");
+const TODAY = "2026-09-30";
 const queueRepo = new PostgresQueueRepository(pool);
 const queueSvc = new QueueService(queueRepo, "Asia/Tashkent", clock);
 const displaysSvc = new QueueDisplaysService(new PostgresQueueDisplaysRepository(pool), queueRepo, "Asia/Tashkent", clock);
@@ -313,14 +314,21 @@ describe("public queue display endpoint", () => {
         },
       ],
       recentCalls: [
-        { key: "1101:1", code: "02", number: 2, name: "Малика Т.", room: "3", doctorName: "Юсупов Рустам", calledAt: "2026-09-30T05:55:00.000Z" },
-        { key: "1001:2", code: "К-02", number: 2, name: "Дилноза Ю.", room: "5", doctorName: "Алиева Нигора", calledAt: "2026-09-30T05:40:00.000Z" },
-        { key: "1100:1", code: "01", number: 1, name: "Бобур А.", room: "3", doctorName: "Юсупов Рустам", calledAt: "2026-09-30T05:30:00.000Z" },
-        { key: "1000:1", code: "К-01", number: 1, name: "Алишер К.", room: "5", doctorName: "Алиева Нигора", calledAt: "2026-09-30T05:10:00.000Z" },
+        { key: `${TODAY}:11:2:1`, code: "02", number: 2, name: "Малика Т.", room: "3", doctorName: "Юсупов Рустам", calledAt: "2026-09-30T05:55:00.000Z" },
+        { key: `${TODAY}:10:2:2`, code: "К-02", number: 2, name: "Дилноза Ю.", room: "5", doctorName: "Алиева Нигора", calledAt: "2026-09-30T05:40:00.000Z" },
+        { key: `${TODAY}:11:1:1`, code: "01", number: 1, name: "Бобур А.", room: "3", doctorName: "Юсупов Рустам", calledAt: "2026-09-30T05:30:00.000Z" },
+        { key: `${TODAY}:10:1:1`, code: "К-01", number: 1, name: "Алишер К.", room: "5", doctorName: "Алиева Нигора", calledAt: "2026-09-30T05:10:00.000Z" },
       ],
     });
+    // A call key is queue date, doctor, ticket number and call count; appointment ids never reach the TV.
+    for (const call of res.body.recentCalls as Array<{ key: string }>) {
+      expect(call.key).toMatch(/^\d{4}-\d{2}-\d{2}:\d+:\d+:\d+$/);
+    }
     // Nothing private leaks: no phones, surnames, patronymics, ids of patients/appointments, other clinics or yesterday.
-    for (const forbidden of ["+998", "Каримов", "Бахтиёрович", "Юсупова", "patientId", "appointmentId", "phone", "Чужой", "Рахимова", "1200:"]) {
+    for (const forbidden of [
+      "+998", "Каримов", "Бахтиёрович", "Юсупова", "patientId", "appointmentId", "phone", "Чужой", "Рахимова", "2026-09-29",
+      "1000:", "1001:", "1100:", "1101:", "1200:",
+    ]) {
       expect(res.text).not.toContain(forbidden);
     }
   });
@@ -336,9 +344,30 @@ describe("public queue display endpoint", () => {
     expect(res.body.cabinets[1]).toEqual({
       doctorId: 12, doctorName: "Рахимова Лола", specialty: "Невролог", room: null, current: null, waiting: [], waitingCount: 0,
     });
-    expect(res.body.recentCalls.map((c: { key: string }) => c.key)).toEqual(["1001:2", "1000:1"]);
+    expect(res.body.recentCalls.map((c: { key: string }) => c.key)).toEqual([`${TODAY}:10:2:2`, `${TODAY}:10:1:1`]);
     expect(res.body.recentCalls.every((c: { name: string | null }) => c.name === null)).toBe(true);
     expect(res.text).not.toContain("Алишер");
+  });
+
+  it("re-issued number is a new TV call", async () => {
+    // К-02 (appointment 1001) was already called twice. A new number resets its call count, so a key built from the
+    // appointment id and the count would repeat a key the TV has already seen, and the TV would drop the call silently.
+    const { code } = await createDisplay();
+    const seen = new Set((await tv(code)).body.recentCalls.map((c: { key: string }) => c.key));
+    // Stale ticket from an earlier day: «Выдать номер» gives a new number today (the counter is at 9 already).
+    await db.query("UPDATE appointments SET queue_date = '2026-09-29' WHERE id = 1001");
+    await db.query("INSERT INTO queue_counters (clinic_id, doctor_id, queue_date, last_number) VALUES (1, 10, $1, 9)", [TODAY]);
+    const issued = await staff("reception", "/appointments/1001/issue", "POST");
+    expect(issued.status).toBe(200);
+    expect(issued.body.entry).toMatchObject({ code: "К-10", callCount: 0 });
+    for (let i = 0; i < 2; i += 1) {
+      expect((await staff("reception", "/appointments/1001/call", "POST")).status).toBe(200);
+    }
+
+    const after = await tv(code);
+    expect(after.body.recentCalls[0]).toMatchObject({ code: "К-10", name: "Дилноза Ю." });
+    expect([...seen]).not.toContain(after.body.recentCalls[0].key);
+    expect(after.body.recentCalls[0].key).toBe(`${TODAY}:10:10:2`);
   });
 
   it("is rate limited per client IP, preferring CF-Connecting-IP", async () => {

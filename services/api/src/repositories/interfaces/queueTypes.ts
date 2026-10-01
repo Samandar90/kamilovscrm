@@ -100,7 +100,7 @@ export type QueueDisplayCabinet = {
   waitingCount: number;                                   // all entries in state "waiting"
 };
 export type QueueDisplayCall = {
-  key: string;            // `${appointmentId}:${callCount}`
+  key: string;            // `${queueDate}:${doctorId}:${number}:${callCount}` — a re-call or a newly issued number gives a new key
   code: string; number: number; name: string | null; room: string | null; doctorName: string; calledAt: string;
 };
 export type QueueDisplayState = {

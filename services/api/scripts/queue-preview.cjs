@@ -207,11 +207,16 @@ async function smokeTest(base, displays) {
   const next = await call("reception", "/api/queue/doctors/1/call-next", "POST");
   check("«Вызвать следующего» calls К-04", next.status === 200 && next.body.entry?.code === "К-04" && next.body.entry?.state === "called", next.body);
   const afterCall = await call(null, `/api/public/queue-display/${displays.hall.code}`);
-  check("TV sees the new call first with key 104:1", afterCall.body.recentCalls[0]?.code === "К-04" && afterCall.body.recentCalls[0]?.key === "104:1", afterCall.body.recentCalls[0]);
+  check("TV sees the new call first; its key is date:doctor:number:count", afterCall.body.recentCalls[0]?.code === "К-04" && /^\d{4}-\d{2}-\d{2}:1:4:1$/.test(afterCall.body.recentCalls[0]?.key ?? ""), afterCall.body.recentCalls[0]);
   const ticket = await call("reception", "/api/queue/appointments/106/ticket");
   check("ticket К-06: кабинет 3, 2 ahead", ticket.status === 200 && ticket.body.code === "К-06" && ticket.body.room === "3" && ticket.body.aheadCount === 2 && ticket.body.clinicName === "Тестовая клиника", ticket.body);
   const back = await call("reception", "/api/appointments/103", "PUT", { status: "arrived" });
   check("missed К-03 returns to the end of the queue as К-07", back.status === 200 && back.body.queueCode === "К-07", back.body);
+  // The seed already called this visit once as К-03; the new number restarts the call count, yet the TV must see a NEW key.
+  const recall = await call("reception", "/api/queue/appointments/103/call", "POST");
+  const afterReturn = await call(null, `/api/public/queue-display/${displays.hall.code}`);
+  const seenKeys = new Set([...hall.body.recentCalls, ...afterCall.body.recentCalls].map(item => item.key));
+  check("returned К-07 is announced on the TV as a new call", recall.status === 200 && afterReturn.body.recentCalls[0]?.code === "К-07" && !seenKeys.has(afterReturn.body.recentCalls[0]?.key), { recall: recall.body, latest: afterReturn.body.recentCalls[0], seen: [...seenKeys] });
   const issued = await call("reception", "/api/queue/appointments/304/issue", "POST");
   check("«Выдать номер» gives Н-03 to a visit marked «Пришёл» without a number", issued.status === 200 && issued.body.entry?.code === "Н-03" && issued.body.entry?.state === "waiting", issued.body);
   const lateIssue = await call("reception", "/api/queue/appointments/108/issue", "POST");

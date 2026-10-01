@@ -153,7 +153,7 @@ npm run build --prefix apps/web
 Стенд с вымышленными пациентами — в памяти, без `.env` и без подключения к рабочей БД:
 
 ```powershell
-node services/api/scripts/queue-preview.cjs --smoke   # самопроверка через HTTP: 22 проверки, затем выход
+node services/api/scripts/queue-preview.cjs --smoke   # самопроверка через HTTP: 23 проверки, затем выход
 node services/api/scripts/queue-preview.cjs           # стенд на http://127.0.0.1:4401, Ctrl+C — остановить
 # Во втором окне PowerShell:
 $env:VITE_API_URL='http://127.0.0.1:4401'

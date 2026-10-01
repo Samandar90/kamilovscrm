@@ -38,6 +38,14 @@ describe("createCallTracker", () => {
     expect(tracker.ingest(state("2026-09-30T06:00:31.000Z", [again, call("10:1", "2026-09-30T05:59:00.000Z")]))).toEqual([again]);
   });
 
+  it("announces the new number of a patient returned to the queue (a new key on a primed tracker)", () => {
+    const tracker = createCallTracker();
+    const missed = call("2026-09-30:10:3:1", "2026-09-30T05:50:00.000Z", "К-03");
+    tracker.ingest(state("2026-09-30T06:00:00.000Z", [missed]));
+    const returned = call("2026-09-30:10:7:1", "2026-09-30T06:00:30.000Z", "К-07");
+    expect(tracker.ingest(state("2026-09-30T06:00:31.000Z", [returned, missed]))).toEqual([returned]);
+  });
+
   it("ignores calls older than two minutes by the server clock but still remembers them", () => {
     const tracker = createCallTracker();
     tracker.ingest(state("2026-09-30T06:00:00.000Z", []));
