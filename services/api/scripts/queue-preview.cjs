@@ -1,7 +1,7 @@
 /* Local, disposable preview of the electronic queue and the TV screen. No .env, pg connection, production token or persistent database.
  * Run:     node services/api/scripts/queue-preview.cjs           → API on http://127.0.0.1:4401 until Ctrl+C
  *          node services/api/scripts/queue-preview.cjs --smoke   → HTTP self-check of the seeded day, then exit (code 0 = OK)
- * Web:     $env:VITE_API_URL='http://127.0.0.1:4401'; npm run dev --prefix apps/web -- --host 127.0.0.1 --port 5175
+ * Web:     $env:VITE_API_URL='http://127.0.0.1:4401'; npm run dev --prefix apps/web -- --host 127.0.0.1 --port 5175 --strictPort
  * Accounts (password "preview"): admin (superadmin), reception, doctor (Каримов · кабинет 3 · К), nurse (при Усмановой · кабинет 5 · У), manager.
  */
 const fs = require("node:fs");
@@ -316,7 +316,7 @@ async function main() {
   const stop = code => { process.exitCode = code; server.close(); server.closeAllConnections(); db.close().catch(() => {}); };
   console.log(`Queue preview API: http://127.0.0.1:${PORT} · clinic day ${day} (${CLINIC_TIME_ZONE}) · memory only, Ctrl+C discards data.`);
   console.log(`Accounts (password "preview"): admin, reception, doctor (Каримов · кабинет 3 · К), nurse (при Усмановой · кабинет 5 · У), manager.`);
-  console.log(`Web: $env:VITE_API_URL='http://127.0.0.1:${PORT}'; npm run dev --prefix apps/web -- --host 127.0.0.1 --port 5175`);
+  console.log(`Web: $env:VITE_API_URL='http://127.0.0.1:${PORT}'; npm run dev --prefix apps/web -- --host 127.0.0.1 --port 5175 --strictPort`);
   console.log(`TV «${displays.hall.display.name}» (all doctors, uz+ru, names): ${WEB}/tv/${displays.hall.code}`);
   console.log(`TV «${displays.corridor.display.name}» (2 doctors, ru, no names): ${WEB}/tv/${displays.corridor.code}`);
   if (SMOKE) {
