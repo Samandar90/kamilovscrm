@@ -3,7 +3,7 @@ import { act, create, type ReactTestRenderer } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { usePolling } from "./usePolling";
 
-type Snapshot = { data: string | null; error: string | null; loading: boolean; refresh: () => void };
+type Snapshot = { data: string | null; error: string | null; loading: boolean; refresh: () => Promise<void> };
 let latest: Snapshot;
 function Probe({ load }: { load: (signal: AbortSignal) => Promise<string> }) {
   latest = usePolling(load, 5000, []);
@@ -32,6 +32,46 @@ const advance = async (ms: number) => {
   await act(async () => {
     await vi.advanceTimersByTimeAsync(ms);
   });
+};
+/** A promise the test resolves or rejects by hand. */
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise<T>((onResolve, onReject) => {
+    resolve = onResolve;
+    reject = onReject;
+  });
+  return { promise, resolve, reject };
+}
+/** Calls refresh() inside act and reports whether the promise it returned has settled. */
+const startRefresh = async () => {
+  const state = { settled: false };
+  await act(async () => {
+    void Promise.resolve(latest.refresh()).then(() => {
+      state.settled = true;
+    });
+  });
+  return state;
+};
+/** A stand-in for `document` with a switchable `hidden` flag and real visibilitychange listeners. */
+const fakeDocument = (hidden: boolean) => {
+  const listeners = new Set<() => void>();
+  const doc = {
+    hidden,
+    addEventListener: (type: string, listener: () => void) => {
+      if (type === "visibilitychange") listeners.add(listener);
+    },
+    removeEventListener: (type: string, listener: () => void) => {
+      if (type === "visibilitychange") listeners.delete(listener);
+    },
+    listeners,
+    show: async () => {
+      doc.hidden = false;
+      await act(async () => listeners.forEach((listener) => listener()));
+    },
+  };
+  vi.stubGlobal("document", doc);
+  return doc;
 };
 
 describe("usePolling", () => {
@@ -74,5 +114,71 @@ describe("usePolling", () => {
     view = null;
     await advance(20_000);
     expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("refresh() settles only after the refreshed answer is applied", async () => {
+    const reload = deferred<string>();
+    const load = vi.fn<(signal: AbortSignal) => Promise<string>>().mockResolvedValueOnce("first").mockReturnValueOnce(reload.promise);
+    await mount(load);
+    expect(latest.data).toBe("first");
+
+    const refreshed = await startRefresh();
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(refreshed.settled).toBe(false);
+
+    await act(async () => reload.resolve("second"));
+    expect(refreshed.settled).toBe(true);
+    expect(latest.data).toBe("second");
+  });
+
+  it("refresh() also settles after a failed answer, keeping the last data", async () => {
+    const reload = deferred<string>();
+    const load = vi.fn<(signal: AbortSignal) => Promise<string>>().mockResolvedValueOnce("first").mockReturnValueOnce(reload.promise);
+    await mount(load);
+
+    const refreshed = await startRefresh();
+    expect(refreshed.settled).toBe(false);
+
+    await act(async () => reload.reject(new Error("offline")));
+    expect(refreshed.settled).toBe(true);
+    expect(latest).toMatchObject({ data: "first", error: "offline", loading: false });
+  });
+
+  it("refresh() settles at once while the tab is hidden, without loading", async () => {
+    fakeDocument(true);
+    const load = vi.fn(async () => "answer");
+    await mount(load);
+    expect(load).not.toHaveBeenCalled();
+
+    const refreshed = await startRefresh();
+    expect(refreshed.settled).toBe(true);
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("refresh() settles on unmount when the answer never comes", async () => {
+    const load = vi.fn<(signal: AbortSignal) => Promise<string>>().mockResolvedValueOnce("first").mockReturnValueOnce(new Promise<string>(() => undefined));
+    await mount(load);
+
+    const refreshed = await startRefresh();
+    expect(refreshed.settled).toBe(false);
+
+    await act(async () => view!.unmount());
+    view = null;
+    expect(refreshed.settled).toBe(true);
+  });
+
+  it("polls at once when the hidden tab becomes visible again, and stops listening on unmount", async () => {
+    const doc = fakeDocument(true);
+    const load = vi.fn(async () => "answer");
+    await mount(load);
+    expect(load).not.toHaveBeenCalled();
+
+    await doc.show();
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(latest).toMatchObject({ data: "answer", loading: false });
+
+    act(() => view!.unmount());
+    view = null;
+    expect(doc.listeners.size).toBe(0);
   });
 });

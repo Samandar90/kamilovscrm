@@ -81,6 +81,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   if (view) act(() => view.unmount());
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -167,6 +168,69 @@ describe("staff queue page", () => {
     expect(view.root.findAllByProps({ id: "displays-panel" })).toHaveLength(0);
     await click(buttons("Экраны")[0]);
     expect(view.root.findAllByProps({ id: "displays-panel" })).toHaveLength(1);
+  });
+
+  describe("action lock", () => {
+    const queueWith = (waiting: QueueEntry[]): QueueToday => ({ ...today, doctors: [{ ...today.doctors[0], waiting }] });
+    const beforeCall = queueWith([entry(16, 6, "waiting", "Karimova Malika"), entry(17, 7, "waiting", "Toshev Jasur")]);
+    const afterCall = queueWith([entry(16, 6, "called", "Karimova Malika"), entry(17, 7, "waiting", "Toshev Jasur")]);
+    const disabledStates = () => actionButtons().map((button) => button.props.disabled === true);
+    beforeEach(() => {
+      mocks.callNext.mockResolvedValue({ entry: entry(16, 6, "called", "Karimova Malika") });
+    });
+
+    it("keeps every action locked until the queue is reloaded after an action", async () => {
+      let finishReload!: (value: QueueToday) => void;
+      mocks.today.mockResolvedValueOnce(beforeCall).mockReturnValueOnce(new Promise<QueueToday>((resolve) => (finishReload = resolve)));
+      await renderAs("reception");
+
+      await click(buttons("Вызвать следующего · К-06")[0]);
+      expect(mocks.callNext).toHaveBeenCalledTimes(1);
+      expect(mocks.today).toHaveBeenCalledTimes(2);
+      // The answer is in, the reload is not: the screen still shows К-06 as next, and nothing may act on it.
+      expect(disabledStates().length).toBeGreaterThan(0);
+      expect(disabledStates().every(Boolean)).toBe(true);
+
+      // A double-click (React does not stop a direct onClick on a disabled button) must not call a second patient.
+      await click(buttons("Вызвать следующего · К-06")[0]);
+      await click(buttons("Вызвать")[0]);
+      expect(mocks.callNext).toHaveBeenCalledTimes(1);
+      expect(mocks.call).not.toHaveBeenCalled();
+
+      await act(async () => {
+        finishReload(afterCall);
+        await settle();
+      });
+      expect(disabledStates().some(Boolean)).toBe(false);
+      expect(buttons("Вызвать следующего · К-07")).toHaveLength(1);
+    });
+
+    it("unlocks after 8 s when the reload stalls", async () => {
+      vi.useFakeTimers();
+      vi.stubGlobal("window", { setInterval, clearInterval, setTimeout, clearTimeout, confirm: mocks.confirm });
+      mocks.today.mockResolvedValueOnce(beforeCall).mockReturnValueOnce(new Promise<QueueToday>(() => undefined));
+      mocks.user = { id: 1, username: "user", role: "reception", isActive: true, createdAt: "2026-01-01T00:00:00Z" };
+      await act(async () => {
+        view = create(<QueuePage />);
+        await vi.advanceTimersByTimeAsync(0);
+      });
+
+      await act(async () => {
+        buttons("Вызвать следующего · К-06")[0].props.onClick();
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(mocks.callNext).toHaveBeenCalledTimes(1);
+      expect(disabledStates().every(Boolean)).toBe(true);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(7_999);
+      });
+      expect(disabledStates().every(Boolean)).toBe(true);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(disabledStates().some(Boolean)).toBe(false);
+    });
   });
 
   it("shows the empty state when no doctor has a queue today", async () => {

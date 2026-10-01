@@ -19,6 +19,8 @@ import { usePolling } from "../hooks/usePolling";
 import { entryLabel, waitMinutes, type QueueAction } from "../utils/queueView";
 
 const QUEUE_POLL_MS = 5000;
+/** Longest wait for the reload after an action; a stalled /today must not lock the page for good. */
+const ACTION_REFRESH_WAIT_MS = 8_000;
 
 type ServerAction = Exclude<QueueAction, { kind: "openWorkspace" }>;
 
@@ -41,6 +43,8 @@ export const QueuePage: React.FC = () => {
   // Client clock minus server clock when this snapshot arrived (see waitMinutes).
   const skewMs = React.useMemo(() => (data ? Date.now() - Date.parse(data.serverTime) : 0), [data]);
   const [pending, setPending] = React.useState(false);
+  // Synchronous twin of `pending`: a second click can arrive before React re-renders the disabled buttons.
+  const pendingRef = React.useRef(false);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [showDisplays, setShowDisplays] = React.useState(false);
@@ -84,7 +88,7 @@ export const QueuePage: React.FC = () => {
 
   const run = async (action: QueueAction) => {
     // requestJson treats "" as "no token" (it would send no Authorization header), so never call without one.
-    if (pending || !token) return;
+    if (pendingRef.current || !token) return;
     if (action.kind === "openWorkspace") {
       navigate(`/doctor-workspace/${action.entry.appointmentId}`);
       return;
@@ -95,6 +99,7 @@ export const QueuePage: React.FC = () => {
     if (action.kind === "complete" && !window.confirm(t("queue.actions.confirmComplete", { code: entryLabel(action.entry) }))) {
       return;
     }
+    pendingRef.current = true;
     setPending(true);
     setActionError(null);
     try {
@@ -102,9 +107,19 @@ export const QueuePage: React.FC = () => {
     } catch (requestError) {
       setActionError(requestError instanceof Error ? requestError.message : t("queue.errors.actionFailed"));
     } finally {
-      setPending(false);
+      // Stay locked until the reloaded queue is on screen: the old snapshot still offers the patient just called
+      // («Вызвать следующего · К-06»), so a quick second press would call the next patient or re-call this one.
       // Refresh after a failure too: it usually means somebody else already changed this patient.
-      refresh();
+      let waitTimer: number | undefined;
+      await Promise.race([
+        refresh(),
+        new Promise<void>((resolve) => {
+          waitTimer = window.setTimeout(resolve, ACTION_REFRESH_WAIT_MS);
+        }),
+      ]);
+      window.clearTimeout(waitTimer);
+      pendingRef.current = false;
+      setPending(false);
     }
   };
 
@@ -131,7 +146,7 @@ export const QueuePage: React.FC = () => {
           ) : null}
           <button
             type="button"
-            onClick={refresh}
+            onClick={() => void refresh()}
             aria-label={t("common.actions.refresh")}
             className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
           >
