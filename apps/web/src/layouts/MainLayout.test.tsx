@@ -53,3 +53,20 @@ describe("page title in the header", () => {
     expect(titleAt("/my-services", "doctor")).toBe("t:pages.myServices");
   });
 });
+
+describe("room for the bottom bar on a phone", () => {
+  const mainClassAt = (path: string, role: UserRole) => {
+    titleAt(path, role);
+    return String(view.root.findByType("main").props.className).split(" ");
+  };
+
+  it("is kept under the page of clinic staff", () => {
+    expect(mainClassAt("/leads", "operator")).toContain("max-md:pb-16");
+  });
+  it("is not kept for an external account: the bar is not rendered for it", () => {
+    expect(mainClassAt("/my-leads", "marketer")).not.toContain("max-md:pb-16");
+  });
+  it("is not kept on the doctor's workspace screen, as before", () => {
+    expect(mainClassAt("/doctor-workspace/15", "doctor")).not.toContain("max-md:pb-16");
+  });
+});

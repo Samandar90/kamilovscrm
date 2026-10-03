@@ -3,7 +3,7 @@ import { useLocation, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Sidebar } from "../components/Sidebar";
 import { useAuth } from "../auth/AuthContext";
-import { ROLE_LABEL_KEYS } from "../auth/roleGroups";
+import { ROLE_LABEL_KEYS, isExternalRole } from "../auth/roleGroups";
 import { Button } from "../ui/Button";
 import { cn } from "../ui/utils/cn";
 import { MobileBottomNav } from "../shared/ui/MobileBottomNav";
@@ -61,6 +61,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const brandName = clinic.name || BRANDING.productName;
   const lockMainScroll = location.pathname === "/ai-assistant";
   const isDoctorWorkspaceScreen = location.pathname.startsWith("/doctor-workspace/");
+  // MobileBottomNav renders nothing for an external role: no room is kept for it under the page either.
+  const hasMobileNav = !isDoctorWorkspaceScreen && !isExternalRole(user?.role);
 
   React.useEffect(() => {
     document.title = `${brandName} — ${title}`;
@@ -120,13 +122,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <main
           className={cn(
             "min-h-0 flex-1 bg-[#f8fafc]",
-            !isDoctorWorkspaceScreen && "max-md:pb-16",
+            hasMobileNav && "max-md:pb-16",
             lockMainScroll ? "overflow-hidden" : "overflow-auto"
           )}
         >
           {children}
         </main>
-        {!isDoctorWorkspaceScreen ? <MobileBottomNav /> : null}
+        {hasMobileNav ? <MobileBottomNav /> : null}
       </div>
       <ChangePasswordModal open={showChangePassword} onClose={() => setShowChangePassword(false)} />
     </div>
