@@ -457,4 +457,11 @@ describe("texts of the sheet read statuses", () => {
     expect((uzbek as string).trim()).not.toBe("");
     expect(uzbek).not.toBe(russian);
   });
+
+  it("too_large names every limit of the reader: 5 MB, 5000 leads, 20 000 lines", () => {
+    const russian = textAt(ru, LEAD_SYNC_STATUS_KEYS.too_large) as string;
+    const uzbek = textAt(uz, LEAD_SYNC_STATUS_KEYS.too_large) as string;
+    for (const part of ["5 МБ", "5000 лидов", "20 000 строк"]) expect(russian).toContain(part);
+    for (const part of ["5 MB", "5000 lid", "20 000 qator"]) expect(uzbek).toContain(part);
+  });
 });

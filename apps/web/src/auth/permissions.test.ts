@@ -148,4 +148,10 @@ describe("role labels", () => {
       expect((text as string).trim()).not.toBe("");
     }
   });
+
+  it("names the accountant and the receptionist as roles, not as a section of the clinic", () => {
+    // The role dropdown of «Пользователи» shows these texts: «Финансы» / «Moliya» and «Reglamenta» are not role names.
+    expect([textAt(ru, ROLE_LABEL_KEYS.accountant), textAt(uz, ROLE_LABEL_KEYS.accountant)]).toEqual(["Бухгалтер", "Buxgalter"]);
+    expect([textAt(ru, ROLE_LABEL_KEYS.reception), textAt(uz, ROLE_LABEL_KEYS.reception)]).toEqual(["Регистратор", "Registrator"]);
+  });
 });
