@@ -1,9 +1,10 @@
 /**
  * Spoken announcement = ordered list of clip ids; each id is a file `public/queue-voice/<lang>/<id>.mp3`
  * (texts live in voiceClips.json and are voiced once by scripts/generate-queue-voice.mjs).
- *   uz: "Navbat raqami <N>. Xona raqami <R>."      fallback: "Navbat raqami <N>. Qabulga marhamat."
- *   ru: "Номер <N>. Пройдите в кабинет номер <R>."  fallback: "Номер <N>. Пройдите на приём."
- * Numbers above 999 are never spoken (chime only); the doctor's queue letter is never spoken.
+ *   ru: "Номер <N>."  then the doctor sentence "Пройдите к врачу <ФИО>." spoken by the browser's own voice
+ *       (doctorSpeech.ts, speechVoice.ts); without it (no Russian browser voice, no doctor name): "Номер <N>. Пройдите на приём."
+ *   uz (not played now): "Navbat raqami <N>."  fallback: "Navbat raqami <N>. Qabulga marhamat."
+ * Numbers above 999 are never spoken (chime only); the doctor's queue letter and the room are never spoken.
  */
 export type VoiceLang = "uz" | "ru";
 
@@ -42,26 +43,15 @@ export function numberClipIds(lang: VoiceLang, n: number): string[] | null {
   return ids;
 }
 
-/** Room text → number to speak: only plain "1".."999" (no leading zero, no letters); anything else → null. */
-function spokenRoomNumber(room: string | null): number | null {
-  const text = (room ?? "").trim();
-  return /^[1-9][0-9]{0,2}$/.test(text) ? Number(text) : null;
-}
-
-/** Full announcement for one language; [] when the queue number cannot be spoken (> 999). */
-export function announcementClipIds(lang: VoiceLang, queueNumber: number, room: string | null): string[] {
+/**
+ * Full announcement clips for one language; [] when the queue number cannot be spoken (> 999).
+ * `doctorSpoken` = the doctor sentence follows from the browser voice, so no closing phrase is needed.
+ */
+export function announcementClipIds(lang: VoiceLang, queueNumber: number, doctorSpoken: boolean): string[] {
   const numberIds = numberClipIds(lang, queueNumber);
   if (!numberIds) return [];
-  const roomNumber = spokenRoomNumber(room);
-  const roomIds = roomNumber === null ? null : numberClipIds(lang, roomNumber);
-  if (lang === "ru") {
-    return roomIds
-      ? ["nomer", ...numberIds, "proydite_v_kabinet_nomer", ...roomIds]
-      : ["nomer", ...numberIds, "proydite_na_priyom"];
-  }
-  return roomIds
-    ? ["navbat_raqami", ...numberIds, "xona_raqami", ...roomIds]
-    : ["navbat_raqami", ...numberIds, "qabulga_marhamat"];
+  if (lang === "ru") return doctorSpoken ? ["nomer", ...numberIds] : ["nomer", ...numberIds, "proydite_na_priyom"];
+  return doctorSpoken ? ["navbat_raqami", ...numberIds] : ["navbat_raqami", ...numberIds, "qabulga_marhamat"];
 }
 
 /**

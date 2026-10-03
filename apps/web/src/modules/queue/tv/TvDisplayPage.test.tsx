@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   display: { state: null, error: null, offline: false } as DisplayResult,
   codes: [] as string[],
   announcer: { unlock: vi.fn(), isUnlocked: vi.fn(), announce: vi.fn(), preload: vi.fn() },
+  voice: { isAvailable: vi.fn(), speak: vi.fn() },
 }));
 vi.mock("react-router-dom", () => ({ useParams: () => ({ code: "k7m2q-9xr4p" }) }));
 vi.mock("./useQueueDisplay", () => ({
@@ -17,6 +18,7 @@ vi.mock("./useQueueDisplay", () => ({
   },
 }));
 vi.mock("./announcer", () => ({ createAnnouncer: () => mocks.announcer }));
+vi.mock("./speechVoice", () => ({ createSpeechVoice: () => mocks.voice }));
 
 import { TvDisplayPage } from "./TvDisplayPage";
 
@@ -58,6 +60,8 @@ beforeEach(() => {
   mocks.announcer.isUnlocked.mockReset().mockReturnValue(true);
   mocks.announcer.announce.mockReset().mockResolvedValue(undefined);
   mocks.announcer.preload.mockReset().mockResolvedValue(undefined);
+  mocks.voice.isAvailable.mockReset().mockResolvedValue(true);
+  mocks.voice.speak.mockReset().mockResolvedValue(undefined);
   requestFullscreen.mockClear();
   wakeLockRequest.mockClear();
   reload.mockClear();
@@ -190,11 +194,82 @@ describe("TvDisplayPage", () => {
     expect(view!.root.findByProps({ className: "qtv-overlay-code" }).children).toEqual(["К-06"]);
     expect(html()).toContain("Приглашается");
     expect(html()).toContain("→ Кабинет 3");
-    expect(mocks.announcer.announce).toHaveBeenCalledWith(
-      [["nomer", "6", "proydite_v_kabinet_nomer", "3"]],
-      ["ru"],
-      { signal: expect.any(AbortSignal) },
-    );
+    // «Номер шесть.» from the clips; the doctor sentence follows from the browser voice after a short pause
+    expect(mocks.announcer.announce).toHaveBeenCalledWith([["nomer", "6"]], ["ru"], { signal: expect.any(AbortSignal) });
+  });
+
+  describe("the doctor sentence", () => {
+    const start = async () => {
+      vi.useFakeTimers({ now: new Date("2026-09-30T06:00:00.000Z") });
+      await render();
+      await act(async () => {
+        startButton()[0].props.onClick();
+      });
+    };
+    const call = async (patch: Partial<QueueDisplayCall> = {}) => {
+      const fresh: QueueDisplayCall = {
+        key: "15:1", code: "К-06", number: 6, name: "Мадина А.", room: "3", doctorName: "Каримов Бахтиёр", calledAt: "2026-09-30T06:00:01.000Z", ...patch,
+      };
+      mocks.display = { state: sample("2026-09-30T06:00:02.000Z", [fresh, oldCall]), error: null, offline: false };
+      await rerender();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+    };
+
+    it("is spoken after the number, in the dative case, by the browser voice", async () => {
+      await start();
+      await call();
+      expect(mocks.voice.speak).toHaveBeenCalledTimes(1);
+      expect(mocks.voice.speak).toHaveBeenCalledWith("Пройдите к врачу Каримову Бахтиёру.", { signal: expect.any(AbortSignal) });
+      expect(mocks.announcer.announce.mock.invocationCallOrder[0]).toBeLessThan(mocks.voice.speak.mock.invocationCallOrder[0]);
+    });
+
+    it("is replaced by «Пройдите на приём.» when the browser has no Russian voice", async () => {
+      mocks.voice.isAvailable.mockResolvedValue(false);
+      await start();
+      await call();
+      expect(mocks.announcer.announce).toHaveBeenCalledWith([["nomer", "6", "proydite_na_priyom"]], ["ru"], { signal: expect.any(AbortSignal) });
+      expect(mocks.voice.speak).not.toHaveBeenCalled();
+    });
+
+    it("is replaced by «Пройдите на приём.» when the doctor has no name", async () => {
+      await start();
+      await call({ doctorName: "" });
+      expect(mocks.announcer.announce).toHaveBeenCalledWith([["nomer", "6", "proydite_na_priyom"]], ["ru"], { signal: expect.any(AbortSignal) });
+      expect(mocks.voice.speak).not.toHaveBeenCalled();
+    });
+
+    it("is not spoken for a queue number above 999 (chime only)", async () => {
+      await start();
+      await call({ number: 1000, code: "К-1000" });
+      expect(mocks.announcer.announce).toHaveBeenCalledWith([[]], ["ru"], { signal: expect.any(AbortSignal) });
+      expect(mocks.voice.speak).not.toHaveBeenCalled();
+    });
+
+    it("is not spoken when the screen has the voice turned off", async () => {
+      const quiet = sample("2026-09-30T06:00:00.000Z", [oldCall]);
+      mocks.display = { state: { ...quiet, display: { ...quiet.display, voiceEnabled: false } }, error: null, offline: false };
+      await start();
+      const fresh: QueueDisplayCall = { ...oldCall, key: "12:2", calledAt: "2026-09-30T06:00:01.000Z" };
+      const next = sample("2026-09-30T06:00:02.000Z", [fresh, oldCall]);
+      mocks.display = { state: { ...next, display: { ...next.display, voiceEnabled: false } }, error: null, offline: false };
+      await rerender();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+      expect(mocks.voice.speak).not.toHaveBeenCalled();
+    });
+
+    it("is cut off together with the clips when the announcement is cancelled", async () => {
+      mocks.announcer.announce.mockImplementation(() => new Promise<void>(() => undefined));
+      await start();
+      await call();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(20_000);
+      });
+      expect(mocks.voice.speak).not.toHaveBeenCalled();
+    });
   });
 
   it("cancels an announcement that is still pending after 20 s and moves on to the next call", async () => {
@@ -229,6 +304,7 @@ describe("TvDisplayPage", () => {
     });
     expect(mocks.announcer.preload).toHaveBeenCalledTimes(1);
     expect(mocks.announcer.preload).toHaveBeenLastCalledWith(["ru"]);
+    expect(mocks.voice.isAvailable).toHaveBeenCalledTimes(1); // the browser's voices load before the first call
     mocks.display = { state: sample("2026-09-30T06:00:02.000Z", [oldCall]), error: null, offline: false };
     await rerender();
     expect(mocks.announcer.preload).toHaveBeenCalledTimes(1); // a new poll is no reason to preload again
