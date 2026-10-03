@@ -56,6 +56,10 @@ export class UsersService {
     if (_auth.role !== "superadmin") {
       throw new ApiError(403, "Only superadmin can create users");
     }
+    // Клиника нового пользователя — всегда клиника создающего (из токена), а не из тела запроса.
+    if (data.clinicId !== undefined && data.clinicId !== _auth.clinicId) {
+      throw new ApiError(403, "Нельзя создать пользователя в другой клинике");
+    }
     if (!isRoleValid(data.role)) {
       throw new ApiError(400, "Invalid user role");
     }
@@ -105,7 +109,7 @@ export class UsersService {
       fullName: data.fullName,
       role: data.role,
       isActive: data.isActive ?? true,
-      clinicId: data.clinicId ?? 1,
+      clinicId: _auth.clinicId,
       doctorId: data.role === "doctor" ? data.doctorId! : null,
     });
 

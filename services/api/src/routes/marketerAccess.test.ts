@@ -21,6 +21,8 @@ vi.mock("@/lib/openai", () => ({ hasOpenAI: false, openai: null }));
 import { rootRouter } from "./index";
 import { errorHandler } from "../middleware/errorHandler";
 import { signAccessToken } from "../utils/jwt";
+import { PostgresUsersRepository } from "../repositories/postgres/PostgresUsersRepository";
+import { runWithClinicContext } from "../tenancy/clinicContext";
 import type { UserRole } from "../auth/permissions";
 
 const db = new PGlite();
@@ -70,7 +72,7 @@ const clinicCount = async () => Number((await db.query<{ n: number }>("SELECT co
 beforeAll(async () => {
   await db.exec(`CREATE TABLE clinics(id bigserial primary key, name text not null, slug text, logo_url text, primary_color text,
       subscription_status text, subscription_ends_at timestamptz);
-    CREATE TABLE users(id bigint primary key, clinic_id bigint not null, username text not null, password_hash text not null default 'x',
+    CREATE TABLE users(id bigserial primary key, clinic_id bigint not null, username text not null, password_hash text not null default 'x',
       full_name text, role text not null, is_active boolean default true, is_platform_admin boolean not null default false,
       doctor_id bigint, last_login_at timestamptz, failed_login_attempts integer default 0, locked_until timestamptz,
       created_at timestamptz not null default now(), updated_at timestamptz default now(), deleted_at timestamptz);`);
@@ -96,8 +98,11 @@ beforeEach(async () => {
       (2, 1, 'reception', 'Ресепшен', 'reception', FALSE),
       (3, 1, 'marketer', 'Таргетолог', 'marketer', FALSE),
       (4, 2, 'clinicAdmin', 'Админ второй клиники', 'superadmin', FALSE),
-      (5, 2, 'foreignMarketer', 'Чужой таргетолог', 'marketer', FALSE);`);
+      (5, 2, 'foreignMarketer', 'Чужой таргетолог', 'marketer', FALSE);
+    SELECT setval(pg_get_serial_sequence('users', 'id'), 100);`);
 });
+const clinicOf = async (username: string) =>
+  (await db.query<{ clinic_id: number }>("SELECT clinic_id FROM users WHERE username = $1", [username])).rows.map((row) => Number(row.clinic_id));
 
 describe("POST /api/clinics", () => {
   it("is open to the platform admin only", async () => {
@@ -111,6 +116,33 @@ describe("POST /api/clinics", () => {
     expect(created.status).toBe(201);
     expect(created.body).toMatchObject({ name: "Новая клиника", slug: "new-clinic" });
     expect(await clinicCount()).toBe(3);
+  });
+});
+
+describe("clinic of a new user", () => {
+  const body = { username: "target2", password: "secret1", full_name: "Новый таргетолог", role: "marketer" };
+
+  it("is the creator's clinic, not clinic 1", async () => {
+    const created = await as("clinicAdmin", "/users", "POST", body);
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({ username: "target2", role: "marketer", clinicId: 2, doctorId: null });
+    expect(await clinicOf("target2")).toEqual([2]);
+  });
+
+  it("cannot be chosen in the request body", async () => {
+    expect((await as("clinicAdmin", "/users", "POST", { ...body, clinic_id: 1 })).status).toBe(403);
+    expect(await clinicOf("target2")).toEqual([]);
+    expect((await as("clinicAdmin", "/users", "POST", { ...body, clinic_id: 2 })).status).toBe(201);
+    expect(await clinicOf("target2")).toEqual([2]);
+  });
+
+  it("falls back to the request's clinic in the repository and never to clinic 1", async () => {
+    const repository = new PostgresUsersRepository();
+    const data = { username: "direct", password: "hash", fullName: "Напрямую", role: "marketer" as const };
+    const created = await runWithClinicContext(2, () => repository.create(data));
+    expect(created.clinicId).toBe(2);
+    await expect(repository.create({ ...data, username: "nocontext" })).rejects.toMatchObject({ status: 401 });
+    expect(await clinicOf("nocontext")).toEqual([]);
   });
 });
 
