@@ -1,10 +1,18 @@
 import React from "react";
 import { authApi } from "../api/authApi";
+import { HttpError } from "../api/http";
 import { clearImpersonation } from "./impersonation";
 import type { PublicUser } from "./types";
 
 const TOKEN_KEY = "crm_access_token";
 const REMEMBER_KEY = "crm_remember_me";
+/** Pauses before asking again who the user is, when the API gave no answer at start; the last one repeats. */
+export const BOOTSTRAP_RETRY_DELAYS_MS = [2000, 5000, 10000];
+/** What the gateway in front of the API answers while the API restarts. */
+const GATEWAY_STATUSES = new Set([502, 503, 504]);
+
+/** No answer at all, or the gateway answering in the API's place: neither says anything about the token. */
+const isNoAnswer = (error: unknown): boolean => !(error instanceof HttpError) || GATEWAY_STATUSES.has(error.status);
 
 type AuthState = {
   token: string | null;
@@ -60,7 +68,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setState((prev) => ({ ...prev, error: null }));
   }, []);
 
+  const mounted = React.useRef(false);
+  const bootstrapRetry = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const unansweredBootstraps = React.useRef(0);
+
   const login = React.useCallback(async (username: string, password: string, rememberMe = false) => {
+    clearTimeout(bootstrapRetry.current);
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
       const response = await authApi.login({ username, password });
@@ -99,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const logout = React.useCallback(async () => {
+    clearTimeout(bootstrapRetry.current);
     const currentToken = state.token;
     try {
       if (currentToken) {
@@ -122,10 +136,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [state.token]);
 
   const bootstrapAuth = React.useCallback(async () => {
+    clearTimeout(bootstrapRetry.current);
     const localToken = localStorage.getItem(TOKEN_KEY);
     const sessionToken = sessionStorage.getItem(TOKEN_KEY);
     const storedToken = localToken ?? sessionToken;
     if (!storedToken) {
+      unansweredBootstraps.current = 0;
       setState({
         token: null,
         user: null,
@@ -136,9 +152,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    // While the API stays silent the reason shown on the loading screen stays too.
+    setState((prev) => ({ ...prev, isLoading: true, error: unansweredBootstraps.current > 0 ? prev.error : null }));
     try {
       const user = await authApi.getMe(storedToken);
+      unansweredBootstraps.current = 0;
       setState({
         token: storedToken,
         user,
@@ -146,7 +164,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         isLoading: false,
         error: null,
       });
-    } catch (_error) {
+    } catch (error) {
+      if (isNoAnswer(error)) {
+        // The token may be perfectly good: a page that loads while the API restarts (a tab reloading to a new
+        // version does) would otherwise sign the user out. Keep the token, stay in the loading state and ask again.
+        if (!mounted.current) return;
+        // The loading screen shows this text, so that a long wait does not look like a frozen page.
+        setState((prev) => ({ ...prev, error: error instanceof Error ? error.message : null }));
+        const delays = BOOTSTRAP_RETRY_DELAYS_MS;
+        const delay = delays[Math.min(unansweredBootstraps.current, delays.length - 1)];
+        unansweredBootstraps.current += 1;
+        bootstrapRetry.current = setTimeout(() => void bootstrapAuth(), delay);
+        return;
+      }
+      unansweredBootstraps.current = 0;
       localStorage.removeItem(TOKEN_KEY);
       sessionStorage.removeItem(TOKEN_KEY);
       setState({
@@ -160,7 +191,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   React.useEffect(() => {
+    mounted.current = true;
     void bootstrapAuth();
+    return () => {
+      mounted.current = false;
+      clearTimeout(bootstrapRetry.current);
+    };
   }, [bootstrapAuth]);
 
   const value = React.useMemo<AuthContextValue>(

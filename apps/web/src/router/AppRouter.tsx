@@ -17,8 +17,9 @@ import { LandingPage } from "../modules/landing/LandingPage";
 import { UsersPage } from "../modules/users/pages/UsersPage";
 import { AttendancePage } from "../modules/attendance/pages/AttendancePage";
 import { PageLoader } from "../shared/ui/PageLoader";
-const CallCenterPage = React.lazy(() => import("../modules/call-center/pages/CallCenterPage").then((module) => ({ default: module.CallCenterPage })));
-const QueuePage = React.lazy(() => import("../modules/queue/pages/QueuePage").then((module) => ({ default: module.QueuePage })));
+import { LazyPageBoundary, lazyPage } from "../modules/app-update/lazyPage";
+const CallCenterPage = lazyPage(() => import("../modules/call-center/pages/CallCenterPage").then((module) => ({ default: module.CallCenterPage })));
+const QueuePage = lazyPage(() => import("../modules/queue/pages/QueuePage").then((module) => ({ default: module.QueuePage })));
 import { ServicesPage } from "../modules/services/pages/ServicesPage";
 import { DoctorsPage } from "../modules/doctors/pages/DoctorsPage";
 import { LoginPage } from "../modules/auth/pages/LoginPage";
@@ -195,7 +196,7 @@ export const AppRouter: React.FC = () => {
           path="/call-center"
           element={
             <RoleGuard roles={CALL_CENTER_ROLES}>
-              <React.Suspense fallback={<PageLoader />}><CallCenterPage /></React.Suspense>
+              <LazyPageBoundary><React.Suspense fallback={<PageLoader />}><CallCenterPage /></React.Suspense></LazyPageBoundary>
             </RoleGuard>
           }
         />
@@ -203,7 +204,7 @@ export const AppRouter: React.FC = () => {
           path="/queue"
           element={
             <RoleGuard roles={QUEUE_ROLES}>
-              <React.Suspense fallback={<PageLoader />}><QueuePage /></React.Suspense>
+              <LazyPageBoundary><React.Suspense fallback={<PageLoader />}><QueuePage /></React.Suspense></LazyPageBoundary>
             </RoleGuard>
           }
         />

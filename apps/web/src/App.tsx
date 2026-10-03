@@ -2,12 +2,14 @@ import React from "react";
 import { useLocation } from "react-router-dom";
 import { AppRouter } from "./router/AppRouter";
 import { AuthProvider } from "./auth/AuthContext";
+import { AppUpdateWatcher } from "./modules/app-update/AppUpdateWatcher";
 import { TvErrorBoundary } from "./modules/queue/tv/TvErrorBoundary";
 import { isTvPath } from "./modules/queue/tv/tvPath";
 
 // Public TV screen (/tv, /tv/:code): rendered outside AuthProvider so a stale staff token in the TV browser can never
 // redirect it to /login, and lazy-loaded so its audio code stays out of the staff bundle. The boundary turns a failed
-// chunk load or a render crash into a notice plus a reload instead of a black screen.
+// chunk load or a render crash into a notice plus a reload instead of a black screen. The TV picks up a new version
+// with its nightly reload; AppUpdateWatcher is for staff tabs only.
 const TvApp = React.lazy(() => import("./modules/queue/tv/TvApp").then((module) => ({ default: module.TvApp })));
 
 export default function App() {
@@ -23,6 +25,7 @@ export default function App() {
   }
   return (
     <AuthProvider>
+      <AppUpdateWatcher />
       <AppRouter />
     </AuthProvider>
   );

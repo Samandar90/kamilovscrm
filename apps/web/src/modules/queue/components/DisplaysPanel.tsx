@@ -150,7 +150,7 @@ export function DisplaysPanel({ onClose }: { onClose: () => void }) {
       </header>
 
       {revealed ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4" role="status" aria-live="polite">
+        <div data-reload-hold className="rounded-xl border border-emerald-200 bg-emerald-50 p-4" role="status" aria-live="polite">
           <p className="text-sm font-semibold text-emerald-900">{t("queue.displays.codeTitle", { name: revealed.name })}</p>
           <p className="mt-2 font-mono text-3xl font-bold tracking-[0.18em] text-slate-900">{revealed.code}</p>
           <p className="mt-2 text-xs text-emerald-900/80">{t("queue.displays.codeHint")}</p>

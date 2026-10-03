@@ -2109,5 +2109,10 @@
         "saveFailed": "Ekranni saqlab bo'lmadi"
       }
     }
+  },
+  "appUpdate": {
+    "available": "Yangi versiya mavjud",
+    "unsavedConfirm": "Sahifada saqlanmagan ma'lumotlar bor. Sahifa hozir yangilansinmi?",
+    "pageLoadFailed": "Sahifani yuklab bo'lmadi. Internetni tekshirib, sahifani yangilang."
   }
 }

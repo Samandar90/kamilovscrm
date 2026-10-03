@@ -1064,7 +1064,7 @@ export const AppointmentsPage: React.FC = () => {
           </div>
         </div>
 
-        <SectionCard className="hidden p-4 md:block">
+        <SectionCard className="hidden p-4 md:block" data-reload-ignore>
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#64748b]">{t("appointments.date")}</label>

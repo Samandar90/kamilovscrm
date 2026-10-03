@@ -900,6 +900,7 @@ export const CashDeskPage: React.FC = () => {
                   <label className="text-xs text-[#64748b]">
                     {t("billing.day")}
                     <input
+                      data-reload-ignore
                       type="date"
                       className="ml-2 rounded-xl border border-[#e2e8f0] bg-white px-2.5 py-1.5 text-sm text-[#334155] shadow-sm"
                       value={customDay}
