@@ -81,7 +81,7 @@ export const aiAssistantService = {
   },
 
   insights: async (): Promise<AIInsightsResponse> => {
-    const data = await requestJson<AIInsightsResponse>("/api/ai/insights");
+    const data = await requestJson<AIInsightsResponse>("/api/ai/insights", { slow: true });
     return {
       insights: Array.isArray(data.insights) ? data.insights : [],
       generatedAt: data.generatedAt,
@@ -92,11 +92,11 @@ export const aiAssistantService = {
   },
 
   morningBriefing: async (token?: string | null): Promise<MorningBriefingResponse> => {
-    return requestJson<MorningBriefingResponse>("/api/ai/morning-briefing", { token });
+    return requestJson<MorningBriefingResponse>("/api/ai/morning-briefing", { token, slow: true });
   },
 
   summary: async (): Promise<AISummaryResponse> => {
-    const data = await requestJson<AISummaryResponse>("/api/ai/summary");
+    const data = await requestJson<AISummaryResponse>("/api/ai/summary", { slow: true });
     // eslint-disable-next-line no-console
     console.log("[AI FRONT] getSummary response", {
       cards: data.cards?.length ?? 0,

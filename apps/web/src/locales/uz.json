@@ -1456,9 +1456,11 @@
   },
   "http": {
     "forbidden": "Kirish taqiqlangan",
+    "networkError": "Server bilan aloqa yo'q. Internetni tekshirib, qayta urinib ko'ring.",
     "notFound": "Topilmadi",
     "requestError": "So'rov xatosi",
-    "serverError": "Server xatosi"
+    "serverError": "Server xatosi",
+    "writeUnknown": "Server javob bermadi. Sahifani yangilab, amal saqlanganini tekshiring."
   },
   "expenses": {
     "form": {
