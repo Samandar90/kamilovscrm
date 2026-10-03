@@ -11,9 +11,12 @@ import type { Lead, LeadSourceBrief, LeadStage, LeadsListParams } from "../api/l
 import { LeadDetails } from "../components/LeadDetails";
 import { LEAD_STAGES, LEAD_STAGE_LABEL_KEYS, formatLeadPhone, leadStageBadgeClass } from "../utils/leadFormat";
 
-/** Columns from md up: received, name, phone, source, stage, actions. On a phone a row is a two-column card. */
-const ROW_GRID =
-  "grid grid-cols-2 gap-x-4 gap-y-1.5 px-4 md:grid-cols-[8.5rem_minmax(0,1.2fr)_10.5rem_minmax(0,1fr)_9.5rem_15rem] md:items-center";
+/**
+ * Columns from xl up: received, name, phone, source, stage, actions. Narrower (the sidebar takes 260px from md) a row
+ * is a two-column card.
+ */
+const ROW_COLUMNS =
+  "gap-x-4 px-4 xl:grid-cols-[6rem_minmax(0,1.2fr)_9rem_minmax(0,1fr)_8.5rem_11.5rem] xl:items-center";
 const filterSelect =
   "mt-1 block h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/25 md:w-56";
 const secondaryButton =
@@ -236,7 +239,7 @@ export const LeadsPage: React.FC = () => {
       ) : (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-busy={loading}>
           <div
-            className={`${ROW_GRID} hidden border-b border-slate-100 bg-slate-50 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 md:grid`}
+            className={`${ROW_COLUMNS} hidden border-b border-slate-100 bg-slate-50 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 xl:grid`}
             aria-hidden
           >
             <span>{t("leads.columns.received")}</span>
@@ -251,13 +254,13 @@ export const LeadsPage: React.FC = () => {
               const expanded = expandedId === lead.id;
               return (
                 <li key={lead.id}>
-                  <div className={`${ROW_GRID} py-3`}>
-                    <span className="order-1 text-xs tabular-nums text-slate-500 md:order-none md:text-sm">
+                  <div className={`${ROW_COLUMNS} grid grid-cols-2 gap-y-1.5 py-3`}>
+                    <span className="order-1 text-xs tabular-nums text-slate-500 xl:order-none">
                       {formatDateTimeRu(lead.createdAt)}
                     </span>
                     <span
                       data-cell="name"
-                      className={`order-3 col-span-2 truncate text-sm font-semibold md:order-none md:col-span-1 ${
+                      className={`order-3 col-span-2 truncate text-sm font-semibold xl:order-none xl:col-span-1 ${
                         lead.fullName ? "text-slate-900" : "text-slate-400"
                       }`}
                     >
@@ -265,24 +268,24 @@ export const LeadsPage: React.FC = () => {
                     </span>
                     <a
                       href={`tel:+${lead.phone}`}
-                      className="order-4 text-sm font-medium tabular-nums text-emerald-700 hover:underline md:order-none"
+                      className="order-4 text-sm font-medium tabular-nums text-emerald-700 hover:underline xl:order-none"
                     >
                       {formatLeadPhone(lead.phone)}
                     </a>
-                    <span className="order-5 truncate text-right text-sm text-slate-600 md:order-none md:text-left">
+                    <span className="order-5 truncate text-right text-sm text-slate-600 xl:order-none xl:text-left">
                       {lead.sourceName}
                     </span>
-                    <span className="order-2 justify-self-end md:order-none md:justify-self-start">
+                    <span className="order-2 justify-self-end xl:order-none xl:justify-self-start">
                       <span className={leadStageBadgeClass(lead.stage)}>{t(LEAD_STAGE_LABEL_KEYS[lead.stage])}</span>
                     </span>
-                    <div className="order-6 col-span-2 flex flex-wrap gap-2 md:order-none md:col-span-1 md:justify-end">
+                    <div className="order-6 col-span-2 flex flex-wrap gap-2 xl:order-none xl:col-span-1 xl:flex-nowrap xl:justify-end">
                       {canUpdate && lead.status === "new" ? (
                         <button
                           type="button"
                           data-action="take"
                           onClick={() => void take(lead)}
                           disabled={pendingId !== null}
-                          className="inline-flex h-9 items-center rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                          className="inline-flex h-9 items-center whitespace-nowrap rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
                         >
                           {t("leads.actions.take")}
                         </button>
@@ -294,7 +297,7 @@ export const LeadsPage: React.FC = () => {
                         aria-controls={`lead-details-${lead.id}`}
                         className={secondaryButton}
                       >
-                        {t("leads.actions.details")}
+                        <span className="xl:sr-only">{t("leads.actions.details")}</span>
                         <ChevronDown className={`h-4 w-4 transition ${expanded ? "rotate-180" : ""}`} aria-hidden />
                       </button>
                     </div>
