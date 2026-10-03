@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CABINETS_PER_PAGE, gridColumns, pageCabinets, waitingRowsShown } from "./tvLayout";
+import { CABINETS_PER_PAGE, gridColumns, hasQueue, pageCabinets, waitingRowsShown } from "./tvLayout";
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i + 1);
 
@@ -33,5 +33,20 @@ describe("waitingRowsShown", () => {
     [1, 5], [2, 5], [3, 4],
   ])("%i grid rows → %i waiting rows", (gridRows, shown) => {
     expect(waitingRowsShown(gridRows)).toBe(shown);
+  });
+});
+
+describe("hasQueue", () => {
+  it("is true while a patient is being served or called", () => {
+    expect(hasQueue({ current: { code: "К-05", name: null, state: "serving" }, waitingCount: 0 })).toBe(true);
+    expect(hasQueue({ current: { code: "К-06", name: null, state: "called" }, waitingCount: 0 })).toBe(true);
+  });
+
+  it("is true while patients wait, even if nobody is called yet", () => {
+    expect(hasQueue({ current: null, waitingCount: 1 })).toBe(true);
+  });
+
+  it("is false for a doctor who has finished everyone or has nobody", () => {
+    expect(hasQueue({ current: null, waitingCount: 0 })).toBe(false);
   });
 });

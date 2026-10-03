@@ -198,6 +198,76 @@ describe("TvDisplayPage", () => {
     expect(mocks.announcer.announce).toHaveBeenCalledWith([["nomer", "6"]], ["ru"], { signal: expect.any(AbortSignal) });
   });
 
+  describe("cabinets without a queue", () => {
+    const cabinet = (doctorId: number, doctorName: string, patch: Partial<QueueDisplayState["cabinets"][number]> = {}) => ({
+      doctorId, doctorName, specialty: "", room: String(doctorId), current: null, waiting: [], waitingCount: 0, ...patch,
+    });
+    const show = (cabinets: QueueDisplayState["cabinets"]) => {
+      mocks.display = { state: { ...sample("2026-09-30T06:00:00.000Z", [oldCall]), cabinets }, error: null, offline: false };
+    };
+
+    it("leaves off a doctor who has finished everyone, and one who has nobody today", async () => {
+      show([
+        cabinet(1, "Каримов Бахтиёр", { current: { code: "К-05", name: null, state: "serving" } }),
+        cabinet(2, "Юсупова Нигора"),
+        cabinet(3, "Назарова Дилноза"),
+      ]);
+      await render();
+      // the footer «Последние вызовы» still lists past calls of every doctor: look at the cards only
+      expect(view!.root.findAllByProps({ className: "qtv-doctor-name" }).map((node) => node.children.join(""))).toEqual(["Каримов Бахтиёр"]);
+      expect(html()).not.toContain("Свободно");
+    });
+
+    it("keeps a doctor who is free but has patients waiting", async () => {
+      show([cabinet(1, "Каримов Бахтиёр", { waiting: [{ code: "К-06", name: "Мадина А." }], waitingCount: 1 })]);
+      await render();
+      expect(view!.root.findAllByProps({ className: "qtv-card" })).toHaveLength(1);
+      expect(html()).toContain("Свободно");
+      expect(html()).toContain("К-06");
+    });
+
+    it("keeps a doctor whose patient was called but has not come in yet", async () => {
+      show([cabinet(1, "Каримов Бахтиёр", { current: { code: "К-06", name: null, state: "called" } })]);
+      await render();
+      expect(view!.root.findAllByProps({ className: "qtv-card" })).toHaveLength(1);
+      expect(html()).toContain("Вызван");
+    });
+
+    it("shows «Очереди пока нет» when nobody has a queue", async () => {
+      show([cabinet(1, "Каримов Бахтиёр"), cabinet(2, "Юсупова Нигора")]);
+      await render();
+      expect(view!.root.findAllByProps({ className: "qtv-card" })).toHaveLength(0);
+      expect(html()).toContain("Очереди пока нет");
+    });
+
+    it("sizes the grid from the visible cabinets, not from all of them", async () => {
+      show([cabinet(1, "Каримов Бахтиёр", { current: { code: "К-05", name: null, state: "serving" } }), cabinet(2, "Юсупова Нигора"), cabinet(3, "Назарова Дилноза")]);
+      await render();
+      expect(view!.root.findAllByProps({ className: "qtv-grid qtv-cols-1" })).toHaveLength(1); // one card fills the screen, not a cell of 2x2
+    });
+
+    it("pages by the visible cabinets: eleven doctors with four idle fit one page", async () => {
+      const busy = (id: number) => cabinet(id, `Врач ${id}`, { waiting: [{ code: `К-${id}`, name: null }], waitingCount: 1 });
+      const ids = Array.from({ length: 11 }, (_, i) => i + 1);
+      show(ids.map((id) => (id <= 7 ? busy(id) : cabinet(id, `Врач ${id}`))));
+      await render();
+      expect(view!.root.findAllByProps({ className: "qtv-card" })).toHaveLength(7);
+      expect(view!.root.findAllByProps({ className: "qtv-pages" })).toHaveLength(0);
+      show(ids.map(busy)); // control: all eleven busy → two pages
+      await rerender();
+      expect(view!.root.findAllByProps({ className: "qtv-pages" })).toHaveLength(1);
+    });
+
+    it("brings a doctor back when a patient arrives", async () => {
+      show([cabinet(1, "Каримов Бахтиёр")]);
+      await render();
+      expect(view!.root.findAllByProps({ className: "qtv-card" })).toHaveLength(0);
+      show([cabinet(1, "Каримов Бахтиёр", { waiting: [{ code: "К-01", name: null }], waitingCount: 1 })]);
+      await rerender();
+      expect(view!.root.findAllByProps({ className: "qtv-card" })).toHaveLength(1);
+    });
+  });
+
   describe("the doctor sentence", () => {
     const start = async () => {
       vi.useFakeTimers({ now: new Date("2026-09-30T06:00:00.000Z") });
