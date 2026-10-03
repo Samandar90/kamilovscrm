@@ -136,6 +136,12 @@ export const listAppointmentsController = async (
   return res.status(200).json(appointments);
 };
 
+export const listLastVisitsController = async (req: Request, res: Response) => {
+  const auth = getAuthPayload(req);
+  const lastVisits = await services.appointments.listLastVisits(auth);
+  return res.status(200).json(lastVisits);
+};
+
 export const getAppointmentByIdController = async (
   req: Request,
   res: Response

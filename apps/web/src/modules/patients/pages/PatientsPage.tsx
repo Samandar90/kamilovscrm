@@ -20,7 +20,6 @@ import {
 } from "../../../auth/roleGroups";
 import { ListEmptyState } from "../../../components/ui/ListEmptyState";
 import { Modal } from "../../../components/ui/Modal";
-import type { Appointment } from "../../appointments/api/appointmentsFlowApi";
 import type { InvoiceSummary } from "../../billing/api/cashDeskApi";
 import { formatSum } from "../../../utils/formatMoney";
 import { PhoneInput } from "../../../shared/ui/PhoneInput";
@@ -68,6 +67,9 @@ type PatientVisit = {
   treatment: string | null;
   notes: string | null;
 };
+
+/** Row of GET /api/appointments/last-visits: the latest appointment start of a patient, any status. */
+type PatientLastVisit = { patientId: number; lastVisitAt: string };
 
 type DoctorRef = { id: number; name: string };
 type ServiceRef = { id: number; name: string };
@@ -147,15 +149,8 @@ const DEBOUNCE_MS = 300;
 const LIST_WINDOW_INITIAL = 40;
 const LIST_WINDOW_STEP = 40;
 
-function buildLastVisitMap(appointments: Appointment[]): Map<number, string> {
-  const map = new Map<number, string>();
-  for (const a of appointments) {
-    const cur = map.get(a.patientId);
-    if (!cur || a.startAt > cur) {
-      map.set(a.patientId, a.startAt);
-    }
-  }
-  return map;
+function buildLastVisitMap(lastVisits: PatientLastVisit[]): Map<number, string> {
+  return new Map(lastVisits.map((row) => [row.patientId, row.lastVisitAt]));
 }
 
 function buildDebtByPatient(invoices: InvoiceSummary[]): Map<number, number> {
@@ -227,9 +222,9 @@ export const PatientsPage: React.FC = () => {
       const patientRows = await requestJson<Patient[]>("/api/patients");
 
       const parts: string[] = [];
-      let apptResult: Appointment[] = [];
+      let lastVisits: PatientLastVisit[] = [];
       try {
-        apptResult = await requestJson<Appointment[]>("/api/appointments");
+        lastVisits = await requestJson<PatientLastVisit[]>("/api/appointments/last-visits");
       } catch {
         parts.push("записи визитов");
       }
@@ -250,7 +245,7 @@ export const PatientsPage: React.FC = () => {
       }
 
       setPatients(patientRows);
-      setLastVisitByPatientId(buildLastVisitMap(apptResult));
+      setLastVisitByPatientId(buildLastVisitMap(lastVisits));
       setDebtByPatientId(buildDebtByPatient(invResult));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("patients.loadError"));

@@ -16,6 +16,7 @@ import type {
   AppointmentServiceLineReplacement,
   AppointmentStatus,
   AppointmentUpdateInput,
+  PatientLastVisit,
 } from "./interfaces/coreTypes";
 import { getMockDb, nextId, type AppointmentRecord } from "./mockDatabase";
 import { ApiError } from "../middleware/errorHandler";
@@ -118,6 +119,20 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
     const found = getMockDb().appointments.find((item) => item.id === id);
     if (!found) return null;
     return attachServices([found])[0] ?? null;
+  }
+
+  async findLastVisits(
+    filters: Pick<AppointmentFilters, "doctorId"> = {}
+  ): Promise<PatientLastVisit[]> {
+    const latest = new Map<number, string>();
+    for (const row of getMockDb().appointments) {
+      if (filters.doctorId !== undefined && row.doctorId !== filters.doctorId) continue;
+      const current = latest.get(row.patientId);
+      if (current === undefined || row.startAt > current) latest.set(row.patientId, row.startAt);
+    }
+    return [...latest]
+      .sort(([a], [b]) => a - b)
+      .map(([patientId, lastVisitAt]) => ({ patientId, lastVisitAt }));
   }
 
   async create(
