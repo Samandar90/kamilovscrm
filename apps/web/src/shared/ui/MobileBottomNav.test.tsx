@@ -27,3 +27,21 @@ describe("mobile 'more' drawer", () => {
     expect(new Set(labels).size).toBe(labels.length);
   });
 });
+
+describe("mobile bottom bar by role", () => {
+  const render = () => {
+    act(() => { view = create(<MemoryRouter initialEntries={["/dashboard"]}><MobileBottomNav /></MemoryRouter>); });
+  };
+
+  it("renders nothing for an external contractor", () => {
+    mocks.user!.role = "marketer";
+    render();
+    expect(view.toJSON()).toBeNull();
+  });
+  it("keeps the four tabs and 'More' for staff", () => {
+    render();
+    const bar = view.root.findByType("nav");
+    expect(bar.findAllByType("a").map(link => link.props.href)).toEqual(["/dashboard", "/appointments", "/patients", "/billing/cash-desk"]);
+    expect(bar.findByType("button").findAllByType("span")[1].children.join("")).toBe("t:mobileNav.more");
+  });
+});

@@ -11,6 +11,7 @@ export const USER_ROLES = [
   "accountant",
   "manager",
   "director",
+  "marketer",
 ] as const;
 
 export type UserRole = (typeof USER_ROLES)[number];
@@ -130,6 +131,9 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     reports: ["read"],
     ai: ["read", "create"],
   },
+
+  /** Внешний таргетолог (подрядчик): ни одного модуля клиники — ни пациентов, ни записей, ни ИИ. Строка остаётся пустой. */
+  marketer: {},
 };
 
 export function hasPermission(

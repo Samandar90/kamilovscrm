@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { NavLink, useLocation } from "react-router-dom";
 import { CalendarDays, Landmark, LayoutDashboard, Menu, Users, X } from "lucide-react";
 import { cn } from "../../ui/utils/cn";
+import { useAuth } from "../../auth/AuthContext";
+import { isExternalRole } from "../../auth/roleGroups";
 import { useNavigation } from "../../navigation/useNavigation";
 import type { NavigationItem, NavigationSection } from "../../navigation/navigationConfig";
 
@@ -56,6 +58,7 @@ const iconWrap = (active: boolean) =>
 export const MobileBottomNav: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
+  const { user } = useAuth();
   const sections = useNavigation();
   const [moreOpen, setMoreOpen] = React.useState(false);
   const moreLinks = React.useMemo(() => flattenMoreLinks(sections, t), [sections, t]);
@@ -78,6 +81,9 @@ export const MobileBottomNav: React.FC = () => {
   React.useEffect(() => {
     setMoreOpen(false);
   }, [pathname]);
+
+  // The four tabs are staff pages: an external account gets no bottom bar.
+  if (isExternalRole(user?.role)) return null;
 
   return (
     <>

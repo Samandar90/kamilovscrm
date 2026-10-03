@@ -1,13 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { USER_ROLES, hasPermission, roleHasPermissionKey, type PermissionAction, type UserRole } from "./permissions";
 import {
+  PERMISSION_MODULES,
+  USER_ROLES,
+  hasPermission,
+  roleHasPermissionKey,
+  type PermissionAction,
+  type UserRole,
+} from "./permissions";
+import {
+  CLINIC_STAFF,
+  DASHBOARD_NAV_ROLES,
   QUEUE_ROLES,
+  ROLE_LABEL_KEYS,
   canCallQueue,
   canCreateAppointmentWithPatientPicker,
   canIssueQueue,
   canManageQueueDisplays,
   canReadQueue,
+  isExternalRole,
 } from "./roleGroups";
+import ru from "../locales/ru.json";
+import uz from "../locales/uz.json";
 describe("call-center operator booking", () => {
   it("opens existing-patient booking without granting financial or user administration access", () => {
     expect(canCreateAppointmentWithPatientPicker("operator")).toBe(true);
@@ -28,6 +41,7 @@ const EXPECTED_QUEUE_ACTIONS: Record<UserRole, PermissionAction[]> = {
   accountant: [],
   manager: ["read"],
   director: ["read"],
+  marketer: [],
 };
 
 describe("electronic queue permissions", () => {
@@ -50,5 +64,42 @@ describe("electronic queue permissions", () => {
     expect(canReadQueue(null)).toBe(false);
     expect(canIssueQueue(undefined)).toBe(false);
     expect(canCallQueue(null)).toBe(false);
+  });
+});
+
+describe("external contractor role", () => {
+  it("knows the marketer role and denies it every module and action", () => {
+    expect(USER_ROLES).toContain("marketer");
+    const granted = PERMISSION_MODULES.flatMap((module) =>
+      ACTIONS.filter((action) => hasPermission("marketer", module, action)).map((action) => `${module}.${action}`)
+    );
+    expect(granted).toEqual([]);
+  });
+
+  it("keeps the marketer out of the clinic staff and leaves the staff list as it was", () => {
+    expect(CLINIC_STAFF).not.toContain("marketer");
+    expect(DASHBOARD_NAV_ROLES).not.toContain("marketer");
+    expect(CLINIC_STAFF).toEqual(USER_ROLES.filter((role) => role !== "marketer"));
+  });
+
+  it("tells external roles from staff", () => {
+    expect(isExternalRole("marketer")).toBe(true);
+    expect(isExternalRole("operator")).toBe(false);
+    expect(isExternalRole(null)).toBe(false);
+  });
+});
+
+describe("role labels", () => {
+  const textAt = (locale: unknown, key: string): unknown =>
+    key.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown> | undefined)?.[part], locale);
+
+  it.each(USER_ROLES)("names %s in Russian and Uzbek", (role) => {
+    const key = ROLE_LABEL_KEYS[role];
+    expect(key).toMatch(/^users\.\w+$/);
+    for (const locale of [ru, uz]) {
+      const text = textAt(locale, key);
+      expect(typeof text).toBe("string");
+      expect((text as string).trim()).not.toBe("");
+    }
   });
 });

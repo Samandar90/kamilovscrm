@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, Building2 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
+import { ROLE_LABEL_KEYS } from "../auth/roleGroups";
 import type { UserRole } from "../auth/types";
 import { useNavigation } from "../navigation/useNavigation";
 import type { NavigationItem } from "../navigation/navigationConfig";
@@ -13,18 +14,8 @@ const ICON_STROKE = 1.65;
 const iconClass = "h-[18px] w-[18px] shrink-0 transition-transform duration-200 ease-out";
 
 const getRoleLabel = (role: UserRole, t: (key: string) => string): string => {
-  const roleMap: Record<UserRole, string> = {
-    superadmin: t("users.admin"),
-    reception: t("users.receptionist"),
-    doctor: t("users.doctor"),
-    nurse: t("users.nurse"),
-    cashier: t("users.cashier"),
-    operator: t("users.operator"),
-    accountant: t("users.accountant"),
-    manager: t("users.manager"),
-    director: t("users.director"),
-  };
-  return roleMap[role] || role;
+  const key = ROLE_LABEL_KEYS[role];
+  return key ? t(key) : role;
 };
 
 function initialsFromUsername(name: string): string {
