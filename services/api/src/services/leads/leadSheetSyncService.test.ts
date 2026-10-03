@@ -514,13 +514,16 @@ describe("startLeadSheetSync", () => {
     vi.advanceTimersByTime(59_999);
     expect(runCycle).not.toHaveBeenCalled();
     vi.advanceTimersByTime(1);
+    expect(runCycle).toHaveBeenCalledTimes(1); // 1:00
+    // The five minutes are counted from the first cycle, not from the start: 6:00 and 11:00.
+    vi.advanceTimersByTime(5 * 60_000 - 1);
     expect(runCycle).toHaveBeenCalledTimes(1);
-    vi.advanceTimersByTime(4 * 60_000);
-    expect(runCycle).toHaveBeenCalledTimes(2);
+    vi.advanceTimersByTime(1);
+    expect(runCycle).toHaveBeenCalledTimes(2); // 6:00
     vi.advanceTimersByTime(5 * 60_000 - 1);
     expect(runCycle).toHaveBeenCalledTimes(2);
     vi.advanceTimersByTime(1);
-    expect(runCycle).toHaveBeenCalledTimes(3);
+    expect(runCycle).toHaveBeenCalledTimes(3); // 11:00
   });
 
   it("is not started when the flag is off or the data are not in PostgreSQL", () => {
@@ -547,7 +550,7 @@ describe("startLeadSheetSync", () => {
     expect(printed).toContain("23514");
     for (const secret of PRIVATE) expect(printed, secret).not.toContain(secret);
 
-    await vi.advanceTimersByTimeAsync(4 * 60_000);
+    await vi.advanceTimersByTimeAsync(5 * 60_000);
     expect(runCycle).toHaveBeenCalledTimes(2);
   });
 });

@@ -220,6 +220,9 @@ export const startLeadSheetSync = (service: Pick<LeadSheetSyncService, "runCycle
       console.warn("[LEADS] sheet sync cycle error:", errorForLog(err));
     });
   };
-  setTimeout(tick, FIRST_RUN_MS);
-  setInterval(tick, CYCLE_MS);
+  // The interval starts with the first cycle: 1:00, 6:00, 11:00 after the start.
+  setTimeout(() => {
+    tick();
+    setInterval(tick, CYCLE_MS);
+  }, FIRST_RUN_MS);
 };
