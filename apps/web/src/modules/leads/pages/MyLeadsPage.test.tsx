@@ -15,8 +15,13 @@ vi.mock("react-i18next", async () => {
   };
   return { useTranslation: () => ({ t, i18n: { language: "ru" } }) };
 });
+// The real api/http needs VITE_API_URL and initialises i18next; the page only needs its error class.
+vi.mock("../../../api/http", () => ({ HttpError: class HttpError extends Error {
+  constructor(message: string, public readonly status: number) { super(message); }
+} }));
 // Only `mine` exists here: a call to any staff endpoint would throw.
 vi.mock("../api/leadsApi", () => ({ leadsApi: { mine: mocks.mine } }));
+import { HttpError } from "../../../api/http";
 import { MyLeadsPage } from "./MyLeadsPage";
 
 const lead = (id: number, overrides: Partial<MyLead> = {}): MyLead => ({
@@ -138,5 +143,19 @@ describe("contractor's leads page", () => {
     expect(mocks.mine).toHaveBeenLastCalledWith();
     expect(view.root.findAllByProps({ role: "alert" })).toHaveLength(0);
     expect(rows()).toHaveLength(3);
+  });
+
+  it("does not repeat the API's text about the clinic's subscription on a 402", async () => {
+    const blocked = () => new HttpError("Срок подписки истёк. Продлите подписку, чтобы продолжить работу.", 402);
+    mocks.mine.mockRejectedValueOnce(blocked());
+    await render();
+    expect(textOf(view.root.findByProps({ role: "alert" }).findByType("span"))).toBe("Не удалось загрузить лиды");
+    expect(textOf(view.root)).not.toContain("подписк");
+
+    mocks.mine.mockResolvedValueOnce({ ...firstPage, nextBeforeId: 50 }).mockRejectedValueOnce(blocked());
+    await click(buttons("Повторить")[0]);
+    await click(buttons("Показать ещё")[0]);
+    expect(textOf(view.root.findByProps({ role: "alert" }))).toBe("Не удалось загрузить лиды");
+    expect(textOf(view.root)).not.toContain("подписк");
   });
 });

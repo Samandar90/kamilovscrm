@@ -65,7 +65,7 @@ const RootGate: React.FC = () => {
 
 export const RoleAwareHomeRedirect: React.FC = () => {
   const { user } = useAuth();
-  // The external contractor has one page. Its route is open to exactly these roles, so the redirect cannot loop.
+  // У внешнего подрядчика одна страница. Её маршрут открыт ровно этим ролям, поэтому цикла перенаправлений нет.
   if (user && MARKETER_ROLES.includes(user.role)) {
     return <Navigate to="/my-leads" replace />;
   }

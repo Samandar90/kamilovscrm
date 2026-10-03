@@ -1,6 +1,7 @@
 import React from "react";
 import { Target } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { HttpError } from "../../../api/http";
 import { ListEmptyState } from "../../../components/ui/ListEmptyState";
 import { formatDateTimeRu } from "../../../utils/formatDateTime";
 import { leadsApi } from "../api/leadsApi";
@@ -11,6 +12,17 @@ import { LEAD_STAGE_LABEL_KEYS, formatLeadPhone, leadStageBadgeClass } from "../
 const ROW_COLUMNS = "gap-x-4 px-4 xl:grid-cols-[8rem_minmax(0,1.2fr)_10rem_minmax(0,1fr)_9rem] xl:items-center";
 const secondaryButton =
   "inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50";
+
+/**
+ * The API's text of a failure, or "" when there is none to show. A 402 is about the clinic's subscription, which an
+ * external account is not told about: the layout covers the page with its neutral block.
+ */
+const failureText = (requestError: unknown): string =>
+  requestError instanceof HttpError && requestError.status === 402
+    ? ""
+    : requestError instanceof Error
+      ? requestError.message
+      : "";
 
 /**
  * «Мои лиды»: the external contractor's only page. Leads of the sources bound to the account, newest first, with what
@@ -43,7 +55,7 @@ export const MyLeadsPage: React.FC = () => {
       // A failure is never shown as «no leads yet».
       setItems([]);
       setNextBeforeId(null);
-      setError(requestError instanceof Error ? requestError.message : "");
+      setError(failureText(requestError));
     } finally {
       if (request === requestRef.current) setLoading(false);
     }
@@ -69,7 +81,7 @@ export const MyLeadsPage: React.FC = () => {
       setNextBeforeId(page.nextBeforeId);
     } catch (requestError) {
       if (request !== requestRef.current) return;
-      setMoreError(requestError instanceof Error ? requestError.message : t("leads.errors.loadFailed"));
+      setMoreError(failureText(requestError) || t("leads.errors.loadFailed"));
     } finally {
       setLoadingMore(false);
     }
