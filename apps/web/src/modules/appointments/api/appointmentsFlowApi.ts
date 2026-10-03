@@ -189,20 +189,37 @@ export type AppointmentAssignedService = {
   createdAt: string;
 };
 
+export type AppointmentListFilters = {
+  billingStatus?: AppointmentBillingStatus;
+  /** Calendar days `YYYY-MM-DD` of the visit start, both included. */
+  from?: string;
+  to?: string;
+  doctorId?: number;
+  /** At most this many visits, the latest first. */
+  limit?: number;
+};
+
+/**
+ * Address of GET /api/appointments. `startAt` is clinic wall-clock time, so a day goes out as its first
+ * and its last second, without a time zone.
+ */
+export const appointmentsListPath = (filters: AppointmentListFilters = {}): string => {
+  const query = new URLSearchParams();
+  if (filters.billingStatus) query.set("billing_status", filters.billingStatus);
+  if (filters.from) query.set("startFrom", `${filters.from} 00:00:00`);
+  if (filters.to) query.set("startTo", `${filters.to} 23:59:59`);
+  if (filters.doctorId) query.set("doctorId", String(filters.doctorId));
+  if (filters.limit) query.set("limit", String(filters.limit));
+  const suffix = query.toString();
+  return `/api/appointments${suffix ? `?${suffix}` : ""}`;
+};
+
 export const appointmentsFlowApi = {
-  listAppointments: (
-    token: string,
-    filters?: { billingStatus?: AppointmentBillingStatus }
-  ) => {
-    const query = new URLSearchParams();
-    if (filters?.billingStatus) {
-      query.set("billing_status", filters.billingStatus);
-    }
-    const suffix = query.toString();
-    return requestJson<Appointment[]>(`/api/appointments${suffix ? `?${suffix}` : ""}`, {
-      token,
-    });
-  },
+  listAppointments: (token: string, filters?: AppointmentListFilters) =>
+    requestJson<Appointment[]>(appointmentsListPath(filters), { token }),
+
+  getAppointment: (token: string, appointmentId: number) =>
+    requestJson<Appointment>(`/api/appointments/${appointmentId}`, { token }),
 
   checkAppointmentAvailability: (
     token: string,

@@ -1,5 +1,10 @@
 import { requestJson } from "../../../api/http";
-import type { Appointment, InvoiceCreateInput } from "../../appointments/api/appointmentsFlowApi";
+import {
+  appointmentsListPath,
+  type Appointment,
+  type AppointmentListFilters,
+  type InvoiceCreateInput,
+} from "../../appointments/api/appointmentsFlowApi";
 import { normalizeInvoiceCreatePayload } from "../../../utils/normalizeInvoiceCreatePayload";
 import type {
   CashRegisterShift,
@@ -12,7 +17,8 @@ export type DashboardPatient = { id: number; fullName: string; createdAt?: strin
 export type DashboardService = { id: number; name: string };
 
 export const dashboardApi = {
-  listAppointments: () => requestJson<Appointment[]>("/api/appointments"),
+  listAppointments: (filters: AppointmentListFilters) =>
+    requestJson<Appointment[]>(appointmentsListPath(filters)),
   listPayments: () => requestJson<Payment[]>("/api/payments"),
   listInvoices: () => requestJson<InvoiceSummary[]>("/api/invoices"),
   listPatients: () => requestJson<DashboardPatient[]>("/api/patients"),

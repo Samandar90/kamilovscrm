@@ -5,13 +5,20 @@ import { hasPermission } from "../../../auth/permissions";
 import { canReadAppointments, canReadBilling, canReadPatients } from "../../../auth/roleGroups";
 import type { UserRole } from "../../../auth/types";
 import type { Appointment } from "../../appointments/api/appointmentsFlowApi";
+import { todayYmd } from "../../appointments/utils/appointmentFormUtils";
 import type { CashRegisterShift, InvoiceSummary, Payment } from "../../billing/api/cashDeskApi";
 import type { DashboardDoctor, DashboardPatient, DashboardService } from "../api/dashboardApi";
 
 type DashboardDataState = {
   loading: boolean;
   partialError: string | null;
+  /** Today's appointments: every appointment block of the dashboard is about today. */
   appointments: Appointment[];
+  /**
+   * Whether the clinic has an appointment. With none today one more row is read, but only while nothing has been
+   * billed: that is when the setup banner needs the answer. Otherwise this tells about today.
+   */
+  hasAppointments: boolean;
   payments: Payment[];
   invoices: InvoiceSummary[];
   patients: DashboardPatient[];
@@ -26,6 +33,7 @@ export const useDashboardData = (role: UserRole | undefined): DashboardDataState
   const [loading, setLoading] = React.useState(true);
   const [partialError, setPartialError] = React.useState<string | null>(null);
   const [appointments, setAppointments] = React.useState<Appointment[]>([]);
+  const [hasAppointments, setHasAppointments] = React.useState(false);
   const [payments, setPayments] = React.useState<Payment[]>([]);
   const [invoices, setInvoices] = React.useState<InvoiceSummary[]>([]);
   const [patients, setPatients] = React.useState<DashboardPatient[]>([]);
@@ -55,7 +63,8 @@ export const useDashboardData = (role: UserRole | undefined): DashboardDataState
       role !== "accountant" &&
       role !== "director"
     ) {
-      jobs.push({ slot: "appointments", p: dashboardApi.listAppointments() });
+      const today = todayYmd();
+      jobs.push({ slot: "appointments", p: dashboardApi.listAppointments({ from: today, to: today }) });
     }
     if (canReadBilling(role)) {
       jobs.push({ slot: "payments", p: dashboardApi.listPayments() });
@@ -68,6 +77,7 @@ export const useDashboardData = (role: UserRole | undefined): DashboardDataState
 
     const settled = await Promise.allSettled(jobs.map((j) => j.p));
     let hasFail = false;
+    const loaded: { appointments?: Appointment[]; payments?: Payment[]; invoices?: InvoiceSummary[] } = {};
 
     settled.forEach((res, index) => {
       if (res.status === "rejected") {
@@ -76,13 +86,16 @@ export const useDashboardData = (role: UserRole | undefined): DashboardDataState
       }
       switch (jobs[index].slot) {
         case "appointments":
-          setAppointments(res.value as Appointment[]);
+          loaded.appointments = res.value as Appointment[];
+          setAppointments(loaded.appointments);
           break;
         case "payments":
-          setPayments(res.value as Payment[]);
+          loaded.payments = res.value as Payment[];
+          setPayments(loaded.payments);
           break;
         case "invoices":
-          setInvoices(res.value as InvoiceSummary[]);
+          loaded.invoices = res.value as InvoiceSummary[];
+          setInvoices(loaded.invoices);
           break;
         case "patients":
           setPatients(res.value as DashboardPatient[]);
@@ -101,6 +114,23 @@ export const useDashboardData = (role: UserRole | undefined): DashboardDataState
       }
     });
 
+    if (loaded.appointments) {
+      const billed =
+        (loaded.invoices?.length ?? 0) > 0 || loaded.payments?.some((payment) => !payment.deletedAt) === true;
+      if (loaded.appointments.length > 0) {
+        setHasAppointments(true);
+      } else if (!billed && canReadBilling(role) && canReadPatients(role)) {
+        // A quiet day is not a new clinic: the setup banner must not come back when today is simply empty.
+        try {
+          setHasAppointments((await dashboardApi.listAppointments({ limit: 1 })).length > 0);
+        } catch {
+          hasFail = true;
+        }
+      } else {
+        setHasAppointments(false);
+      }
+    }
+
     if (hasFail) {
       setPartialError(t("dashboard.partialLoadError"));
     }
@@ -115,6 +145,7 @@ export const useDashboardData = (role: UserRole | undefined): DashboardDataState
     loading,
     partialError,
     appointments,
+    hasAppointments,
     payments,
     invoices,
     patients,

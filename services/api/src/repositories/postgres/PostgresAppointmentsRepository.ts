@@ -446,11 +446,18 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       }
     }
 
+    let limitClause = "";
+    if (filters.limit !== undefined) {
+      values.push(filters.limit);
+      limitClause = `LIMIT $${values.length}`;
+    }
+
     const query = `
       SELECT ${SELECT_LIST}
       FROM appointments
       WHERE ${whereClauses.join(" AND ")}
       ORDER BY start_at DESC
+      ${limitClause}
     `;
     const result = await dbPool.query<AppointmentRow>(query, values);
     return attachAssignedServices(result.rows.map(mapAppointmentRow));
