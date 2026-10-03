@@ -75,7 +75,8 @@ const discardBody = (res: Response): void => {
 /** Why the answer is not a sheet, or null when it is a CSV worth reading. */
 const failureOf = (res: Response): SheetFetchFailure | null => {
   if (res.status === 401 || res.status === 403) return "no_access";
-  if (res.status === 404 || res.status === 410) return "not_found";
+  // Google answers 400 for a tab (gid) or a sheet id that does not exist; seen on the real export 2026-10-03.
+  if (res.status === 400 || res.status === 404 || res.status === 410) return "not_found";
   if (res.status !== 200) return "http_error";
   const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
   // A page instead of the export is Google's sign-in or "no permission" screen; it is never parsed as rows.

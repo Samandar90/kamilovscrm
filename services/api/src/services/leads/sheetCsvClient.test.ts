@@ -168,7 +168,7 @@ describe("fetchSheetCsv", () => {
     [403, "no_access"],
     [404, "not_found"],
     [410, "not_found"],
-    [400, "http_error"],
+    [400, "not_found"],
     [429, "http_error"],
     [500, "http_error"],
     [503, "http_error"],
