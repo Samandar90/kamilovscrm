@@ -1,3 +1,5 @@
+import type { QueueDisplayCabinet } from "../api/queueTypes";
+
 /** At most 9 cabinet cards fit a 16:9 screen at a readable size; more cabinets rotate through pages. */
 export const CABINETS_PER_PAGE = 9;
 
@@ -20,4 +22,12 @@ export function gridColumns(count: number): number {
 /** Waiting rows (code + name) a cabinet card lists: four when the page has three rows of cards (7–9 cabinets), else five. */
 export function waitingRowsShown(gridRows: number): number {
   return gridRows >= 3 ? 4 : 5;
+}
+
+/**
+ * A cabinet is on the screen only while its doctor has a queue: a patient who is being served or was called, or
+ * patients who wait. A doctor who has finished everyone (or has nobody today) is left off, not shown as "free".
+ */
+export function hasQueue(cabinet: Pick<QueueDisplayCabinet, "current" | "waitingCount">): boolean {
+  return cabinet.current !== null || cabinet.waitingCount > 0;
 }

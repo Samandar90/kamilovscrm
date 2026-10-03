@@ -8,7 +8,7 @@ import { doctorSentence } from "./doctorSpeech";
 import { createSpeechVoice, type SpeechVoice } from "./speechVoice";
 import { readStartedFlag, requestFullscreen, requestWakeLock, writeStartedFlag, type WakeLockHandle } from "./tvDevice";
 import { TV_TEXT_LANGUAGE, tvLabel } from "./tvLabels";
-import { CABINETS_PER_PAGE, gridColumns, pageCabinets, waitingRowsShown } from "./tvLayout";
+import { CABINETS_PER_PAGE, gridColumns, hasQueue, pageCabinets, waitingRowsShown } from "./tvLayout";
 import { formatClock, formatDay, msUntilDailyReload } from "./tvTime";
 import { useQueueDisplay } from "./useQueueDisplay";
 import { announcementClipIds, voiceLangs } from "./voicePhrases";
@@ -288,7 +288,8 @@ export function TvDisplayPage() {
     // Re-run only when the call at the head of the queue changes, not on every poll.
   }, [activeKey]);
 
-  const cabinets = state ? state.cabinets : [];
+  // Only doctors who have a queue: the server also sends those who finished everyone or were picked but have nobody.
+  const cabinets = state ? state.cabinets.filter(hasQueue) : [];
   const { page, pageCount } = pageCabinets(cabinets, pageIndex);
   React.useEffect(() => {
     if (pageCount <= 1) return;
