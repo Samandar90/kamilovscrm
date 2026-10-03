@@ -25,8 +25,8 @@ describe("voice clip catalogue", () => {
       for (let n = 1; n <= 999; n += 1) {
         const ids = [
           ...(numberClipIds(lang, n) ?? ["<null>"]),
-          ...announcementClipIds(lang, n, String(n)),
-          ...announcementClipIds(lang, n, null),
+          ...announcementClipIds(lang, n, true),
+          ...announcementClipIds(lang, n, false),
         ];
         for (const id of ids) if (typeof clips[lang][id] !== "string") missing.push(`${lang}:${n}:${id}`);
       }
@@ -60,20 +60,22 @@ describe("numberClipIds", () => {
 });
 
 describe("announcementClipIds", () => {
-  it("builds «Номер двадцать семь. Пройдите в кабинет номер пять.» and the Uzbek counterpart", () => {
-    expect(announcementClipIds("ru", 27, "5")).toEqual(["nomer", "20", "7", "proydite_v_kabinet_nomer", "5"]);
-    expect(announcementClipIds("uz", 27, "5")).toEqual(["navbat_raqami", "20", "7", "xona_raqami", "5"]);
-    expect(announcementClipIds("ru", 115, " 12 ")).toEqual(["nomer", "100", "15", "proydite_v_kabinet_nomer", "12"]);
+  it("says only the queue number when the doctor sentence follows: «Номер двадцать семь.»", () => {
+    expect(announcementClipIds("ru", 27, true)).toEqual(["nomer", "20", "7"]);
+    expect(announcementClipIds("uz", 27, true)).toEqual(["navbat_raqami", "20", "7"]);
+    expect(announcementClipIds("ru", 115, true)).toEqual(["nomer", "100", "15"]);
   });
 
-  it.each(["УЗИ", null, "0", "1000", "05", "3а", ""])("uses the fallback phrase for room %j", (room) => {
-    expect(announcementClipIds("ru", 7, room)).toEqual(["nomer", "7", "proydite_na_priyom"]);
-    expect(announcementClipIds("uz", 7, room)).toEqual(["navbat_raqami", "7", "qabulga_marhamat"]);
+  it("closes with «Пройдите на приём.» when no doctor sentence follows", () => {
+    expect(announcementClipIds("ru", 7, false)).toEqual(["nomer", "7", "proydite_na_priyom"]);
+    expect(announcementClipIds("uz", 7, false)).toEqual(["navbat_raqami", "7", "qabulga_marhamat"]);
   });
 
   it("says nothing for queue numbers above 999", () => {
-    expect(announcementClipIds("ru", 1000, "5")).toEqual([]);
-    expect(announcementClipIds("uz", 1500, null)).toEqual([]);
+    for (const doctorSpoken of [true, false]) {
+      expect(announcementClipIds("ru", 1000, doctorSpoken)).toEqual([]);
+      expect(announcementClipIds("uz", 1500, doctorSpoken)).toEqual([]);
+    }
   });
 });
 
