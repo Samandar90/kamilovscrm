@@ -11,6 +11,7 @@ import type {
   AppointmentServiceLineReplacement,
   AppointmentStatus,
   AppointmentUpdateInput,
+  PatientLastVisit,
 } from "../repositories/interfaces/coreTypes";
 import type { AuthTokenPayload, UserRole } from "../repositories/interfaces/userTypes";
 import { invalidateClinicFactsCache } from "../ai/aiCacheService";
@@ -407,6 +408,12 @@ export class AppointmentsService {
       return rows;
     }
     return rows.map(redactAppointmentClinicalFields);
+  }
+
+  /** The latest visit of each patient among the appointments `list` shows this user. */
+  async listLastVisits(auth: AuthTokenPayload): Promise<PatientLastVisit[]> {
+    const { doctorId } = mergeAppointmentFiltersForUser(auth, {});
+    return this.appointmentsRepository.findLastVisits({ doctorId });
   }
 
   async getById(auth: AuthTokenPayload, id: number): Promise<Appointment | null> {

@@ -7,6 +7,7 @@ import type {
   AppointmentServiceAssignment,
   AppointmentServiceLineReplacement,
   AppointmentUpdateInput,
+  PatientLastVisit,
 } from "./coreTypes";
 import type { QueueDirective } from "./queueTypes";
 
@@ -24,6 +25,11 @@ export type AppointmentWriteOptions = {
 export interface IAppointmentsRepository {
   findAll(filters?: AppointmentFilters): Promise<Appointment[]>;
   findById(id: number): Promise<Appointment | null>;
+  /**
+   * The latest start per patient over the appointments `findAll` returns for the same `doctorId`
+   * (every status, future ones included), ordered by patient id.
+   */
+  findLastVisits(filters?: Pick<AppointmentFilters, "doctorId">): Promise<PatientLastVisit[]>;
   create(data: AppointmentCreateInput, options?: AppointmentWriteOptions): Promise<Appointment>;
   update(
     id: number,
