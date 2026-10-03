@@ -26,6 +26,8 @@ const sectionHeadings = () =>
     const heading = (section as ReactTestInstance).children[0] as ReactTestInstance;
     return heading.children.join("");
   });
+/** The user card at the bottom: the name line, then the role line. */
+const userCardLines = () => view.root.findAllByType("p").map(line => line.children.join(""));
 
 describe("sidebar sections", () => {
   it("renders every section under its translated heading without React key warnings", () => {
@@ -36,5 +38,25 @@ describe("sidebar sections", () => {
   it("keeps each heading with its own section when the role hides other sections", () => {
     renderAs("cashier");
     expect(sectionHeadings()).toEqual(["t:nav.main", "t:nav.billing"]);
+  });
+});
+
+describe("sidebar for an external contractor", () => {
+  it("shows exactly one link, /my-leads, and the translated role name in the user card", () => {
+    renderAs("marketer");
+    expect(sectionHeadings()).toEqual(["t:nav.main"]);
+    const links = view.root.findAllByType("a");
+    expect(links.map(link => link.props.href)).toEqual(["/my-leads"]);
+    expect(links[0].findByType("span").children.join("")).toBe("t:pages.myLeads");
+    expect(userCardLines()).toEqual(["Test User", "t:users.marketer"]);
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+  it("does not show «Мои лиды» to staff", () => {
+    renderAs("superadmin");
+    expect(view.root.findAllByType("a").map(link => link.props.href)).not.toContain("/my-leads");
+  });
+  it("still names a staff role through the shared label map", () => {
+    renderAs("reception");
+    expect(userCardLines()).toEqual(["Test User", "t:users.receptionist"]);
   });
 });

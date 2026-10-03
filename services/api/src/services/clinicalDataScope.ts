@@ -15,6 +15,7 @@ const APPOINTMENT_CLINICAL_HIDDEN_ROLES: readonly UserRole[] = [
   "accountant",
   "director",
   "operator",
+  "marketer",
 ];
 
 /** Roles allowed to set diagnosis or treatment on appointments. */

@@ -6,6 +6,7 @@ import { useAuth } from "../../../auth/AuthContext";
 import { startImpersonation } from "../../../auth/impersonation";
 import type { UserRole } from "../../../auth/types";
 import { USER_ROLES } from "../../../auth/permissions";
+import { ROLE_LABEL_KEYS } from "../../../auth/roleGroups";
 import { Modal } from "../../../components/ui/Modal";
 
 type User = {
@@ -428,7 +429,7 @@ export const UsersPage: React.FC = () => {
                   <td className="px-3 py-2 text-[#334155]">{user.username}</td>
                   <td className="px-3 py-2">
                     <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${roleChipClass(user.role)}`}>
-                      {user.role}
+                      {ROLE_LABEL_KEYS[user.role] ? t(ROLE_LABEL_KEYS[user.role]) : user.role}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-[#64748b]">
@@ -570,7 +571,7 @@ export const UsersPage: React.FC = () => {
             >
               {ROLES.map((role) => (
                 <option key={role} value={role}>
-                  {role}
+                  {t(ROLE_LABEL_KEYS[role])}
                 </option>
               ))}
             </select>

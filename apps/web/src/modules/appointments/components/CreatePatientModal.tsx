@@ -3,13 +3,19 @@ import { useTranslation } from "react-i18next";
 import { Modal } from "../../../components/ui/Modal";
 import { PhoneInput } from "../../../shared/ui/PhoneInput";
 import { phoneToApiValue } from "../../../utils/phoneInput";
-import type { Patient, PatientCreateInput } from "../api/appointmentsFlowApi";
+import type { Patient, PatientCreateInput, PatientSource } from "../api/appointmentsFlowApi";
 import { appointmentsFlowApi } from "../api/appointmentsFlowApi";
 
 type Props = {
   open: boolean;
   token: string | null;
   initialName: string;
+  /** Phone to start with ("+" and digits), e.g. the phone of a lead. */
+  initialPhone?: string;
+  /** Sent with the new patient only when given. */
+  source?: PatientSource;
+  /** Shown inside the dialog: a message on the page behind it is hidden by the backdrop. */
+  error?: string | null;
   submitting: boolean;
   onClose: () => void;
   onCreated: (patient: Patient) => void;
@@ -20,6 +26,9 @@ export const CreatePatientModal: React.FC<Props> = ({
   open,
   token,
   initialName,
+  initialPhone = "",
+  source,
+  error,
   submitting,
   onClose,
   onCreated,
@@ -27,7 +36,7 @@ export const CreatePatientModal: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const [fullName, setFullName] = React.useState(initialName);
-  const [phone, setPhone] = React.useState("");
+  const [phone, setPhone] = React.useState(initialPhone);
   const [birthDate, setBirthDate] = React.useState("");
   const [gender, setGender] = React.useState<"male" | "female">("male");
   const [saving, setSaving] = React.useState(false);
@@ -35,10 +44,10 @@ export const CreatePatientModal: React.FC<Props> = ({
   React.useEffect(() => {
     if (!open) return;
     setFullName(initialName);
-    setPhone("");
+    setPhone(initialPhone);
     setBirthDate("");
     setGender("male");
-  }, [initialName, open]);
+  }, [initialName, initialPhone, open]);
 
   const handleSubmit = async () => {
     if (!token || submitting || saving) return;
@@ -58,6 +67,7 @@ export const CreatePatientModal: React.FC<Props> = ({
       phone: apiPhone,
       birthDate: birthDate.trim() || null,
       gender,
+      ...(source ? { source } : {}),
     };
     setSaving(true);
     onError(null);
@@ -117,6 +127,11 @@ export const CreatePatientModal: React.FC<Props> = ({
             </select>
           </label>
         </div>
+        {error ? (
+          <p className="rounded-[10px] border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800" role="alert">
+            {error}
+          </p>
+        ) : null}
       </div>
       <div className="mt-5 flex justify-end gap-2">
         <button

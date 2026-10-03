@@ -1,8 +1,10 @@
-/* Local, disposable preview of the electronic queue and the TV screen. No .env, pg connection, production token or persistent database.
+/* Local, disposable preview of the electronic queue, the TV screen and the leads section. No .env, pg connection, production token or persistent database.
  * Run:     node services/api/scripts/queue-preview.cjs           → API on http://127.0.0.1:4401 until Ctrl+C
  *          node services/api/scripts/queue-preview.cjs --smoke   → HTTP self-check of the seeded day, then exit (code 0 = OK)
  * Web:     $env:VITE_API_URL='http://127.0.0.1:4401'; npm run dev --prefix apps/web -- --host 127.0.0.1 --port 5175 --strictPort
- * Accounts (password "preview"): admin (superadmin), reception, doctor (Каримов · кабинет 3 · К), nurse (при Усмановой · кабинет 5 · У), manager.
+ * Accounts (password "preview"): admin (superadmin), reception, doctor (Каримов · кабинет 3 · К), nurse (при Усмановой · кабинет 5 · У), manager,
+ *          operator, marketer (таргетолог: sees only «Мои лиды»), marketer2 (таргетолог without a source).
+ * Leads:   source «Реклама Instagram» reads a built-in sample sheet (STAND_SHEET_ID), no network. Any other sheet link is read from Google for real.
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -18,6 +20,20 @@ const PORT = 4401;
 const WEB = "http://127.0.0.1:5175";
 const CLINIC_TIME_ZONE = "Asia/Tashkent";
 const SMOKE = process.argv.includes("--smoke");
+// The sample "Google Sheet" of the stand: a title row above the headers, a number-formatted phone, a quoted cell with a comma,
+// a row without a usable phone, a repeated phone and the phone of patient 1 (so «Найти пациента» has a match).
+const STAND_SHEET_ID = "stand-sample-sheet-0000000000000000000000000";
+const STAND_SHEET_CSV = [
+  "Заявки с рекламы,,,",
+  "Дата,Имя,Телефон,Что интересует",
+  "01.10.2026 10:15,Каримова Нигора,+998 90 700 11 22,УЗИ сердца",
+  "01.10.2026 11:40,Рустам,998937002233,Консультация кардиолога",
+  "02.10.2026 09:05,Алиев Сардор,+998 90 111 22 33,Повторный приём",
+  '02.10.2026 14:30,"Ким, Виктория",(94) 700-44-55,"Невролог, вечером"',
+  "02.10.2026 16:00,Без телефона,нет,Перезвонить на почту",
+  "03.10.2026 08:20,Шахзод,p:+998977005566,Педиатр",
+  "03.10.2026 08:25,Шахзод (повтор),+998 97 700 55 66,Педиатр",
+].join("\n");
 const src = path.resolve(__dirname, "../src");
 const migrations = path.resolve(__dirname, "../migrations");
 const db = new PGlite(); // Memory only: deliberately no database URL or filesystem path.
@@ -82,7 +98,8 @@ async function createDatabase(day, yesterday) {
   // start_at holds clinic wall-clock time; it round-trips only when the DB session and Node share a zone (as in production).
   await db.exec(`SET TIME ZONE '${Intl.DateTimeFormat().resolvedOptions().timeZone}'`);
   await db.exec(`CREATE TABLE clinics(id bigint primary key, name text, subscription_status text default 'active', subscription_ends_at timestamptz);
-    CREATE TABLE users(id bigint primary key, clinic_id bigint not null, full_name text, role text);
+    CREATE TABLE users(id bigint primary key, clinic_id bigint not null, full_name text, role text, username text,
+      is_active boolean default true, deleted_at timestamptz);
     CREATE TABLE patients(id bigserial primary key, clinic_id bigint not null, full_name text, phone text, gender text, birth_date date, source text,
       notes text, created_by_doctor_id bigint, created_by_user_id bigint, created_at timestamptz default now(), deleted_at timestamptz);
     CREATE TABLE doctors(id bigserial primary key, clinic_id bigint not null, full_name text, specialty text default '', percent numeric default 0,
@@ -102,9 +119,13 @@ async function createDatabase(day, yesterday) {
     CREATE TABLE payments(id bigserial primary key, invoice_id bigint);
     CREATE TABLE cash_register_entries(id bigserial primary key, payment_id bigint);`);
   for (const filename of ["033_call_center_daily_workflow.sql", "035_electronic_queue.sql"]) await db.exec(fs.readFileSync(path.join(migrations, filename), "utf8"));
+  // 038 uses SET LOCAL: give it the transaction db-migrate.cjs gives it.
+  await db.exec("BEGIN;\n" + fs.readFileSync(path.join(migrations, "038_leads.sql"), "utf8") + "\nCOMMIT;");
   await db.exec(`INSERT INTO clinics(id, name) VALUES (1, 'Тестовая клиника'), (2, 'Чужая клиника');
-    INSERT INTO users(id, clinic_id, full_name, role) VALUES (1, 1, 'Администратор', 'superadmin'), (2, 1, 'Регистратура', 'reception'),
-      (3, 1, 'Каримов Дилшод Рустамович', 'doctor'), (4, 1, 'Медсестра Усмановой', 'nurse'), (5, 1, 'Менеджер', 'manager'), (9, 2, 'Чужая регистратура', 'reception');
+    INSERT INTO users(id, clinic_id, full_name, role, username) VALUES (1, 1, 'Администратор', 'superadmin', 'admin'), (2, 1, 'Регистратура', 'reception', 'reception'),
+      (3, 1, 'Каримов Дилшод Рустамович', 'doctor', 'doctor'), (4, 1, 'Медсестра Усмановой', 'nurse', 'nurse'), (5, 1, 'Менеджер', 'manager', 'manager'),
+      (6, 1, 'Оператор колл-центра', 'operator', 'operator'), (7, 1, 'Таргетолог Азиз', 'marketer', 'marketer'), (8, 1, 'Таргетолог без источника', 'marketer', 'marketer2'),
+      (9, 2, 'Чужая регистратура', 'reception', 'foreign');
     INSERT INTO doctors(id, clinic_id, full_name, specialty, room, queue_prefix) VALUES
       (1, 1, 'Каримов Дилшод Рустамович', 'Кардиолог', '3', 'К'), (2, 1, 'Усманова Малика Бахтиёровна', 'Уролог', '5', 'У'),
       (3, 1, 'Назарова Дилноза Анваровна', 'Невролог', '7', 'Н'), (4, 1, 'Юлдашев Бекзод Олимович', 'Педиатр', NULL, NULL),
@@ -232,6 +253,28 @@ async function smokeTest(base, displays) {
   check("unknown TV code → 404 JSON, not cached, rate-limited", unknown.status === 404 && unknown.body?.error === "Экран не найден" && unknown.cacheControl === "no-store" && unknown.rateLimitPolicy === "300;w=60", { status: unknown.status, body: unknown.body, cacheControl: unknown.cacheControl, rateLimitPolicy: unknown.rateLimitPolicy });
   const list = await call("admin", "/api/queue/displays");
   check("superadmin lists 2 screens", list.status === 200 && list.body.length === 2, list.body);
+  const staffLeads = await call("reception", "/api/leads");
+  check("reception sees 5 leads from the sample sheet, newest first, phones as digits",
+    staffLeads.status === 200 && staffLeads.body.items.length === 5 && staffLeads.body.items[0].phone === "998977005566" && staffLeads.body.items.every(l => l.stage === "new" && l.sourceName === "Реклама Instagram"), staffLeads.body);
+  const quoted = staffLeads.body.items.find(l => l.phone === "998947004455");
+  check("quoted cells and the other columns are kept as extra", quoted?.fullName === "Ким, Виктория" && quoted.extra["Что интересует"] === "Невролог, вечером" && quoted.extra["Дата"] === "02.10.2026 14:30", quoted);
+  const again = await call("admin", `/api/leads/sources/${staffLeads.body.items[0].sourceId}/sync`, "POST");
+  check("reading the same sheet again adds nothing", again.status === 200 && again.body.status === "ok" && again.body.rows === 7 && again.body.added === 0 && again.body.skipped === 1, again.body);
+  const existing = staffLeads.body.items.find(l => l.phone === "998901112233");
+  const matches = await call("reception", `/api/leads/${existing.id}/patient-matches`);
+  check("«Найти пациента» offers the patient with the same number", matches.status === 200 && matches.body.items.length === 1 && matches.body.items[0].id === 1, matches.body);
+  const taken = await call("operator", `/api/leads/${existing.id}`, "PATCH", { status: "in_progress", expectedStatus: "new" });
+  const late = await call("reception", `/api/leads/${existing.id}`, "PATCH", { status: "in_progress", expectedStatus: "new" });
+  check("operator takes a lead; a colleague who is late gets 409", taken.status === 200 && taken.body.staffUpdatedByName === "Оператор колл-центра" && late.status === 409, [taken.body, late.body]);
+  const linked = await call("reception", `/api/leads/${existing.id}/patient`, "PUT", { patientId: 1 });
+  check("a linked patient is shown on the lead", linked.status === 200 && linked.body.patientId === 1 && linked.body.patientName === "Алиев Сардор Бахтиёрович", linked.body);
+  const mine = await call("marketer", "/api/leads/mine");
+  check("marketer sees own 5 leads with exactly six fields", mine.status === 200 && mine.body.items.length === 5 && JSON.stringify(Object.keys(mine.body.items[0]).sort()) === '["fullName","id","phone","receivedAt","sourceName","stage"]', mine.body.items[0]);
+  check("marketer without a source sees nothing", (await call("marketer2", "/api/leads/mine")).body.items.length === 0, "expected an empty list");
+  const denied = await Promise.all(["/api/leads", "/api/patients", "/api/appointments", "/api/queue/today", "/api/leads/sources/manage"].map(route => call("marketer", route)));
+  check("marketer gets 403 on staff leads, patients, appointments, queue and sources", denied.every(r => r.status === 403), denied.map(r => r.status));
+  check("doctor has no leads; manager works leads but cannot manage sources",
+    (await call("doctor", "/api/leads")).status === 403 && (await call("manager", "/api/leads")).status === 200 && (await call("manager", "/api/leads/sources/manage")).status === 403, "expected 403, 200, 403");
   console.log(`[smoke] ${passed} checks passed`);
 }
 
@@ -253,6 +296,13 @@ async function main() {
   const { ServicesService } = require(path.join(src, "services/servicesService.ts"));
   const { QueueService } = require(path.join(src, "services/queueService.ts"));
   const { QueueDisplaysService } = require(path.join(src, "services/queueDisplaysService.ts"));
+  const { PostgresLeadsRepository } = require(path.join(src, "repositories/postgres/PostgresLeadsRepository.ts"));
+  const { LeadsService } = require(path.join(src, "services/leadsService.ts"));
+  const { LeadSheetSyncService } = require(path.join(src, "services/leads/leadSheetSyncService.ts"));
+  const { fetchSheetCsv } = require(path.join(src, "services/leads/sheetCsvClient.ts"));
+  const leadsRepository = new PostgresLeadsRepository(pool);
+  const leads = new LeadsService(leadsRepository);
+  const fetchStandSheet = (spreadsheetId, gid) => spreadsheetId === STAND_SHEET_ID ? Promise.resolve({ status: "ok", text: STAND_SHEET_CSV }) : fetchSheetCsv(spreadsheetId, gid);
   const appointmentsRepository = new PostgresAppointmentsRepository();
   const doctorsRepository = new PostgresDoctorsRepository();
   const servicesRepository = new PostgresServicesRepository();
@@ -264,14 +314,20 @@ async function main() {
     services: new ServicesService(servicesRepository),
     queue: new QueueService(queueRepository, CLINIC_TIME_ZONE),
     queueDisplays: new QueueDisplaysService(new PostgresQueueDisplaysRepository(pool), queueRepository, CLINIC_TIME_ZONE),
+    leads,
+    leadSheetSync: new LeadSheetSyncService(leadsRepository, leads, fetchStandSheet),
   };
   const displays = await connectionOwner.run({ holding: false }, () => seedQueue(runWithClinicContext));
+  // Leads through the real services: a source bound to the marketer, read once from the sample sheet.
+  const leadSource = await services.leads.createSource(admin, { name: "Реклама Instagram", marketerUserId: 7, sheetUrl: STAND_SHEET_ID });
+  await services.leadSheetSync.syncNow(admin, leadSource.id);
 
   const { appointmentsRouter } = require(path.join(src, "routes/appointmentsRoutes.ts"));
   const { doctorsRouter } = require(path.join(src, "routes/doctorsRoutes.ts"));
   const { patientsRouter } = require(path.join(src, "routes/patientsRoutes.ts"));
   const { servicesRouter } = require(path.join(src, "routes/servicesRoutes.ts"));
   const { queueRouter } = require(path.join(src, "routes/queueRoutes.ts"));
+  const { leadsRouter } = require(path.join(src, "routes/leadsRoutes.ts"));
   const { publicRouter } = require(path.join(src, "routes/publicRoutes.ts"));
   const { errorHandler } = require(path.join(src, "middleware/errorHandler.ts"));
   const { requireAuth } = require(path.join(src, "middleware/authMiddleware.ts"));
@@ -282,6 +338,9 @@ async function main() {
     { id: 3, username: "doctor", fullName: "Каримов Дилшод Рустамович", role: "doctor", doctorId: 1 },
     { id: 4, username: "nurse", fullName: "Медсестра Усмановой", role: "nurse", nurseDoctorId: 2 },
     { id: 5, username: "manager", fullName: "Менеджер", role: "manager" },
+    { id: 6, username: "operator", fullName: "Оператор колл-центра", role: "operator" },
+    { id: 7, username: "marketer", fullName: "Таргетолог Азиз", role: "marketer" },
+    { id: 8, username: "marketer2", fullName: "Таргетолог без источника", role: "marketer" },
   ].map(user => ({ doctorId: null, nurseDoctorId: null, ...user, isActive: true, createdAt: "2026-01-01T00:00:00.000Z" }));
 
   const app = express();
@@ -292,7 +351,7 @@ async function main() {
   app.get("/api/health", (_req, res) => res.json({ ok: true, syntheticPreview: true, day }));
   app.post("/api/auth/login", (req, res) => {
     const user = users.find(item => item.username === req.body?.username);
-    if (!user || req.body.password !== "preview") return res.status(401).json({ error: "Стенд: admin, reception, doctor, nurse или manager, пароль preview" });
+    if (!user || req.body.password !== "preview") return res.status(401).json({ error: "Стенд: admin, reception, doctor, nurse, manager, operator или marketer, пароль preview" });
     const accessToken = signAccessToken({ userId: user.id, clinicId: 1, username: user.username, role: user.role, doctorId: user.doctorId, nurseDoctorId: user.nurseDoctorId });
     return res.json({ user, accessToken });
   });
@@ -301,6 +360,8 @@ async function main() {
   app.get("/api/clinic/me", requireAuth, (_req, res) => res.json({ id: 1, name: "Тестовая клиника", slug: "preview", logoUrl: "/logo.png", primaryColor: "#5F43C6", subscriptionStatus: "active", subscriptionDaysLeft: null }));
   app.get("/api/meta/clinic", requireAuth, (_req, res) => res.json({ clinicName: "Тестовая клиника", receiptFooter: "", reportsTimezone: CLINIC_TIME_ZONE }));
   app.get("/api/invoices", requireAuth, (_req, res) => res.json([]));
+  app.get("/api/platform/access", requireAuth, (_req, res) => res.json({ isPlatformAdmin: false }));
+  app.use("/api/leads", leadsRouter);
   app.use("/api/appointments", appointmentsRouter);
   app.use("/api/doctors", doctorsRouter);
   app.use("/api/patients", patientsRouter);
@@ -315,7 +376,8 @@ async function main() {
   // No process.exit(): on Windows it can abort with a libuv assertion (UV_HANDLE_CLOSING) while fetch sockets close; let the loop drain.
   const stop = code => { process.exitCode = code; server.close(); server.closeAllConnections(); db.close().catch(() => {}); };
   console.log(`Queue preview API: http://127.0.0.1:${PORT} · clinic day ${day} (${CLINIC_TIME_ZONE}) · memory only, Ctrl+C discards data.`);
-  console.log(`Accounts (password "preview"): admin, reception, doctor (Каримов · кабинет 3 · К), nurse (при Усмановой · кабинет 5 · У), manager.`);
+  console.log(`Accounts (password "preview"): admin, reception, doctor (Каримов · кабинет 3 · К), nurse (при Усмановой · кабинет 5 · У), manager, operator, marketer, marketer2.`);
+  console.log(`Leads: source «${leadSource.name}» reads the built-in sample sheet (link "${STAND_SHEET_ID}"); any other link is read from Google.`);
   console.log(`Web: $env:VITE_API_URL='http://127.0.0.1:${PORT}'; npm run dev --prefix apps/web -- --host 127.0.0.1 --port 5175 --strictPort`);
   console.log(`TV «${displays.hall.display.name}» (all doctors, uz+ru, names): ${WEB}/tv/${displays.hall.code}`);
   console.log(`TV «${displays.corridor.display.name}» (2 doctors, ru, no names): ${WEB}/tv/${displays.corridor.code}`);

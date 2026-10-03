@@ -3,6 +3,7 @@ import { useLocation, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Sidebar } from "../components/Sidebar";
 import { useAuth } from "../auth/AuthContext";
+import { ROLE_LABEL_KEYS, isExternalRole } from "../auth/roleGroups";
 import { Button } from "../ui/Button";
 import { cn } from "../ui/utils/cn";
 import { MobileBottomNav } from "../shared/ui/MobileBottomNav";
@@ -29,6 +30,8 @@ const getRouteKey = (path: string): string => {
     "/attendance": "pages.attendance",
     "/call-center": "pages.callCenter",
     "/queue": "pages.queue",
+    "/leads": "pages.leads",
+    "/my-leads": "pages.myLeads",
     "/questionnaires": "pages.questionnaires",
     "/my-services": "pages.myServices",
     "/system/architecture": "pages.systemArchitecture",
@@ -53,9 +56,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [showChangePassword, setShowChangePassword] = React.useState(false);
   const titleKey = getRouteKey(location.pathname);
   const title = t(titleKey);
+  const roleKey = user ? ROLE_LABEL_KEYS[user.role] : undefined;
+  const roleLabel = roleKey ? t(roleKey) : user?.role;
   const brandName = clinic.name || BRANDING.productName;
   const lockMainScroll = location.pathname === "/ai-assistant";
   const isDoctorWorkspaceScreen = location.pathname.startsWith("/doctor-workspace/");
+  // MobileBottomNav renders nothing for an external role: no room is kept for it under the page either.
+  const hasMobileNav = !isDoctorWorkspaceScreen && !isExternalRole(user?.role);
 
   React.useEffect(() => {
     document.title = `${brandName} — ${title}`;
@@ -88,7 +95,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </div>
           <div className="flex shrink-0 items-center gap-2 md:gap-4">
             <div className="hidden max-w-[220px] truncate text-xs text-slate-500 sm:block">
-              {user ? `${user.fullName ?? user.username} · ${user.role}` : "Guest"}
+              {user ? `${user.fullName ?? user.username} · ${roleLabel}` : "Guest"}
             </div>
             <LanguageSwitcher />
             <Button
@@ -115,13 +122,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <main
           className={cn(
             "min-h-0 flex-1 bg-[#f8fafc]",
-            !isDoctorWorkspaceScreen && "max-md:pb-16",
+            hasMobileNav && "max-md:pb-16",
             lockMainScroll ? "overflow-hidden" : "overflow-auto"
           )}
         >
           {children}
         </main>
-        {!isDoctorWorkspaceScreen ? <MobileBottomNav /> : null}
+        {hasMobileNav ? <MobileBottomNav /> : null}
       </div>
       <ChangePasswordModal open={showChangePassword} onClose={() => setShowChangePassword(false)} />
     </div>

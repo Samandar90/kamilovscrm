@@ -23,12 +23,18 @@ import { QueueService } from "../services/queueService";
 import { PostgresQueueRepository } from "../repositories/postgres/PostgresQueueRepository";
 import { QueueDisplaysService } from "../services/queueDisplaysService";
 import { PostgresQueueDisplaysRepository } from "../repositories/postgres/PostgresQueueDisplaysRepository";
+import { LeadsService } from "../services/leadsService";
+import { LeadSheetSyncService } from "../services/leads/leadSheetSyncService";
+import { PostgresLeadsRepository } from "../repositories/postgres/PostgresLeadsRepository";
 import { dbPool } from "../config/database";
 import { env } from "../config/env";
 import { repositories } from "./repositories";
 
 // Один репозиторий очереди на сотрудников и публичный ТВ-экран.
 const queueRepository = new PostgresQueueRepository(dbPool);
+// Один репозиторий и один сервис лидов на сотрудников и на чтение таблиц (по кнопке и по расписанию).
+const leadsRepository = new PostgresLeadsRepository(dbPool);
+const leads = new LeadsService(leadsRepository);
 
 export const services = {
   patients: new PatientsService(repositories.patients, repositories.appointments),
@@ -67,4 +73,6 @@ export const services = {
     queueRepository,
     env.reportsTimezone
   ),
+  leads,
+  leadSheetSync: new LeadSheetSyncService(leadsRepository, leads),
 };

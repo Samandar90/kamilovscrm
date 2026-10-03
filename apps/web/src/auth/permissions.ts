@@ -11,6 +11,7 @@ export const USER_ROLES = [
   "accountant",
   "manager",
   "director",
+  "marketer",
 ] as const;
 
 export type UserRole = (typeof USER_ROLES)[number];
@@ -36,6 +37,9 @@ export const PERMISSION_MODULES = [
   // Электронная очередь: номера у врачей на день и вызов пациентов. ТВ-экраны — отдельная политика QUEUE_DISPLAY_MANAGE.
   // Врач и медсестра работают только с очередью своего врача (проверка в сервисе).
   "queue",
+  // Лиды из таблиц таргетологов: список клиники, статус, заметка, привязка пациента. Источники и подключение
+  // таблиц — отдельная политика LEAD_SOURCES_MANAGE; свои лиды таргетолога — LEADS_OWN_READ.
+  "leads",
 ] as const;
 
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];
@@ -55,6 +59,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     appointments: ["read", "create", "update", "delete"],
     questionnaires: ["read", "create", "update"],
     queue: ["read", "create", "update"],
+    leads: ["read", "update"],
     ai: ["read", "create"],
   },
 
@@ -90,6 +95,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     patients: ["read", "create"],
     appointments: ["read", "create", "update"],
     callcenter: ["read", "update"],
+    leads: ["read", "update"],
     ai: ["read", "create"],
   },
 
@@ -111,6 +117,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     appointments: ["read", "create", "update", "delete"],
     questionnaires: ["read", "create", "update", "delete"],
     queue: ["read"],
+    leads: ["read", "update"],
     invoices: ["read"],
     payments: ["read"],
     expenses: ["read", "create", "update", "delete"],
@@ -130,6 +137,9 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     reports: ["read"],
     ai: ["read", "create"],
   },
+
+  /** Внешний таргетолог (подрядчик): ни одного модуля клиники — ни пациентов, ни записей, ни ИИ. Строка остаётся пустой. */
+  marketer: {},
 };
 
 export function hasPermission(
@@ -187,6 +197,10 @@ export const PERMISSIONS = {
   QUESTIONNAIRE_TEMPLATE_MANAGE: ["superadmin", "manager", "doctor"] as const satisfies readonly UserRole[],
   /** ТВ-экраны очереди: создание, новый код, удаление. */
   QUEUE_DISPLAY_MANAGE: ["superadmin"] as const satisfies readonly UserRole[],
+  /** Источники лидов: создание, привязка таргетолога, подключение и чтение таблицы. */
+  LEAD_SOURCES_MANAGE: ["superadmin"] as const satisfies readonly UserRole[],
+  /** Таргетолог читает только лиды своих источников (один адрес API). */
+  LEADS_OWN_READ: ["marketer"] as const satisfies readonly UserRole[],
   DOCTOR_OWN_SERVICES: ["doctor"] as const satisfies readonly UserRole[],
   FINANCIAL_PORTAL_ACCESS: uniqRoles([
     ...rolesWithPermission("invoices", "read"),

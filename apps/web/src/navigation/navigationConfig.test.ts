@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { QUEUE_ROLES } from "../auth/roleGroups";
-import { navigationConfig } from "./navigationConfig";
+import { LEADS_ROLES, MARKETER_ROLES, QUEUE_ROLES } from "../auth/roleGroups";
+import ru from "../locales/ru.json";
+import uz from "../locales/uz.json";
+import { navigationConfig, type NavigationItem } from "./navigationConfig";
 
 describe("queue menu item", () => {
   it("sits in the main section right after appointments, for the queue roles, with a translated label", () => {
@@ -11,5 +13,43 @@ describe("queue menu item", () => {
     expect(item?.labelKey).toBe("pages.queue");
     expect(item?.roles).toEqual(QUEUE_ROLES);
     expect(item?.icon).toBeDefined();
+  });
+});
+
+describe("leads menu item", () => {
+  it("sits in the main section right after the call center, for the leads roles, with a translated label", () => {
+    const main = navigationConfig.find((section) => section.sectionKey === "nav.main");
+    const paths = main?.items.map((item) => item.path) ?? [];
+    expect(paths).toContain("/leads");
+    expect(paths.indexOf("/leads")).toBe(paths.indexOf("/call-center") + 1);
+    const item = main?.items.find((entry) => entry.path === "/leads");
+    expect(item?.labelKey).toBe("pages.leads");
+    expect(item?.roles).toEqual(LEADS_ROLES);
+    expect([...(item?.roles ?? [])].sort()).toEqual(["manager", "operator", "reception", "superadmin"]);
+    expect(item?.icon).toBeDefined();
+    expect(ru.pages.leads).toBe("Лиды");
+    expect(uz.pages.leads).toBe("Lidlar");
+  });
+});
+
+describe("external contractor", () => {
+  const withChildren = (items: NavigationItem[]): NavigationItem[] =>
+    items.flatMap((item) => [item, ...withChildren(item.children ?? [])]);
+  const all = withChildren(navigationConfig.flatMap((section) => section.items));
+
+  it("is listed in exactly one menu item, /my-leads, children included", () => {
+    expect(all.map((item) => item.path)).toContain("/billing/payments");
+    expect(all.filter((item) => item.roles.includes("marketer")).map((item) => item.path ?? item.labelKey)).toEqual(["/my-leads"]);
+  });
+
+  it("gets «Мои лиды» alone: no staff role sees the item, the label is translated, the icon is its own", () => {
+    const item = all.find((entry) => entry.path === "/my-leads");
+    expect(item?.labelKey).toBe("pages.myLeads");
+    expect(item?.roles).toEqual(MARKETER_ROLES);
+    expect(item?.roles).toEqual(["marketer"]);
+    expect(item?.icon).toBeDefined();
+    expect(item?.icon).not.toBe(all.find((entry) => entry.path === "/leads")?.icon);
+    expect(ru.pages.myLeads).toBe("Мои лиды");
+    expect(uz.pages.myLeads).toBe("Mening lidlarim");
   });
 });

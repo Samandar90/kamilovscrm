@@ -30,6 +30,7 @@ import { callCenterRouter } from "./callCenterRoutes";
 import { questionnairesRouter } from "./questionnairesRoutes";
 import { publicRouter } from "./publicRoutes";
 import { queueRouter } from "./queueRoutes";
+import { leadsRouter } from "./leadsRoutes";
 
 const router = Router();
 
@@ -45,7 +46,7 @@ router.post(
 );
 router.get("/meta/clinic", requireAuth, asyncHandler(clinicMetaController));
 router.get("/clinic/me", requireAuth, asyncHandler(clinicMeController));
-router.post("/clinics", requireAuth, asyncHandler(createClinicController));
+router.post("/clinics", requireAuth, asyncHandler(requirePlatformAdmin), asyncHandler(createClinicController));
 router.get(
   "/debug/ai",
   requireAuth,
@@ -81,6 +82,7 @@ router.use("/attendance", requireAuth, subscriptionGuard, attendanceRouter);
 router.use("/call-center", requireAuth, subscriptionGuard, callCenterRouter);
 router.use("/questionnaires", requireAuth, subscriptionGuard, questionnairesRouter);
 router.use("/queue", requireAuth, subscriptionGuard, queueRouter);
+router.use("/leads", requireAuth, subscriptionGuard, leadsRouter);
 
 export { router as rootRouter };
 
