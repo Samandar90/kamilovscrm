@@ -5,7 +5,7 @@ import { createAnnouncer, type Announcer } from "./announcer";
 import { createCallTracker } from "./callTracker";
 import { normalizeCodeInput } from "./codeInput";
 import { readStartedFlag, requestFullscreen, requestWakeLock, writeStartedFlag, type WakeLockHandle } from "./tvDevice";
-import { TV_LABELS, tvLabel } from "./tvLabels";
+import { TV_TEXT_LANGUAGE, tvLabel } from "./tvLabels";
 import { CABINETS_PER_PAGE, gridColumns, pageCabinets, waitingRowsShown } from "./tvLayout";
 import { formatClock, formatDay, msUntilDailyReload } from "./tvTime";
 import { useQueueDisplay } from "./useQueueDisplay";
@@ -139,12 +139,11 @@ function CallOverlay({ call, language }: { call: QueueDisplayCall; language: Que
   );
 }
 
-/** Full-screen notice; the display language is unknown here, so Uzbek and Russian are shown on separate lines. */
+/** Full-screen notice. */
 function FullMessage({ labelKey }: { labelKey: "notFound" | "inactive" }) {
   return (
     <div className="qtv-root qtv-message">
-      <p className="qtv-message-text">{TV_LABELS[labelKey].uz}</p>
-      <p className="qtv-message-text">{TV_LABELS[labelKey].ru}</p>
+      <p className="qtv-message-text">{tvLabel(labelKey, TV_TEXT_LANGUAGE)}</p>
     </div>
   );
 }
@@ -300,7 +299,7 @@ export function TvDisplayPage() {
   if (error === "not_found") return <FullMessage labelKey="notFound" />;
   if (error === "inactive") return <FullMessage labelKey="inactive" />;
 
-  const language: QueueDisplayLanguage = state ? state.display.language : "uz_ru";
+  const language = TV_TEXT_LANGUAGE;
   const shownCount = Math.min(cabinets.length, CABINETS_PER_PAGE);
   const columns = gridColumns(shownCount);
   const rows = Math.max(1, Math.ceil(shownCount / columns));

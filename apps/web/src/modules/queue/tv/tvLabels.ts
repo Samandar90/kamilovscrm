@@ -1,8 +1,8 @@
 import type { QueueDisplayLanguage } from "../api/queueTypes";
 
 /**
- * TV strings are constants, not i18n keys: the screen shows Uzbek and Russian together whatever the staff UI
- * language is. Uzbek oʻ/gʻ are written with U+2018 (‘) here because every TV font has that glyph.
+ * TV strings are constants, not i18n keys: the screen's language does not follow the staff UI language.
+ * Uzbek oʻ/gʻ are written with U+2018 (‘) here because every TV font has that glyph.
  */
 export const TV_LABELS = {
   queueTitle: { uz: "Navbat", ru: "Очередь" },
@@ -35,6 +35,12 @@ export const TV_LABELS = {
 } as const;
 
 export type TvLabelKey = keyof typeof TV_LABELS;
+
+/**
+ * Language of every text the TV shows: Russian, whatever language the screen is set to in the staff UI (the clinic
+ * wants Russian only, like the voice). The Uzbek texts stay in TV_LABELS; set this to "uz_ru" to bring them back.
+ */
+export const TV_TEXT_LANGUAGE: QueueDisplayLanguage = "ru";
 
 /** "uz" → Uzbek, "ru" → Russian, "uz_ru" → "Uzbek / Russian" (a label that is identical in both is shown once). */
 export function tvLabel(key: TvLabelKey, language: QueueDisplayLanguage): string {

@@ -106,14 +106,14 @@ describe("TvDisplayPage", () => {
     await render();
     expect(mocks.codes[0]).toBe("K7M2Q9XR4P");
     const text = html();
-    for (const expected of ["Kamilovs Clinic", "Navbat / Очередь", "Каримов Бахтиёр", "Терапевт", "К-05", "Алишер К.", "К-06", "К-07", "+2", "Сардор Т.", "Qabulda / На приёме", "Chaqirildi / Вызван", "Navbat yo‘q / Очереди нет", "So‘nggi chaqiruvlar / Последние вызовы", "→ Юсупова Нигора"]) {
+    for (const expected of ["Kamilovs Clinic", "Очередь", "Каримов Бахтиёр", "Терапевт", "К-05", "Алишер К.", "К-06", "К-07", "+2", "Сардор Т.", "На приёме", "Вызван", "Очереди нет", "Последние вызовы", "→ Юсупова Нигора"]) {
       expect(text).toContain(expected);
     }
     expect(view!.root.findAllByProps({ className: "qtv-card" })).toHaveLength(2);
     // calls already present at the first poll are never announced
     expect(view!.root.findAllByProps({ className: "qtv-overlay" })).toHaveLength(0);
     // synthesized announcements are disclosed on screen while the voice is on
-    expect(text).toContain("Ovoz sun’iy intellekt yordamida yaratilgan / Голос синтезирован ИИ");
+    expect(text).toContain("Голос синтезирован ИИ");
   });
 
   it("lists waiting patients one per row with their masked names, and the rest beyond the list as +N", async () => {
@@ -151,7 +151,7 @@ describe("TvDisplayPage", () => {
     await render();
     expect(startButton()).toHaveLength(1);
     expect(startButton()[0].props.autoFocus).toBe(true);
-    expect(html()).toContain("Ekranni ishga tushirish / Запустить экран");
+    expect(html()).toContain("Запустить экран");
     await act(async () => {
       startButton()[0].props.onClick();
     });
@@ -188,8 +188,8 @@ describe("TvDisplayPage", () => {
     mocks.display = { state: sample("2026-09-30T06:00:02.000Z", [fresh, oldCall]), error: null, offline: false };
     await rerender();
     expect(view!.root.findByProps({ className: "qtv-overlay-code" }).children).toEqual(["К-06"]);
-    expect(html()).toContain("Navbatdagi raqam / Приглашается");
-    expect(html()).toContain("→ Xona / Кабинет 3");
+    expect(html()).toContain("Приглашается");
+    expect(html()).toContain("→ Кабинет 3");
     expect(mocks.announcer.announce).toHaveBeenCalledWith(
       [["nomer", "6", "proydite_v_kabinet_nomer", "3"]],
       ["ru"],
@@ -259,7 +259,7 @@ describe("TvDisplayPage", () => {
   it("shows the offline banner and keeps the last data", async () => {
     mocks.display = { ...mocks.display, offline: true };
     await render();
-    expect(html()).toContain("Aloqa yo‘q / Нет связи");
+    expect(html()).toContain("Нет связи");
     expect(html()).toContain("К-05");
   });
 
@@ -282,7 +282,6 @@ describe("TvDisplayPage", () => {
   it("shows a full-screen message for an unknown screen code", async () => {
     mocks.display = { state: null, error: "not_found", offline: false };
     await render();
-    expect(html()).toContain("Ekran o‘chirilgan. Administratordan yangi kod so‘rang.");
     expect(html()).toContain("Экран отключён. Попросите администратора выдать новый код.");
     expect(startButton()).toHaveLength(0);
   });
@@ -290,7 +289,6 @@ describe("TvDisplayPage", () => {
   it("shows a full-screen message for an inactive clinic subscription", async () => {
     mocks.display = { state: null, error: "inactive", offline: false };
     await render();
-    expect(html()).toContain("Klinika obunasi faol emas.");
     expect(html()).toContain("Подписка клиники неактивна.");
   });
 });
