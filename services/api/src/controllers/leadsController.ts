@@ -44,6 +44,18 @@ export const updateLeadSourceController = async (req: Request, res: Response) =>
   return res.status(200).json(await services.leads.updateSource(auth, Number(req.params.id), req.body));
 };
 
+/** Читает таблицу источника и ничего не пишет. Ошибка чтения — не ошибка HTTP: 200 с кодом в `status`. */
+export const checkLeadSourceSheetController = async (req: Request, res: Response) => {
+  const auth = getAuthPayload(req);
+  return res.status(200).json(await services.leadSheetSync.check(auth, Number(req.params.id)));
+};
+
+/** Читает таблицу источника сейчас, не дожидаясь расписания. Ошибка чтения — тоже 200 с кодом в `status`. */
+export const syncLeadSourceSheetController = async (req: Request, res: Response) => {
+  const auth = getAuthPayload(req);
+  return res.status(200).json(await services.leadSheetSync.syncNow(auth, Number(req.params.id)));
+};
+
 // ---------- Таргетолог: только свои лиды ----------
 
 /** Источник и клинику адрес не принимает: оба берутся из токена. */

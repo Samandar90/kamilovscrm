@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  checkLeadSourceSheetController,
   createLeadSourceController,
   getLeadPatientMatchesController,
   listLeadSourcesController,
@@ -7,6 +8,7 @@ import {
   listMyLeadsController,
   manageLeadSourcesController,
   setLeadPatientController,
+  syncLeadSourceSheetController,
   updateLeadController,
   updateLeadSourceController,
 } from "../controllers/leadsController";
@@ -34,6 +36,19 @@ router.patch(
   allowPermission("LEAD_SOURCES_MANAGE"),
   validateLeadIdParam,
   asyncHandler(updateLeadSourceController)
+);
+// Таблица источника: проверить без записи и прочитать сейчас.
+router.post(
+  "/sources/:id/check",
+  allowPermission("LEAD_SOURCES_MANAGE"),
+  validateLeadIdParam,
+  asyncHandler(checkLeadSourceSheetController)
+);
+router.post(
+  "/sources/:id/sync",
+  allowPermission("LEAD_SOURCES_MANAGE"),
+  validateLeadIdParam,
+  asyncHandler(syncLeadSourceSheetController)
 );
 
 router.patch("/:id", checkPermission("leads", "update"), validateLeadIdParam, asyncHandler(updateLeadController));

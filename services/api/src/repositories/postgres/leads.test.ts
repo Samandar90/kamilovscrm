@@ -19,6 +19,18 @@ vi.mock("../../config/database", () => ({
 }));
 // The "@/..." alias of tsconfig is not known to vitest; no OpenAI client is created in tests.
 vi.mock("@/lib/openai", () => ({ hasOpenAI: false, openai: null }));
+// No sheet is fetched in tests: the link helpers stay real, the read answers what a test puts into `sheet.answer`.
+const sheet = vi.hoisted(() => ({
+  answer: { status: "not_found" } as import("../../services/leads/sheetCsvClient").SheetFetchResult,
+  calls: [] as Array<[string, number]>,
+}));
+vi.mock("../../services/leads/sheetCsvClient", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../services/leads/sheetCsvClient")>()),
+  fetchSheetCsv: async (spreadsheetId: string, gid: number) => {
+    sheet.calls.push([spreadsheetId, gid]);
+    return sheet.answer;
+  },
+}));
 // The real root router with the real container: the leads repository talks to PGlite through the mocked pool.
 import { rootRouter } from "../../routes";
 import { services } from "../../container";
@@ -141,6 +153,8 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   leadInserts = 0;
+  sheet.calls.length = 0;
+  sheet.answer = { status: "not_found" };
   await db.exec(`TRUNCATE leads, lead_sources, appointments, patients, users, clinics RESTART IDENTITY CASCADE;
     INSERT INTO clinics VALUES (1, 'Клиника Камилова', 'active', NULL), (2, 'Вторая клиника', 'active', NULL);
     INSERT INTO users (id, clinic_id, username, full_name, role, is_active, deleted_at) VALUES
@@ -644,6 +658,93 @@ describe("lead sources", () => {
     expect(await repository.findSource(1, SOURCE_A)).toMatchObject({ lastSyncStatus: "ok", lastSyncRows: 40, lastSyncSkipped: 2, lastSyncAt: expect.stringMatching(/Z$/) });
     await repository.recordSync(1, SOURCE_A, "no_access", null, null);
     expect(await repository.findSource(1, SOURCE_A)).toMatchObject({ lastSyncStatus: "no_access", lastSyncRows: null, lastSyncSkipped: null });
+    expect(await repository.findSource(2, FOREIGN_SOURCE)).toMatchObject({ lastSyncAt: null, lastSyncStatus: null });
+  });
+});
+
+describe("sheet check and read of a source", () => {
+  // Two rows with a usable phone and one without.
+  const SHEET_CSV = ["Имя,Телефон,Город", `${NAME},+998 90 123-45-67,Ташкент`, "Дилноза,998935550001,", "Гость,,Бухара"].join("\r\n");
+  const ACTIONS = ["check", "sync"] as const;
+  const leadIds = async () => (await db.query<{ id: number }>("SELECT id FROM leads ORDER BY id")).rows.map((row) => Number(row.id));
+
+  beforeEach(async () => {
+    await as("admin", `/sources/${SOURCE_A}`, "PATCH", { sheetUrl: `${SHEET_LINK}#gid=7` });
+    await as("foreignAdmin", `/sources/${FOREIGN_SOURCE}`, "PATCH", { sheetUrl: SHEET_LINK });
+    sheet.answer = { status: "ok", text: SHEET_CSV };
+  });
+
+  it("checks the sheet for the superadmin and writes nothing", async () => {
+    const res = await as("admin", `/sources/${SOURCE_A}/check`, "POST");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      status: "ok", headers: ["Имя", "Телефон", "Город"], detected: { phone: "Телефон", name: "Имя" }, rows: 3, valid: 2, skipped: 1,
+    });
+    // The tab of the stored link is the one that is read.
+    expect(sheet.calls).toEqual([[SHEET_ID, 7]]);
+    expect(leadInserts).toBe(0);
+    expect(await leadIds()).toEqual([]);
+    expect(await repository.findSource(1, SOURCE_A)).toMatchObject({ lastSyncAt: null, lastSyncStatus: null, lastSyncRows: null });
+  });
+
+  it("reads the sheet now for the superadmin: the leads go to the clinic of the source, the result is stored on it", async () => {
+    const res = await as("admin", `/sources/${SOURCE_A}/sync`, "POST");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: "ok", rows: 3, added: 2, duplicates: 0, skipped: 1 });
+    expect((await as("admin", `/sources/${SOURCE_A}/sync`, "POST")).body).toEqual({ status: "ok", rows: 3, added: 0, duplicates: 2, skipped: 1 });
+    expect(sheet.calls).toEqual([[SHEET_ID, 7], [SHEET_ID, 7]]);
+
+    const list = await as("reception", "");
+    expect(list.body.items.map((lead: { id: number; fullName: string; phone: string; sourceName: string; status: string }) =>
+      [lead.id, lead.fullName, lead.phone, lead.sourceName, lead.status]
+    )).toEqual([[2, "Дилноза", "998935550001", "Instagram", "new"], [1, NAME, PHONE, "Instagram", "new"]]);
+    expect(list.body.items[1].extra).toEqual({ Город: "Ташкент" });
+    expect(ids((await as("marketerA", "/mine")).body)).toEqual([2, 1]);
+    expect((await as("foreignAdmin", "")).body.items).toEqual([]);
+    expect((await as("admin", "/sources/manage")).body.items[0]).toMatchObject({
+      id: SOURCE_A, leadsCount: 2, lastSyncStatus: "ok", lastSyncRows: 3, lastSyncSkipped: 1, lastSyncAt: expect.stringMatching(/Z$/),
+    });
+    expect(await repository.findSource(2, FOREIGN_SOURCE)).toMatchObject({ lastSyncAt: null, leadsCount: 0 });
+  });
+
+  it("answers 200 with the code of the read when the sheet cannot be read", async () => {
+    await ingest(SOURCE_A, [FIXTURE_LEAD]);
+    sheet.answer = { status: "no_access" };
+    expect(await as("admin", `/sources/${SOURCE_A}/check`, "POST")).toMatchObject({
+      status: 200, body: { status: "no_access", headers: [], detected: { phone: null, name: null }, rows: 0, valid: 0, skipped: 0 },
+    });
+    expect(await as("admin", `/sources/${SOURCE_A}/sync`, "POST")).toMatchObject({
+      status: 200, body: { status: "no_access", rows: 0, added: 0, duplicates: 0, skipped: 0 },
+    });
+    expect((await as("admin", "/sources/manage")).body.items[0]).toMatchObject({ lastSyncStatus: "no_access", lastSyncRows: null, leadsCount: 1 });
+    expect(await leadIds()).toEqual([1]);
+  });
+
+  it("is closed to everyone but the superadmin", async () => {
+    for (const who of ["manager", "reception", "operator", "director", "doctor", "marketerA", "marketerB"] as const) {
+      for (const action of ACTIONS) {
+        expect((await as(who, `/sources/${SOURCE_A}/${action}`, "POST")).status, `${who} ${action}`).toBe(403);
+      }
+    }
+    expect(sheet.calls).toEqual([]);
+    expect(await leadIds()).toEqual([]);
+    expect(await repository.findSource(1, SOURCE_A)).toMatchObject({ lastSyncAt: null, lastSyncStatus: null });
+  });
+
+  it("answers 404 for a source of another clinic, 422 for a source without a sheet and 400 for a bad id", async () => {
+    for (const action of ACTIONS) {
+      expect(await as("foreignAdmin", `/sources/${SOURCE_A}/${action}`, "POST"), action)
+        .toMatchObject({ status: 404, body: { error: "Источник не найден" } });
+      expect((await as("admin", `/sources/${FOREIGN_SOURCE}/${action}`, "POST")).status, action).toBe(404);
+      expect((await as("admin", `/sources/999/${action}`, "POST")).status, action).toBe(404);
+      expect(await as("admin", `/sources/${SOURCE_B}/${action}`, "POST"), action)
+        .toMatchObject({ status: 422, body: { error: "Сначала укажите ссылку на таблицу" } });
+      expect((await as("admin", `/sources/abc/${action}`, "POST")).status, action).toBe(400);
+    }
+    // Nothing was fetched and nothing was written, in either clinic.
+    expect(sheet.calls).toEqual([]);
+    expect(await leadIds()).toEqual([]);
+    expect(await repository.findSource(1, SOURCE_A)).toMatchObject({ lastSyncAt: null, lastSyncStatus: null });
     expect(await repository.findSource(2, FOREIGN_SOURCE)).toMatchObject({ lastSyncAt: null, lastSyncStatus: null });
   });
 });
