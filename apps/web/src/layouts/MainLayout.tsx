@@ -3,6 +3,7 @@ import { useLocation, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Sidebar } from "../components/Sidebar";
 import { useAuth } from "../auth/AuthContext";
+import { ROLE_LABEL_KEYS } from "../auth/roleGroups";
 import { Button } from "../ui/Button";
 import { cn } from "../ui/utils/cn";
 import { MobileBottomNav } from "../shared/ui/MobileBottomNav";
@@ -53,6 +54,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [showChangePassword, setShowChangePassword] = React.useState(false);
   const titleKey = getRouteKey(location.pathname);
   const title = t(titleKey);
+  const roleKey = user ? ROLE_LABEL_KEYS[user.role] : undefined;
+  const roleLabel = roleKey ? t(roleKey) : user?.role;
   const brandName = clinic.name || BRANDING.productName;
   const lockMainScroll = location.pathname === "/ai-assistant";
   const isDoctorWorkspaceScreen = location.pathname.startsWith("/doctor-workspace/");
@@ -88,7 +91,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </div>
           <div className="flex shrink-0 items-center gap-2 md:gap-4">
             <div className="hidden max-w-[220px] truncate text-xs text-slate-500 sm:block">
-              {user ? `${user.fullName ?? user.username} · ${user.role}` : "Guest"}
+              {user ? `${user.fullName ?? user.username} · ${roleLabel}` : "Guest"}
             </div>
             <LanguageSwitcher />
             <Button
