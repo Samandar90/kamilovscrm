@@ -16,7 +16,7 @@ describe("mapSheetRows: header detection", () => {
   });
 
   it("reads a table of only empty rows as empty", () => {
-    expect(mapSheetRows([[""], ["", "  "], [], [" ", ""]], null)).toEqual(NOTHING);
+    expect(mapSheetRows([[""], ["", "  "], [], ["\u00a0", ""]], null)).toEqual(NOTHING);
   });
 
   it("finds the phone and the name by header and keeps the other columns as extra", () => {
@@ -276,7 +276,7 @@ describe("mapSheetRows: rows", () => {
 
   it("does not count fully empty rows", () => {
     const mapping = mapSheetRows(
-      [["Имя", "Телефон"], ["", ""], ["Test", "998901234567"], [], ["  ", " "], [""]],
+      [["Имя", "Телефон"], ["", ""], ["Test", "998901234567"], [], ["  ", "\u00a0"], [""]],
       null
     );
 
@@ -413,6 +413,25 @@ describe("mapSheetRows: rows", () => {
     const mapping = mapSheetRows([["Телефон", "к".repeat(150)], ["998901234567", "значение"]], null);
 
     expect(mapping.rows[0].extra).toEqual({ ["к".repeat(100)]: "значение" });
+  });
+
+  it("keeps a column headed like a property of Object as an ordinary extra key", () => {
+    const mapping = mapSheetRows(
+      [
+        ["Телефон", "__proto__", "constructor", "toString", "Город"],
+        ["998901234567", "первое", "второе", "третье", "Ташкент"],
+      ],
+      null
+    );
+
+    expect(mapping.headers).toEqual(["Телефон", "__proto__", "constructor", "toString", "Город"]);
+    const extra = mapping.rows[0].extra;
+    expect(Object.entries(extra)).toEqual([
+      ["__proto__", "первое"], ["constructor", "второе"], ["toString", "третье"], ["Город", "Ташкент"],
+    ]);
+    // The form it takes on the way into the jsonb parameter.
+    expect(JSON.stringify(extra)).toBe('{"__proto__":"первое","constructor":"второе","toString":"третье","Город":"Ташкент"}');
+    expect(Object.getPrototypeOf(extra)).toBe(Object.prototype);
   });
 
   it("returns the same phone twice when the sheet repeats it", () => {

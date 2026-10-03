@@ -222,6 +222,24 @@ describe("ingestLeadRows", () => {
     });
   });
 
+  it("stores and returns a sheet column headed '__proto__' or 'constructor' like any other", async () => {
+    const extra = Object.fromEntries([["__proto__", "первое"], ["constructor", "второе"], ["Город", "Ташкент"]]);
+    const json = '{"__proto__":"первое","constructor":"второе","Город":"Ташкент"}';
+    expect(JSON.stringify(extra)).toBe(json);
+    expect(await ingest(SOURCE_A, [{ phone: PHONE, fullName: NAME, extra }])).toMatchObject({ added: 1 });
+
+    const stored = await db.query<{ first: string; second: string; keys: number }>(
+      `SELECT extra->>'__proto__' AS first, extra->>'constructor' AS second,
+              (SELECT count(*)::int FROM jsonb_object_keys(extra)) AS keys FROM leads WHERE id = 1`
+    );
+    expect(stored.rows).toEqual([{ first: "первое", second: "второе", keys: 3 }]);
+    // jsonb orders the keys by length, so the answer is compared key by key.
+    const res = await as("reception", "");
+    expect(JSON.parse(res.text, (key, value) => (key === "extra" ? Object.entries(value).sort() : value)).items[0].extra)
+      .toEqual(Object.entries(extra).sort());
+    expect(res.text).toContain('"__proto__":"первое"');
+  });
+
   it("inserts in chunks of 500 and never lets a bad row fail the batch", async () => {
     const many = rowsOf(1200);
     expect(await ingest(SOURCE_A, many)).toEqual({ received: 1200, added: 1200, duplicates: 0 });

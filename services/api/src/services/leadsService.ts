@@ -188,13 +188,14 @@ const cleanFullName = (value: unknown): string | null => {
 };
 
 const cleanExtra = (value: unknown): Record<string, string> => {
-  const extra: Record<string, string> = {};
+  // Парами, а не `extra[header] = …`: заголовок `__proto__` присваиванием в обычный объект не записывается.
+  const extra: Array<[string, string]> = [];
   if (value && typeof value === "object" && !Array.isArray(value)) {
     for (const [header, text] of Object.entries(value)) {
-      if (typeof text === "string") extra[header.replace(/\u0000/g, "")] = text.replace(/\u0000/g, "");
+      if (typeof text === "string") extra.push([header.replace(/\u0000/g, ""), text.replace(/\u0000/g, "")]);
     }
   }
-  return extra;
+  return Object.fromEntries(extra);
 };
 
 /**

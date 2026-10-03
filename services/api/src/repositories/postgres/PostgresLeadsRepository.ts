@@ -101,13 +101,11 @@ const idOrNull = (value: Id | null): number | null => (value == null ? null : Nu
 
 /** jsonb «заголовок → текст»; всё, что не строка, наружу не отдаётся. */
 const mapExtra = (value: unknown): Record<string, string> => {
-  const extra: Record<string, string> = {};
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    for (const [header, text] of Object.entries(value)) {
-      if (typeof text === "string") extra[header] = text;
-    }
-  }
-  return extra;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  // fromEntries, а не `extra[header] = text`: заголовок `__proto__` присваиванием в обычный объект не записывается.
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string")
+  );
 };
 
 const mapColumnMap = (value: unknown): LeadColumnMap | null => {

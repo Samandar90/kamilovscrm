@@ -160,16 +160,15 @@ export function mapSheetRows(table: string[][], columnMap: LeadColumnMap | null)
       continue;
     }
     const fullName = nameColumn >= 0 ? cut(cellText(row[nameColumn]), MAX_NAME_LENGTH) || null : null;
-    const extra: Record<string, string> = {};
-    let extraCount = 0;
+    // Pairs, not `extra[key] = value`: a column headed "__proto__" would be lost by an assignment to a plain object.
+    const extra: Array<[string, string]> = [];
     for (const column of extraColumns) {
-      if (extraCount === MAX_EXTRA_COLUMNS) break;
+      if (extra.length === MAX_EXTRA_COLUMNS) break;
       const value = cut(cellText(row[column.index]), MAX_EXTRA_VALUE_LENGTH);
       if (value === "") continue;
-      extra[column.key] = value;
-      extraCount += 1;
+      extra.push([column.key, value]);
     }
-    rows.push({ phone, fullName, extra });
+    rows.push({ phone, fullName, extra: Object.fromEntries(extra) });
   }
 
   return {
