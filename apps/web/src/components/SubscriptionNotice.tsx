@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { useClinic } from "../hooks/useClinic";
 import { useAuth } from "../auth/AuthContext";
+import { isExternalRole } from "../auth/roleGroups";
 import { SALES_CONTACTS } from "../shared/config/branding";
 
 /** Имя события, которое http-клиент шлёт при ответе 402 (подписка истекла/приостановлена). */
@@ -10,11 +11,14 @@ export const PAYMENT_REQUIRED_EVENT = "sazion:payment-required";
 /**
  * Баннер пробного периода + полноэкранная блокировка при 402.
  * Рендерится в MainLayout, чтобы работать на всех страницах клиники.
+ * Внешней роли (таргетолог) подписка клиники не показывается: при 402 — нейтральный текст
+ * без контактов продавца и без дат, баннера пробного периода нет.
  */
 export const SubscriptionNotice: React.FC = () => {
   const { t } = useTranslation();
   const { clinic } = useClinic();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const external = isExternalRole(user?.role);
   const [blockedMessage, setBlockedMessage] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -29,6 +33,26 @@ export const SubscriptionNotice: React.FC = () => {
     window.addEventListener(PAYMENT_REQUIRED_EVENT, onPaymentRequired);
     return () => window.removeEventListener(PAYMENT_REQUIRED_EVENT, onPaymentRequired);
   }, []);
+
+  if (blockedMessage && external) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-2xl">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-3xl">
+            ⏳
+          </div>
+          <h2 className="text-lg font-bold text-slate-900">{t("subscription.externalBlocked")}</h2>
+          <button
+            type="button"
+            onClick={() => void logout()}
+            className="mt-5 h-10 w-full rounded-xl border border-slate-200 bg-white text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+          >
+            {t("common.logout")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (blockedMessage) {
     return (
@@ -72,7 +96,7 @@ export const SubscriptionNotice: React.FC = () => {
   const activeExpiring =
     clinic.subscriptionStatus === "active" && daysLeft != null && daysLeft <= 5;
 
-  if (!isTrial && !activeExpiring) return null;
+  if (external || (!isTrial && !activeExpiring)) return null;
 
   const urgent = daysLeft != null && daysLeft <= 3;
   const text = isTrial

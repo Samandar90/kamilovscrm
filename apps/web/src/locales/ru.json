@@ -136,7 +136,8 @@
     "telegram": "Telegram",
     "trialDaysLeft": "Осталось {{days}} дн. пробного периода",
     "trialEndsToday": "Пробный период заканчивается сегодня",
-    "trialStatus": "{{status}}"
+    "trialStatus": "{{status}}",
+    "externalBlocked": "Доступ временно недоступен. Обратитесь в клинику."
   },
   "platform": {
     "title": "Платформа · Клиники",

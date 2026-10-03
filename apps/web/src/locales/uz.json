@@ -136,7 +136,8 @@
     "telegram": "Telegram",
     "trialDaysLeft": "Sinov davridan {{days}} kun qoldi",
     "trialEndsToday": "Sinov davri bugun tugaydi",
-    "trialStatus": "{{status}}"
+    "trialStatus": "{{status}}",
+    "externalBlocked": "Kirish vaqtincha mavjud emas. Klinikaga murojaat qiling."
   },
   "platform": {
     "title": "Platforma · Klinikalar",
