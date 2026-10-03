@@ -2,7 +2,7 @@ import React from "react";
 
 /** Reload delay after a crash; while the device reports no network the reload waits another minute. */
 export const CRASH_RELOAD_MS = 60_000;
-const RESTARTING_TEXT = "Ekran qayta yuklanmoqda… / Экран перезагружается…";
+const RESTARTING_TEXT = "Экран перезагружается…";
 
 type Props = { children: React.ReactNode };
 type State = { failed: boolean };
