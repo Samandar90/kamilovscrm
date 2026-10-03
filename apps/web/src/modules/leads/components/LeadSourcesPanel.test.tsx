@@ -390,6 +390,31 @@ describe("lead sources panel", () => {
     expect(rows()).toHaveLength(2);
   });
 
+  it("takes the error of an earlier row action away when the form opens, and does not show it after a save", async () => {
+    mocks.syncSource.mockRejectedValue(rejected("Сначала укажите ссылку на таблицу", 422));
+    mocks.updateSource.mockImplementation(async (id: number, patch: Partial<LeadSource>) => ({ ...instagram, ...patch, id }));
+    await render();
+    await click(buttons("Прочитать сейчас")[0]);
+    expect(alerts()).toEqual(["Сначала укажите ссылку на таблицу"]);
+
+    await click(buttons("Изменить")[0]);
+    expect(alerts()).toEqual([]);
+
+    // The same for «Добавить источник», and after the save the panel says only that the source is saved.
+    await click(buttons("Отмена")[0]);
+    await click(buttons("Прочитать сейчас")[0]);
+    expect(alerts()).toEqual(["Сначала укажите ссылку на таблицу"]);
+    await click(buttons("Добавить источник")[0]);
+    expect(alerts()).toEqual([]);
+    await click(buttons("Отмена")[0]);
+
+    await click(buttons("Изменить")[0]);
+    type("lead-source-name", "Instagram Reels");
+    await click(buttons("Сохранить")[0]);
+    expect(alerts()).toEqual([]);
+    expect(textOf(view.root)).toContain("Источник сохранён");
+  });
+
   it("ignores other actions while one is running", async () => {
     let finish!: (value: LeadSyncResult) => void;
     mocks.syncSource.mockReturnValue(new Promise<LeadSyncResult>((resolve) => (finish = resolve)));

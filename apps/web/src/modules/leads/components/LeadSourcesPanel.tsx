@@ -162,6 +162,12 @@ export function LeadSourcesPanel({ onClose, onChanged }: Props) {
 
   const busy = pending !== null;
 
+  // The error of an earlier row action is not about the form: it must not stay on screen behind it and after its save.
+  const openEditor = (source: LeadSource | null) => {
+    setError(null);
+    setEditor({ source });
+  };
+
   const renderCheck = (source: LeadSource, result: LeadSheetCheck) => {
     const canPick = result.headers.length > 0 && (result.status === "ok" || result.status === "columns_not_found");
     const unchanged =
@@ -277,7 +283,7 @@ export function LeadSourcesPanel({ onClose, onChanged }: Props) {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => setEditor({ source: null })}
+            onClick={() => openEditor(null)}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
           >
             <Plus className="h-4 w-4" aria-hidden />
@@ -385,7 +391,7 @@ export function LeadSourcesPanel({ onClose, onChanged }: Props) {
                       />
                       {t("leads.sources.syncSwitch")}
                     </label>
-                    <button type="button" onClick={() => setEditor({ source })} disabled={busy} className={secondaryButton}>
+                    <button type="button" onClick={() => openEditor(source)} disabled={busy} className={secondaryButton}>
                       <Pencil className="h-4 w-4" aria-hidden />
                       {t("leads.sources.edit")}
                     </button>
@@ -427,6 +433,7 @@ export function LeadSourcesPanel({ onClose, onChanged }: Props) {
           onClose={() => setEditor(null)}
           onSaved={(saved) => {
             setEditor(null);
+            setError(null);
             setSources((prev) =>
               prev.some((row) => row.id === saved.id)
                 ? prev.map((row) => (row.id === saved.id ? saved : row))
