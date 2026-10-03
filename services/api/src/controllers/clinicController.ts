@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import type { QueryResult } from "pg";
 import { dbPool } from "../config/database";
 import { ApiError } from "../middleware/errorHandler";
+import { EXTERNAL_ROLES } from "../auth/permissions";
 
 type ClinicRow = {
   id: number;
@@ -32,6 +33,17 @@ const daysLeftUntil = (endsAt: Date | string | null | undefined): number | null 
   return Math.max(0, Math.ceil((ms - Date.now()) / 86_400_000));
 };
 
+/** Внешним ролям (подрядчикам) статус и срок подписки клиники не отдаются: только название и оформление. */
+const isExternalAccount = (req: Request): boolean =>
+  !!req.auth && (EXTERNAL_ROLES as readonly string[]).includes(req.auth.role);
+
+const clinicFallback = (external: boolean) => {
+  if (!external) return CLINIC_FALLBACK;
+  const { subscriptionStatus: _status, subscriptionEndsAt: _endsAt, subscriptionDaysLeft: _daysLeft, ...branding } =
+    CLINIC_FALLBACK;
+  return branding;
+};
+
 type CreateClinicBody = {
   name?: string;
   slug?: string;
@@ -40,6 +52,7 @@ type CreateClinicBody = {
 export const clinicMeController = async (req: Request, res: Response) => {
   const fromRequest = req.clinicId ?? req.auth?.clinicId;
   const clinicId = Number.isInteger(fromRequest) && (fromRequest as number) > 0 ? (fromRequest as number) : 1;
+  const external = isExternalAccount(req);
 
   try {
     const result: QueryResult<ClinicRow> = await dbPool.query(
@@ -54,7 +67,7 @@ export const clinicMeController = async (req: Request, res: Response) => {
 
     const row = result.rows[0];
     if (!row) {
-      return res.status(200).json(CLINIC_FALLBACK);
+      return res.status(200).json(clinicFallback(external));
     }
 
     return res.status(200).json({
@@ -63,16 +76,20 @@ export const clinicMeController = async (req: Request, res: Response) => {
       slug: row.slug,
       logoUrl: row.logo_url ?? CLINIC_FALLBACK.logoUrl,
       primaryColor: row.primary_color ?? CLINIC_FALLBACK.primaryColor,
-      subscriptionStatus: row.subscription_status ?? "active",
-      subscriptionEndsAt: row.subscription_ends_at
-        ? new Date(row.subscription_ends_at).toISOString()
-        : null,
-      subscriptionDaysLeft: daysLeftUntil(row.subscription_ends_at),
+      ...(external
+        ? {}
+        : {
+            subscriptionStatus: row.subscription_status ?? "active",
+            subscriptionEndsAt: row.subscription_ends_at
+              ? new Date(row.subscription_ends_at).toISOString()
+              : null,
+            subscriptionDaysLeft: daysLeftUntil(row.subscription_ends_at),
+          }),
     });
   } catch (error: unknown) {
     const pgError = error as { code?: string };
     if (pgError.code === "42P01") {
-      return res.status(200).json(CLINIC_FALLBACK);
+      return res.status(200).json(clinicFallback(external));
     }
     throw error;
   }

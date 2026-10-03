@@ -164,6 +164,83 @@ describe("superadmin of another clinic", () => {
   });
 });
 
+describe("marketer account is checked on every request", () => {
+  it("loses access at once when the account is switched off, with the same token", async () => {
+    const token = tokenOf("marketer");
+    const me = await call(token, "/auth/me");
+    expect(me.status).toBe(200);
+    expect(me.body).toMatchObject({ id: 3, role: "marketer", clinicId: 1 });
+    expect((await call(token, "/clinic/me")).status).toBe(200);
+
+    await db.exec("UPDATE users SET is_active = false WHERE id = 3");
+    expect(await call(token, "/auth/me")).toEqual({ status: 401, body: { error: "Invalid or expired token" } });
+    expect((await call(token, "/clinic/me")).status).toBe(401);
+    expect((await call(token, "/platform/access")).status).toBe(401);
+    // A guarded router answers 401 too: the account check runs before the role check.
+    expect((await call(token, "/patients")).status).toBe(401);
+
+    await db.exec("UPDATE users SET is_active = true WHERE id = 3");
+    expect((await call(token, "/auth/me")).status).toBe(200);
+  });
+
+  it.each([
+    ["deleted", "UPDATE users SET deleted_at = now() WHERE id = 3"],
+    ["given another role", "UPDATE users SET role = 'reception' WHERE id = 3"],
+    ["moved to another clinic", "UPDATE users SET clinic_id = 2 WHERE id = 3"],
+  ])("loses access when the account is %s", async (_label, sql) => {
+    const token = tokenOf("marketer");
+    expect((await call(token, "/clinic/me")).status).toBe(200);
+    await db.exec(sql);
+    expect((await call(token, "/clinic/me")).status).toBe(401);
+    // Staff and the other clinic's marketer are not affected.
+    expect((await as("reception", "/clinic/me")).status).toBe(200);
+    expect((await as("foreignMarketer", "/clinic/me")).status).toBe(200);
+  });
+
+  it("does not check staff tokens against the database", async () => {
+    await db.exec("UPDATE users SET is_active = false WHERE id = 2");
+    expect((await as("reception", "/clinic/me")).status).toBe(200);
+  });
+});
+
+describe("GET /api/clinic/me", () => {
+  const subscriptionKeys = (body: Record<string, unknown>) => Object.keys(body).filter((key) => key.startsWith("subscription"));
+
+  it("gives a marketer the clinic's name and branding without the subscription", async () => {
+    const res = await as("marketer", "/clinic/me");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ id: 1, name: "Клиника Камилова", slug: "kamilovs", logoUrl: "/logo.png", primaryColor: "#6D28D9" });
+    expect(subscriptionKeys(res.body)).toEqual([]);
+  });
+
+  it("still gives staff of the same clinic the three subscription fields", async () => {
+    const res = await as("reception", "/clinic/me");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      id: 1, name: "Клиника Камилова", subscriptionStatus: "trialing", subscriptionEndsAt: "2099-01-01T00:00:00.000Z",
+    });
+    expect(res.body.subscriptionDaysLeft).toBeGreaterThan(0);
+    expect(subscriptionKeys(res.body).sort()).toEqual(["subscriptionDaysLeft", "subscriptionEndsAt", "subscriptionStatus"]);
+  });
+
+  it("gives a marketer of clinic 2 the name of clinic 2", async () => {
+    const res = await as("foreignMarketer", "/clinic/me");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ id: 2, name: "Вторая клиника" });
+    expect(subscriptionKeys(res.body)).toEqual([]);
+  });
+
+  it("keeps the subscription out of the fallback answer for a marketer", async () => {
+    // No clinic row: the controller answers with its built-in fallback object.
+    await db.exec("DELETE FROM clinics WHERE id = 2");
+    const res = await as("foreignMarketer", "/clinic/me");
+    expect(res.status).toBe(200);
+    expect(subscriptionKeys(res.body)).toEqual([]);
+    await db.exec("DELETE FROM clinics WHERE id = 1");
+    expect(subscriptionKeys((await as("reception", "/clinic/me")).body)).toHaveLength(3);
+  });
+});
+
 describe("marketer on the data routers", () => {
   // One route per mount of routes/index.ts, plus the two requireAuth-only routes that sit behind a role check.
   it.each([
