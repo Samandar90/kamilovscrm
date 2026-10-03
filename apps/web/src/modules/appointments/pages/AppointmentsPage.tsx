@@ -31,11 +31,17 @@ import { AppointmentQuickCreateModal } from "../features/quick-create/Appointmen
 import { useDebouncedAppointmentSlotAvailability } from "../hooks/useDebouncedAppointmentSlotAvailability";
 import { CreatePatientModal } from "../components/CreatePatientModal";
 import {
+  dateToYmd,
   normalizeDateTimeForApi,
   todayYmd,
   uiDateToYmd,
 } from "../utils/appointmentFormUtils";
-import { loadAppointmentsPageData } from "../utils/appointmentsPageData";
+import {
+  appointmentsLoadRange,
+  loadAppointmentsPageData,
+  loadSuggestedTimes,
+  type DayRange,
+} from "../utils/appointmentsPageData";
 import { summarizeAppointments } from "../utils/appointmentSummary";
 import {
   canChangeAppointmentServices,
@@ -159,6 +165,8 @@ function getFilterRange(
   }
   return { start: startOfDay(now), end: endOfDay(now) };
 }
+
+const daysKey = (range: DayRange): string => `${range.from}/${range.to}`;
 
 function emptyRangeMessage(tab: RangeTab, t: any): string {
   switch (tab) {
@@ -375,6 +383,29 @@ export const AppointmentsPage: React.FC = () => {
   const fullSlotAvailabilityPhaseRef = React.useRef(fullSlotAvailabilityPhase);
   fullSlotAvailabilityPhaseRef.current = fullSlotAvailabilityPhase;
 
+  const { start: rangeStart, end: rangeEnd } = React.useMemo(
+    () => getFilterRange(rangeTab, customDate),
+    [rangeTab, customDate]
+  );
+  /** Days asked from the API: the visible period, widened so that Today, Tomorrow and Week share one request. */
+  const loadRange = React.useMemo(
+    () => appointmentsLoadRange({ from: dateToYmd(rangeStart), to: dateToYmd(rangeEnd) }, todayYmd()),
+    [rangeStart, rangeEnd]
+  );
+  const loadRangeRef = React.useRef(loadRange);
+  loadRangeRef.current = loadRange;
+  const wantedDays = daysKey(loadRange);
+  /** Days the rows in `appointments` were loaded for (always set together with them); null before the first load. */
+  const [loadedDays, setLoadedDays] = React.useState<string | null>(null);
+  /** Days whose request failed last. They are asked for again on "retry" and on any period button or date. */
+  const [failedDays, setFailedDays] = React.useState<string | null>(null);
+  const rangeFailed = loadedDays !== null && loadedDays !== wantedDays && failedDays === wantedDays;
+  const rangePending = loadedDays !== null && loadedDays !== wantedDays && !rangeFailed;
+  const showRange = (tab: RangeTab) => {
+    setRangeTab(tab);
+    setFailedDays(null);
+  };
+
   const loadData = React.useCallback(async (opts?: { silent?: boolean }) => {
     if (!token) return;
     const silent = opts?.silent ?? false;
@@ -383,9 +414,17 @@ export const AppointmentsPage: React.FC = () => {
     }
     setError(null);
     try {
+      const range = loadRangeRef.current;
       const { appointments: appointmentRows, patients, doctors, services, invoicesByAppointmentId: invoices } =
-        await loadAppointmentsPageData(appointmentsFlowApi, token, { readBilling, readPatients: canReadPatientsList });
+        await loadAppointmentsPageData(
+          appointmentsFlowApi,
+          token,
+          { readBilling, readPatients: canReadPatientsList },
+          range
+        );
       setAppointments(appointmentRows);
+      setLoadedDays(daysKey(range));
+      setFailedDays(null);
       setInvoicesByAppointmentId(invoices);
       setPatientsList(patients);
       setDoctorsMap(Object.fromEntries(doctors.map((item) => [item.id, item.name])));
@@ -402,6 +441,31 @@ export const AppointmentsPage: React.FC = () => {
   React.useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  // The visible period left the loaded days (a calendar date outside this week, or the way back): only the
+  // appointments are asked for again, the other lists do not depend on the period.
+  React.useEffect(() => {
+    if (!token || loadedDays === null || loadedDays === wantedDays || failedDays === wantedDays) return;
+    let active = true;
+    setError(null);
+    appointmentsFlowApi
+      .listAppointments(token, loadRangeRef.current)
+      .then((rows) => {
+        if (!active) return;
+        setAppointments(rows);
+        setLoadedDays(wantedDays);
+        setFailedDays(null);
+      })
+      .catch((requestError) => {
+        if (!active) return;
+        // Not stored as loaded: an empty list would read as "no appointments on these days".
+        setFailedDays(wantedDays);
+        setError(requestError instanceof Error ? requestError.message : t("appointments.errors.loadingError"));
+      });
+    return () => {
+      active = false;
+    };
+  }, [token, loadedDays, wantedDays, failedDays]);
 
   React.useEffect(() => {
     if (!toast) return;
@@ -531,49 +595,26 @@ export const AppointmentsPage: React.FC = () => {
       return;
     }
     const selectedStart = new Date(`${dateYmd}T${fullForm.time}:00`);
-    if (Number.isNaN(selectedStart.getTime())) {
+    if (!token || Number.isNaN(selectedStart.getTime())) {
       setFullConflictHint({ message: null, suggestedTimes: [] });
       return;
     }
-    const selectedEnd = new Date(selectedStart.getTime() + duration * 60_000);
 
-    const activeStatuses = new Set(["scheduled", "confirmed", "arrived", "in_consultation"]);
-
-    const suggestions: string[] = [];
-    for (let hour = 8; hour <= 19; hour += 1) {
-      for (const minute of [0, 30]) {
-        const hh = String(hour).padStart(2, "0");
-        const mm = String(minute).padStart(2, "0");
-        const slot = `${hh}:${mm}`;
-        const start = new Date(`${dateYmd}T${slot}:00`);
-        const end = new Date(start.getTime() + duration * 60_000);
-        if (end.getHours() > 20 || (end.getHours() === 20 && end.getMinutes() > 0)) continue;
-        const busy = appointments.some((row) => {
-          if (row.doctorId !== doctorId) return false;
-          if (!activeStatuses.has(row.status)) return false;
-          const rowStart = new Date(row.startAt.includes(" ") ? row.startAt.replace(" ", "T") : row.startAt);
-          const rowEnd = new Date(row.endAt.includes(" ") ? row.endAt.replace(" ", "T") : row.endAt);
-          return start < rowEnd && end > rowStart;
-        });
-        if (!busy) suggestions.push(slot);
-        if (suggestions.length >= 3) break;
-      }
-      if (suggestions.length >= 3) break;
-    }
-
-    setFullConflictHint({
-      message: null,
-      suggestedTimes: suggestions,
-    });
-  }, [
-    appointments,
-    fullForm.date,
-    fullForm.doctorId,
-    fullForm.serviceLines,
-    fullForm.time,
-    fullSlotAvailabilityPhase,
-    servicesMap,
-  ]);
+    // The page holds only the visible days and the form may be on any day, so that day's visits are asked for.
+    let active = true;
+    loadSuggestedTimes(appointmentsFlowApi, token, { doctorId, dateYmd, durationMinutes: duration })
+      .then((suggestedTimes) => {
+        if (active) setFullConflictHint({ message: null, suggestedTimes });
+      })
+      .catch(() => {
+        if (active) setFullConflictHint({ message: null, suggestedTimes: [] });
+      });
+    return () => {
+      active = false;
+    };
+    // Only the outcome of the availability check starts this: "busy" belongs to the form values of that moment.
+    // With the form fields listed too, every edit after a busy slot would send a request for a slot not checked yet.
+  }, [token, fullSlotAvailabilityPhase]);
 
   const submitFullAppointment = async (form: FullFormFields) => {
     if (!token || !canOpenAppointmentCreateModals) return;
@@ -848,11 +889,6 @@ export const AppointmentsPage: React.FC = () => {
     }
   };
 
-  const { start: rangeStart, end: rangeEnd } = React.useMemo(
-    () => getFilterRange(rangeTab, customDate),
-    [rangeTab, customDate]
-  );
-
   const filteredAppointments = React.useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return [...appointments]
@@ -1004,7 +1040,7 @@ export const AppointmentsPage: React.FC = () => {
                 <button
                   key={tab}
                   type="button"
-                  onClick={() => setRangeTab(tab)}
+                  onClick={() => showRange(tab)}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                     rangeTab === tab
                       ? "bg-emerald-100 text-emerald-700"
@@ -1037,7 +1073,7 @@ export const AppointmentsPage: React.FC = () => {
                 value={customDate}
                 onChange={(e) => {
                   setCustomDate(e.target.value);
-                  setRangeTab("custom");
+                  showRange("custom");
                 }}
                 className="h-10 w-full rounded-[10px] border border-[#e5e7eb] bg-white px-3 text-sm text-[#111827] outline-none transition hover:border-[#d1d5db] focus:border-[#22c55e] focus:ring-1 focus:ring-[#22c55e]/25"
               />
@@ -1060,7 +1096,7 @@ export const AppointmentsPage: React.FC = () => {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setRangeTab(tab.id)}
+                onClick={() => showRange(tab.id)}
                 className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150 ${
                   rangeTab === tab.id
                     ? "bg-emerald-100 text-emerald-700"
@@ -1072,7 +1108,7 @@ export const AppointmentsPage: React.FC = () => {
             ))}
             <button
               type="button"
-              onClick={() => setRangeTab("custom")}
+              onClick={() => showRange("custom")}
               className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150 ${
                 rangeTab === "custom"
                   ? "bg-emerald-100 text-emerald-700"
@@ -1123,28 +1159,24 @@ export const AppointmentsPage: React.FC = () => {
         <section className="space-y-4">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[#6b7280]">{t("appointments.schedule")}</h2>
 
-          {isLoading ? (
+          {isLoading || rangePending ? (
             <PageLoader label={t("common.loading")} />
-          ) : appointments.length === 0 ? (
-            <>
-            <SectionCard className="md:hidden border-slate-100 bg-white py-8 shadow-sm">
-              <EmptyState title={t("appointments.emptyToday")} subtitle="" />
-              {canOpenAppointmentCreateModals ? (
-                <div className="mt-3 flex justify-center">
+          ) : rangeFailed ? (
+            <SectionCard>
+              <EmptyState
+                title={t("appointments.errors.loadingError")}
+                subtitle=""
+                action={
                   <button
                     type="button"
-                    onClick={isDoctorUser ? openFullModal : openQuickModal}
+                    onClick={() => setFailedDays(null)}
                     className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
                   >
-                    + {t("appointments.create")}
+                    {t("errors.tryAgain")}
                   </button>
-                </div>
-              ) : null}
+                }
+              />
             </SectionCard>
-            <SectionCard className="hidden md:block">
-              <EmptyState title={t("appointments.emptyGeneral")} subtitle={t("appointments.addFirst")} />
-            </SectionCard>
-            </>
           ) : filteredAppointments.length === 0 ? (
             <>
             <SectionCard className="md:hidden border-slate-100 bg-white py-8 shadow-sm">
@@ -1274,7 +1306,7 @@ export const AppointmentsPage: React.FC = () => {
       <div className="col-span-12 hidden lg:col-span-4 lg:block">
         <AppointmentActionPanel
           filterSummary={filteredSummary}
-          isLoading={isLoading}
+          isLoading={isLoading || rangePending || rangeFailed}
         />
       </div>
         </div>

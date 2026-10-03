@@ -102,6 +102,7 @@ export const DashboardPage: React.FC = () => {
     loading,
     partialError,
     appointments,
+    hasAppointments,
     payments,
     invoices,
     patients,
@@ -299,7 +300,7 @@ export const DashboardPage: React.FC = () => {
     readAppointments &&
     readBilling &&
     readPatients &&
-    appointments.length === 0 &&
+    !hasAppointments &&
     invoices.length === 0 &&
     payments.filter((p) => !p.deletedAt).length === 0;
 
@@ -404,7 +405,7 @@ export const DashboardPage: React.FC = () => {
             <DashboardSetupBanner
               steps={[
                 { label: t("setup.patients"), to: "/patients", done: patients.length > 0, icon: UserPlus },
-                { label: t("setup.doctors"), to: "/appointments", done: appointments.length > 0, icon: CalendarPlus },
+                { label: t("setup.doctors"), to: "/appointments", done: hasAppointments, icon: CalendarPlus },
                 { label: t("billing.createInvoice"), to: "/billing/invoices", done: invoices.length > 0, icon: FileText },
               ]}
             />
