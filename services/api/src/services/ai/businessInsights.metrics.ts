@@ -6,6 +6,7 @@ import { dbPool } from "../../config/database";
 import { env } from "../../config/env";
 import { getMockDb } from "../../repositories/mockDatabase";
 import type { AuthTokenPayload } from "../../repositories/interfaces/userTypes";
+import { errorForLog } from "../../utils/logRedaction";
 import type { BusinessInsightsMetrics } from "./businessInsights.types";
 
 const SQL_DOCTOR_LABEL = `COALESCE(NULLIF(TRIM(d.full_name), ''), 'Врач #' || d.id::text)`;
@@ -129,7 +130,7 @@ export async function loadBusinessInsightsMetrics(auth: AuthTokenPayload): Promi
         scopedDoctorId != null ? Number(myNoShowRes.rows[0]?.c ?? 0) : null,
     };
   } catch (error) {
-    console.error("[businessInsights.metrics] postgres load failed", error);
+    console.error("[businessInsights.metrics] postgres load failed", errorForLog(error));
     return loadMockMetrics(snapshot, scopedDoctorId);
   }
 }

@@ -1,5 +1,6 @@
 import { dbPool } from "../../config/database";
 import { env } from "../../config/env";
+import { errorForLog } from "../../utils/logRedaction";
 import { getMockDb } from "../mockDatabase";
 
 /** Метрики утреннего брифинга (согласованы с `AIService.getMorningBriefingData`). */
@@ -374,7 +375,7 @@ export async function loadMorningBriefingData(doctorId: number | null): Promise<
           : null,
     };
   } catch (e) {
-    console.error("[morningBriefingMetricsRepository] PostgreSQL morning briefing failed", e);
+    console.error("[morningBriefingMetricsRepository] PostgreSQL morning briefing failed", errorForLog(e));
     return loadMockMorningBriefingData(doctorId);
   }
 }

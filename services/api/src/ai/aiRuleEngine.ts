@@ -1,6 +1,7 @@
 import { dbPool } from "../config/database";
 import { env } from "../config/env";
 import { getMockDb } from "../repositories/mockDatabase";
+import { errorForLog, textForLog } from "../utils/logRedaction";
 import type { AIAssistantAskResponse } from "./aiTypes";
 import type { AiAskQuickIntent, AiDataIntent, ClinicFactsSnapshot } from "./aiTypes";
 
@@ -48,7 +49,7 @@ export class AiRuleEngine {
     }
     return this.localHealthFromData(data);
     } catch (error) {
-      console.error("[AI RULE ENGINE] answerHybrid", error);
+      console.error("[AI RULE ENGINE] answerHybrid", errorForLog(error));
       return "Не удалось получить данные CRM";
     }
   }
@@ -316,7 +317,7 @@ export class AiRuleEngine {
     }
     return null;
     } catch (error) {
-      console.error("[AI RULE ENGINE] answerAskQuick", error);
+      console.error("[AI RULE ENGINE] answerAskQuick", errorForLog(error));
       return { answer: "Не удалось получить данные CRM", suggestions: [] };
     }
   }
@@ -332,7 +333,7 @@ export class AiRuleEngine {
       return { answer: "Уточните запрос, например: Найди пациента Иван или по телефону." };
     }
     // eslint-disable-next-line no-console
-    console.log("[AI] patient_search query", q);
+    console.log("[AI] patient_search query", JSON.stringify(textForLog(q)));
 
     if (env.dataProvider === "postgres") {
       const pattern = wrapIlike(q);
@@ -388,7 +389,7 @@ export class AiRuleEngine {
       action: { type: "navigate", payload: { to: "/patients" } },
     };
     } catch (error) {
-      console.error("[AI RULE ENGINE] answerPatientSearch", error);
+      console.error("[AI RULE ENGINE] answerPatientSearch", errorForLog(error));
       return { answer: "Не удалось получить данные CRM", suggestions: [] };
     }
   }

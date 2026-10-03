@@ -29,6 +29,7 @@ import type {
   SummaryCard,
 } from "../ai/aiTypes";
 import { createEmptyClinicFactsSnapshot, summaryFactsFromSnapshot } from "../ai/aiTypes";
+import { errorForLog, textForLog } from "../utils/logRedaction";
 
 export type { AIAssistantAskResponse, ClinicFactsSnapshot, SummaryCard } from "../ai/aiTypes";
 
@@ -166,7 +167,7 @@ export class AIAssistantService {
       this.cache.set(AI_FACTS_CACHE_KEY, snap, METRICS_CACHE_TTL_MS);
       return snap;
     } catch (error) {
-      console.error("[AI] getCachedSnapshot", error);
+      console.error("[AI] getCachedSnapshot", errorForLog(error));
       return createEmptyClinicFactsSnapshot();
     }
   }
@@ -194,11 +195,7 @@ export class AIAssistantService {
       }
 
       if (!checkAIRequestAccess(auth.role, safeMessage)) {
-        const allowed = false;
-        console.log("ROLE:", auth.role);
-        console.log("MESSAGE:", safeMessage);
-        console.log("ALLOWED:", allowed);
-        aiLog("ask path", { path: "hard_gate_block", role: auth.role });
+        aiLog("ask path", { path: "hard_gate_block", role: auth.role, message: textForLog(safeMessage) });
         return {
           answer: AI_ACCESS_DENIED_MESSAGE,
           suggestions: defaultSuggestions(routeDomainIntent(safeMessage), auth.role),
@@ -270,7 +267,7 @@ export class AIAssistantService {
               aiLog("ask success", { path: "hybrid_rules" });
               return out;
             } catch (error) {
-              console.error("[AI] hybrid block error", error);
+              console.error("[AI] hybrid block error", errorForLog(error));
               const facts = await this.getCachedSnapshot();
               const fallbackAns = canFin
                 ? this.rules.fallbackGeneralCrmAdvice(facts)
@@ -340,7 +337,7 @@ export class AIAssistantService {
       aiLog("ask success", { path: "general_openai" });
       return { answer: llm, suggestions: defaultSuggestions(domainIntent, auth.role) };
     } catch (error) {
-      console.error("[AI ERROR FULL][handle]", error);
+      console.error("[AI ERROR FULL][handle]", errorForLog(error));
       return { answer: FALLBACK_CRM, suggestions: [] };
     }
   }
@@ -480,7 +477,7 @@ export class AIAssistantService {
         recommendationText: recommendations.join(" "),
       };
     } catch (error) {
-      console.error("[AI ERROR FULL][summary]", error);
+      console.error("[AI ERROR FULL][summary]", errorForLog(error));
       return {
         summaryText: FALLBACK_CRM,
         recommendationText: "Попробуйте обновить страницу или проверьте подключение к базе.",

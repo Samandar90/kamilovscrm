@@ -23,6 +23,7 @@ import {
   assertOptionalAppointmentTimestampForDb,
 } from "../../utils/appointmentTimestamps";
 import { normalizeToLocalDateTime } from "../../utils/localDateTime";
+import { errorForLog } from "../../utils/logRedaction";
 import { parseNumericFromPg, parseNumericInput, roundMoney2 } from "../../utils/numbers";
 import { requireClinicId } from "../../tenancy/clinicContext";
 import { formatQueueCode } from "../../services/queue/queueRules";
@@ -189,7 +190,7 @@ const attachAssignedServices = async (
     }));
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error("[attachAssignedServices] failed; returning appointments without assigned services", err);
+    console.error("[attachAssignedServices] failed; returning appointments without assigned services", errorForLog(err));
     return appointments.map((appointment) => ({
       ...appointment,
       services: [],
@@ -305,7 +306,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       }
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error("[syncPrimaryAppointmentServiceRow] skipped", { appointmentId }, err);
+      console.error("[syncPrimaryAppointmentServiceRow] skipped", { appointmentId }, errorForLog(err));
     }
   }
 
@@ -1264,7 +1265,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       return result.rows.map((row) => this.mapAssignmentRow(row));
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error("[listServiceAssignments] failed", { appointmentId }, err);
+      console.error("[listServiceAssignments] failed", { appointmentId }, errorForLog(err));
       return [];
     }
   }
@@ -1311,7 +1312,7 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
       });
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error("[listAppointmentInvoiceLines] failed", { appointmentId }, err);
+      console.error("[listAppointmentInvoiceLines] failed", { appointmentId }, errorForLog(err));
       return [];
     }
   }

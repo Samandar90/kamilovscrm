@@ -1,6 +1,8 @@
 import type { ChatCompletionCreateParams } from "openai/resources/chat/completions";
 import type { UserRole } from "../auth/permissions";
+import { env } from "../config/env";
 import { hasOpenAI, openai } from "@/lib/openai";
+import { textForLog } from "../utils/logRedaction";
 import type { AiAssistantStructuredContext, AiDomainIntent, AiLlmSummaryFacts } from "./aiTypes";
 import { formatSum } from "./aiRuleEngine";
 import {
@@ -129,7 +131,7 @@ function isUnavailableMessage(s: string): boolean {
 
 /**
  * Вызов `openai.chat.completions.create` (клиент — `@/lib/openai`).
- * Логирует запрос/ответ и ошибки полностью.
+ * В лог идут размеры запроса и ответа, их текст — только при env.debugAiText; ошибки OpenAI — полностью.
  */
 async function runOpenAiChatCompletion(params: {
   label: string;
@@ -149,7 +151,7 @@ async function runOpenAiChatCompletion(params: {
     // eslint-disable-next-line no-console
     console.log("HAS KEY:", !!process.env.OPENAI_API_KEY);
     // eslint-disable-next-line no-console
-    console.log("PROMPT:", prompt.slice(0, 300));
+    console.log("PROMPT:", JSON.stringify(textForLog(prompt)));
     // eslint-disable-next-line no-console
     console.log("(пропуск: клиент OpenAI не создан — your_key_here или пустой ключ)");
     // eslint-disable-next-line no-console
@@ -167,7 +169,7 @@ async function runOpenAiChatCompletion(params: {
   // eslint-disable-next-line no-console
   console.log("HAS KEY:", !!process.env.OPENAI_API_KEY);
   // eslint-disable-next-line no-console
-  console.log("PROMPT:", prompt.slice(0, 300));
+  console.log("PROMPT:", JSON.stringify(textForLog(prompt)));
 
   let res: Awaited<ReturnType<NonNullable<typeof openai>["chat"]["completions"]["create"]>> | null = null;
   let caught: unknown | undefined = undefined;
@@ -180,7 +182,22 @@ async function runOpenAiChatCompletion(params: {
       ...(params.responseFormat ? { response_format: params.responseFormat } : {}),
     });
     // eslint-disable-next-line no-console
-    console.log("AI RAW RESPONSE:", res);
+    console.log(
+      "AI RESPONSE:",
+      JSON.stringify({
+        id: res.id,
+        model: res.model,
+        finishReason: res.choices?.[0]?.finish_reason,
+        contentLen: res.choices?.[0]?.message?.content?.length ?? 0,
+        promptTokens: res.usage?.prompt_tokens,
+        completionTokens: res.usage?.completion_tokens,
+        totalTokens: res.usage?.total_tokens,
+      })
+    );
+    if (env.debugAiText) {
+      // eslint-disable-next-line no-console
+      console.log("AI RAW RESPONSE:", res);
+    }
   } catch (e) {
     caught = e;
     // eslint-disable-next-line no-console
