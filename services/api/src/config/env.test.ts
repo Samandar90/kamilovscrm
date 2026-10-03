@@ -40,3 +40,16 @@ describe.each([
     expect(env[flag]).toBe(false);
   });
 });
+
+// The scheduled read of lead sheets: on unless it is switched off.
+describe("env.leadsSheetSyncEnabled", () => {
+  it.each(["", "true", "1", "on", "yes"])("is on with LEADS_SHEET_SYNC_ENABLED=%j", async (value) => {
+    const env = await loadEnv({ NODE_ENV: "production", LEADS_SHEET_SYNC_ENABLED: value });
+    expect(env.leadsSheetSyncEnabled).toBe(true);
+  });
+
+  it.each(["false", "0", "off", " FALSE ", "Off"])("is off with LEADS_SHEET_SYNC_ENABLED=%j", async (value) => {
+    const env = await loadEnv({ NODE_ENV: "production", LEADS_SHEET_SYNC_ENABLED: value });
+    expect(env.leadsSheetSyncEnabled).toBe(false);
+  });
+});

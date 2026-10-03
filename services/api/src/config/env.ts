@@ -89,6 +89,14 @@ const smsReminderTemplate =
   process.env.SMS_REMINDER_TEMPLATE?.trim() ||
   "Здравствуйте, {patient}! Напоминаем: вы записаны в {clinic} {date} в {time}. Ждём вас!";
 
+/**
+ * Чтение лидов из Google-таблиц по расписанию. Включено по умолчанию;
+ * LEADS_SHEET_SYNC_ENABLED=false (или 0, off) выключает. Работает только с DATA_PROVIDER=postgres.
+ */
+const leadsSheetSyncEnabled = !["false", "0", "off"].includes(
+  (process.env.LEADS_SHEET_SYNC_ENABLED ?? "").trim().toLowerCase()
+);
+
 /** Dev-only маршруты (например POST /api/dev/create-admin) — никогда в production. */
 const allowDevBootstrap = !isProduction;
 
@@ -133,5 +141,6 @@ export const env = {
   eskizPassword,
   smsFrom,
   smsReminderTemplate,
+  leadsSheetSyncEnabled,
 };
 
