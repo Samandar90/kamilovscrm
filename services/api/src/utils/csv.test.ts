@@ -33,11 +33,11 @@ describe("parseCsv", () => {
   });
 
   it("strips a leading BOM", () => {
-    expect(parseCsv("﻿phone,name\n1,2")).toEqual([
+    expect(parseCsv("\uFEFFphone,name\n1,2")).toEqual([
       ["phone", "name"],
       ["1", "2"],
     ]);
-    expect(parseCsv("﻿")).toEqual([]);
+    expect(parseCsv("\uFEFF")).toEqual([]);
   });
 
   it("does not add an empty row for a trailing newline", () => {
