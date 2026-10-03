@@ -31,7 +31,7 @@ afterEach(() => {
 describe("TvLaunchPage", () => {
   it("focuses the code field so the remote can type right away", () => {
     expect(input().props.autoFocus).toBe(true);
-    expect(JSON.stringify(view!.toJSON())).toContain("Ekran kodini kiriting / Введите код экрана");
+    expect(JSON.stringify(view!.toJSON())).toContain("Введите код экрана");
   });
 
   it("normalizes a typed code and opens /tv/<canonical code>", () => {

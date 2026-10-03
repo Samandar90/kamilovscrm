@@ -60,7 +60,7 @@ describe("TvErrorBoundary", () => {
 
   it("replaces a crashed TV with a bilingual notice and reloads the page a minute later", async () => {
     await mount(<Boom />);
-    expect(html()).toContain("Ekran qayta yuklanmoqda… / Экран перезагружается…");
+    expect(html()).toContain("Экран перезагружается…");
     await advance(59_999);
     expect(reload).not.toHaveBeenCalled();
     await advance(1);

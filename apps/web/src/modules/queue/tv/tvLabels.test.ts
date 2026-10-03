@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TV_LABELS, tvLabel } from "./tvLabels";
+import { TV_LABELS, TV_TEXT_LANGUAGE, tvLabel } from "./tvLabels";
 
 describe("tvLabel", () => {
   it("shows one language or both, Uzbek first", () => {
@@ -7,6 +7,11 @@ describe("tvLabel", () => {
     expect(tvLabel("startButton", "uz_ru")).toBe("Ekranni ishga tushirish / Запустить экран");
     expect(tvLabel("next", "ru")).toBe("Далее");
     expect(tvLabel("next", "uz")).toBe("Keyingi");
+  });
+
+  it("shows the TV in Russian only", () => {
+    expect(TV_TEXT_LANGUAGE).toBe("ru");
+    expect(tvLabel("invitation", TV_TEXT_LANGUAGE)).toBe("Приглашается");
   });
 
   it("does not repeat a label that is the same in both languages", () => {

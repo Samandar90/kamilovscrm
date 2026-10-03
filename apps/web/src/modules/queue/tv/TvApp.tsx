@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { TvDisplayPage } from "./TvDisplayPage";
 import { TvLaunchPage } from "./TvLaunchPage";
 import { markTvBooted } from "./tvDevice";
+import { TV_TEXT_LANGUAGE, tvLabel } from "./tvLabels";
 import "./tv.css";
 
 /**
@@ -13,7 +14,7 @@ export function TvApp() {
   React.useEffect(() => {
     markTvBooted(); // the app and its chunk loaded: the index.html boot watchdog must not reload this screen
     const previousTitle = document.title;
-    document.title = "Navbat / Очередь";
+    document.title = tvLabel("queueTitle", TV_TEXT_LANGUAGE);
     document.body.classList.add("qtv-body");
     return () => {
       document.title = previousTitle;
