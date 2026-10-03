@@ -45,7 +45,7 @@ router.post(
 );
 router.get("/meta/clinic", requireAuth, asyncHandler(clinicMetaController));
 router.get("/clinic/me", requireAuth, asyncHandler(clinicMeController));
-router.post("/clinics", requireAuth, asyncHandler(createClinicController));
+router.post("/clinics", requireAuth, asyncHandler(requirePlatformAdmin), asyncHandler(createClinicController));
 router.get(
   "/debug/ai",
   requireAuth,
