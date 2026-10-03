@@ -281,3 +281,86 @@ describe("marketer on the data routers", () => {
     expect(res.body.map((user: { id: number }) => user.id).sort()).toEqual([1, 2, 3]);
   });
 });
+
+// The list above is written by hand. This walk reads the addresses from the router itself, so a route added
+// later without a role guard, or a new mount, fails here until it is guarded or named in the allow-list.
+type Endpoint = { method: string; route: string };
+type RouterLayer = {
+  route?: { path: unknown; methods: Record<string, boolean> };
+  handle?: { stack?: RouterLayer[] };
+  regexp: RegExp & { fast_slash?: boolean };
+};
+
+/** The path a router is mounted on, read back from the layer's pattern (Express 4 keeps only the pattern). */
+const mountPathOf = (layer: RouterLayer, parent: string): string => {
+  if (layer.regexp.fast_slash) return "";
+  const match = /^\^((?:\\\/[\w-]+)+)\\\/\?\(\?=\\\/\|\$\)$/.exec(layer.regexp.source);
+  // A mount this walk cannot read must not be skipped in silence.
+  if (!match) throw new Error(`mount under "${parent}" is not a plain path: ${layer.regexp.source}`);
+  return match[1].replace(/\\\//g, "/");
+};
+
+/** Every method and address of a router, with the routers mounted in it. */
+const endpointsOf = (router: { stack: RouterLayer[] }, prefix = ""): Endpoint[] =>
+  router.stack.flatMap((layer): Endpoint[] => {
+    if (layer.route) {
+      const { path, methods } = layer.route;
+      if (typeof path !== "string" || methods._all) throw new Error(`route under "${prefix}" is not one method on one path`);
+      const route = `${prefix}${path === "/" ? "" : path}`;
+      return Object.keys(methods).map((method) => ({ method: method.toUpperCase(), route }));
+    }
+    // A layer of router.use() is a router or a middleware; a middleware has no addresses.
+    return Array.isArray(layer.handle?.stack) ? endpointsOf({ stack: layer.handle.stack }, prefix + mountPathOf(layer, prefix)) : [];
+  });
+
+/** The address to call: every ":param" becomes 1. A pattern with anything else in it stops the walk. */
+const addressOf = (route: string): string => {
+  const address = route.replace(/:\w+/g, "1");
+  if (!/^[\w\-/]+$/.test(address)) throw new Error(`route pattern is not understood: ${route}`);
+  return address;
+};
+
+const keyOf = (endpoint: Endpoint) => `${endpoint.method} ${endpoint.route}`;
+
+describe("walk of the real router with a marketer token", () => {
+  // No token is asked for: a marketer gets nothing there that an anonymous caller does not get.
+  const WITHOUT_TOKEN = ["GET /health", "GET /health/ready", "POST /auth/login", "GET /public/queue-display/:code"];
+  // Everything the contractor's token opens. An address is added here only on purpose.
+  const MARKETER_MAY = [
+    "GET /auth/me", "POST /auth/logout", "POST /auth/change-password",
+    "GET /clinic/me", "GET /meta/clinic", "GET /platform/access", "GET /leads/mine",
+  ];
+  const allowed = new Set([...WITHOUT_TOKEN, ...MARKETER_MAY]);
+  const endpoints = endpointsOf(rootRouter as unknown as { stack: RouterLayer[] });
+  const closed = endpoints.filter((endpoint) => !allowed.has(keyOf(endpoint)));
+
+  it("finds the routes of every mounted router", () => {
+    const found = new Set(endpoints.map(keyOf));
+    // A stale allow-list entry would hide nothing, but it would no longer say what is open.
+    for (const key of allowed) expect(found, key).toContain(key);
+    for (const key of ["GET /patients", "GET /users", "POST /users/:id/impersonate", "GET /queue/today", "POST /leads/sources/:id/sync", "PATCH /leads/:id"]) {
+      expect(found, key).toContain(key);
+    }
+    expect(found.size).toBe(endpoints.length);
+    // Each mount of routes/index.ts was entered ("/dev" is mounted only with the dev bootstrap flag). A mount
+    // added later needs no line here: its routes are in the walk below.
+    expect([...new Set(endpoints.map((endpoint) => endpoint.route.split("/")[1]))]).toEqual(expect.arrayContaining([
+      "ai", "appointments", "attendance", "auth", "call-center", "cash-register", "clinic", "clinics", "debug", "doctors",
+      "expenses", "health", "invoices", "leads", "meta", "onboarding", "patients", "payments", "platform", "public",
+      "questionnaires", "queue", "reports", "services", "users", "uzi-templates",
+    ]));
+    expect(closed.length).toBeGreaterThanOrEqual(130);
+  });
+
+  it.each(closed.map((endpoint) => [endpoint.method, endpoint.route] as const))("%s /api%s answers 403", async (method, route) => {
+    const res = await as("marketer", addressOf(route), method, method === "GET" ? undefined : {});
+    expect(res.status).toBe(403);
+  });
+
+  it("opens the marketer's own addresses, so the walk does not pass on a token that opens nothing", async () => {
+    for (const key of ["GET /auth/me", "GET /clinic/me", "GET /meta/clinic", "GET /platform/access"]) {
+      const [method, route] = key.split(" ");
+      expect((await as("marketer", addressOf(route), method)).status, key).toBe(200);
+    }
+  });
+});
