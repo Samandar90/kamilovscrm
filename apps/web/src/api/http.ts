@@ -57,9 +57,31 @@ const readErrorMessage = (payload: unknown, status: number): string => {
   return i18n.t("http.requestError");
 };
 
+/**
+ * Requests in flight whose answer a page reload must not throw away: writes (the server may be applying one right
+ * now) and slow reads the user is waiting for.
+ */
+let unfinishedRequests = 0;
+
+/** True while a write or a slow read is in flight; the automatic reload to a new version waits for it. */
+export const hasUnfinishedRequests = (): boolean => unfinishedRequests > 0;
+
 export const requestJson = async <T>(
   path: string,
   options: RequestOptions = {}
+): Promise<T> => {
+  if ((options.method ?? "GET") === "GET" && !options.slow) return send<T>(path, options);
+  unfinishedRequests += 1;
+  try {
+    return await send<T>(path, options);
+  } finally {
+    unfinishedRequests -= 1;
+  }
+};
+
+const send = async <T>(
+  path: string,
+  options: RequestOptions
 ): Promise<T> => {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",

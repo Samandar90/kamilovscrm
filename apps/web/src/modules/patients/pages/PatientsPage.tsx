@@ -536,6 +536,7 @@ export const PatientsPage: React.FC = () => {
               aria-hidden
             />
             <input
+              data-reload-ignore
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className={cn(fieldInputClass, "h-11 w-full pl-10 pr-3 max-md:border-slate-200 max-md:bg-white")}

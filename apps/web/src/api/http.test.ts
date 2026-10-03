@@ -1,9 +1,10 @@
 import { beforeAll, afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("../i18n", () => ({ default: { t: (key: string) => key } }));
 let requestJson: typeof import("./http").requestJson;
+let hasUnfinishedRequests: typeof import("./http").hasUnfinishedRequests;
 beforeAll(async () => {
   vi.stubEnv("VITE_API_URL", "http://localhost:4400");
-  requestJson = (await import("./http")).requestJson;
+  ({ requestJson, hasUnfinishedRequests } = await import("./http"));
 });
 afterEach(() => vi.unstubAllGlobals());
 describe("HTTP failure classification", () => {
@@ -154,5 +155,60 @@ describe("lost and slow requests", () => {
     await vi.advanceTimersByTimeAsync(60000);
     expect(((await result) as { error: Error }).error.name).toBe("AbortError");
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("requests a page reload must not cut off", () => {
+  /** A request the test answers by hand. */
+  const pendingFetch = () => {
+    let answer!: (response: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => (answer = resolve))));
+    return (response: Response) => answer(response);
+  };
+
+  it("counts a write from the moment it is sent until its answer arrives", async () => {
+    const answer = pendingFetch();
+    expect(hasUnfinishedRequests()).toBe(false);
+    const result = requestJson("/api/appointments", { method: "POST", body: { patientId: 1 } });
+    expect(hasUnfinishedRequests()).toBe(true);
+    answer(json({ id: 7 }));
+    await result;
+    expect(hasUnfinishedRequests()).toBe(false);
+  });
+
+  it("counts a slow read: an AI answer the user is waiting for", async () => {
+    const answer = pendingFetch();
+    const result = requestJson("/api/ai/ask", { slow: true });
+    expect(hasUnfinishedRequests()).toBe(true);
+    answer(json({ text: "ok" }));
+    await result;
+    expect(hasUnfinishedRequests()).toBe(false);
+  });
+
+  it("does not count an ordinary read: the page loads it again", async () => {
+    const answer = pendingFetch();
+    const result = requestJson("/api/appointments?startFrom=2026-10-03");
+    expect(hasUnfinishedRequests()).toBe(false);
+    answer(json([]));
+    await result;
+  });
+
+  it("stops counting a write that was rejected", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "Slot taken" }, 409)));
+    await expect(requestJson("/api/appointments", { method: "POST", body: {} })).rejects.toMatchObject({ status: 409 });
+    expect(hasUnfinishedRequests()).toBe(false);
+  });
+
+  it("counts two writes until both are answered", async () => {
+    const answers: Array<(response: Response) => void> = [];
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => answers.push(resolve))));
+    const first = requestJson("/api/payments", { method: "POST", body: {} });
+    const second = requestJson("/api/invoices/5", { method: "PATCH", body: {} });
+    answers[0](json({}));
+    await first;
+    expect(hasUnfinishedRequests()).toBe(true);
+    answers[1](json({}));
+    await second;
+    expect(hasUnfinishedRequests()).toBe(false);
   });
 });
