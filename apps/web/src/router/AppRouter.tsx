@@ -20,6 +20,7 @@ import { PageLoader } from "../shared/ui/PageLoader";
 const CallCenterPage = React.lazy(() => import("../modules/call-center/pages/CallCenterPage").then((module) => ({ default: module.CallCenterPage })));
 const QueuePage = React.lazy(() => import("../modules/queue/pages/QueuePage").then((module) => ({ default: module.QueuePage })));
 const LeadsPage = React.lazy(() => import("../modules/leads/pages/LeadsPage").then((module) => ({ default: module.LeadsPage })));
+const MyLeadsPage = React.lazy(() => import("../modules/leads/pages/MyLeadsPage").then((module) => ({ default: module.MyLeadsPage })));
 import { ServicesPage } from "../modules/services/pages/ServicesPage";
 import { DoctorsPage } from "../modules/doctors/pages/DoctorsPage";
 import { LoginPage } from "../modules/auth/pages/LoginPage";
@@ -43,6 +44,7 @@ import {
   ATTENDANCE_ROLES,
   CALL_CENTER_ROLES,
   LEADS_ROLES,
+  MARKETER_ROLES,
   MY_SERVICES_ROLES,
   QUESTIONNAIRE_ROLES,
   QUEUE_ROLES,
@@ -61,8 +63,12 @@ const RootGate: React.FC = () => {
   return <LandingPage />;
 };
 
-const RoleAwareHomeRedirect: React.FC = () => {
+export const RoleAwareHomeRedirect: React.FC = () => {
   const { user } = useAuth();
+  // The external contractor has one page. Its route is open to exactly these roles, so the redirect cannot loop.
+  if (user && MARKETER_ROLES.includes(user.role)) {
+    return <Navigate to="/my-leads" replace />;
+  }
   if (user?.role === "nurse") {
     return <Navigate to="/appointments" replace />;
   }
@@ -214,6 +220,14 @@ export const AppRouter: React.FC = () => {
           element={
             <RoleGuard roles={LEADS_ROLES}>
               <React.Suspense fallback={<PageLoader />}><LeadsPage /></React.Suspense>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/my-leads"
+          element={
+            <RoleGuard roles={MARKETER_ROLES}>
+              <React.Suspense fallback={<PageLoader />}><MyLeadsPage /></React.Suspense>
             </RoleGuard>
           }
         />

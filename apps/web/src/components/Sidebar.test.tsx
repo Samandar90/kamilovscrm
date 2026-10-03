@@ -42,11 +42,18 @@ describe("sidebar sections", () => {
 });
 
 describe("sidebar for an external contractor", () => {
-  it("shows no sections and the translated role name in the user card", () => {
+  it("shows exactly one link, /my-leads, and the translated role name in the user card", () => {
     renderAs("marketer");
-    expect(sectionHeadings()).toEqual([]);
+    expect(sectionHeadings()).toEqual(["t:nav.main"]);
+    const links = view.root.findAllByType("a");
+    expect(links.map(link => link.props.href)).toEqual(["/my-leads"]);
+    expect(links[0].findByType("span").children.join("")).toBe("t:pages.myLeads");
     expect(userCardLines()).toEqual(["Test User", "t:users.marketer"]);
     expect(consoleError).not.toHaveBeenCalled();
+  });
+  it("does not show «Мои лиды» to staff", () => {
+    renderAs("superadmin");
+    expect(view.root.findAllByType("a").map(link => link.props.href)).not.toContain("/my-leads");
   });
   it("still names a staff role through the shared label map", () => {
     renderAs("reception");
