@@ -340,11 +340,8 @@ export const appointmentsFlowApi = {
       { token }
     ),
 
-  listInvoicesByAppointment: (token: string, appointmentId: number) =>
-    requestJson<InvoiceSummary[]>(
-      `/api/invoices?appointmentId=${encodeURIComponent(String(appointmentId))}`,
-      { token }
-    ),
+  /** All invoices of the clinic, newest first. */
+  listInvoices: (token: string) => requestJson<InvoiceSummary[]>("/api/invoices", { token }),
 
   createInvoice: (
     token: string,
