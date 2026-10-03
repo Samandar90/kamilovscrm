@@ -177,7 +177,7 @@ describe("TvDisplayPage", () => {
     expect(startButton()).toHaveLength(1);
   });
 
-  it("shows a new call in the overlay and announces it in Uzbek, then Russian", async () => {
+  it("shows a new call in the overlay and announces it in Russian only", async () => {
     await render();
     await act(async () => {
       startButton()[0].props.onClick();
@@ -191,8 +191,8 @@ describe("TvDisplayPage", () => {
     expect(html()).toContain("Navbatdagi raqam / Приглашается");
     expect(html()).toContain("→ Xona / Кабинет 3");
     expect(mocks.announcer.announce).toHaveBeenCalledWith(
-      [["navbat_raqami", "6", "xona_raqami", "3"], ["nomer", "6", "proydite_v_kabinet_nomer", "3"]],
-      ["uz", "ru"],
+      [["nomer", "6", "proydite_v_kabinet_nomer", "3"]],
+      ["ru"],
       { signal: expect.any(AbortSignal) },
     );
   });
@@ -221,22 +221,21 @@ describe("TvDisplayPage", () => {
     expect(view!.root.findAllByProps({ className: "qtv-overlay" })).toHaveLength(0);
   });
 
-  it("preloads the voice once the screen is started, and again only when the display language changes", async () => {
+  it("preloads the Russian voice once the screen is started, whatever the display language", async () => {
     await render();
     expect(mocks.announcer.preload).not.toHaveBeenCalled(); // audio is still locked
     await act(async () => {
       startButton()[0].props.onClick();
     });
     expect(mocks.announcer.preload).toHaveBeenCalledTimes(1);
-    expect(mocks.announcer.preload).toHaveBeenLastCalledWith(["uz", "ru"]);
+    expect(mocks.announcer.preload).toHaveBeenLastCalledWith(["ru"]);
     mocks.display = { state: sample("2026-09-30T06:00:02.000Z", [oldCall]), error: null, offline: false };
     await rerender();
     expect(mocks.announcer.preload).toHaveBeenCalledTimes(1); // a new poll is no reason to preload again
     const next = sample("2026-09-30T06:00:04.000Z", [oldCall]);
     mocks.display = { state: { ...next, display: { ...next.display, language: "ru" } }, error: null, offline: false };
     await rerender();
-    expect(mocks.announcer.preload).toHaveBeenCalledTimes(2);
-    expect(mocks.announcer.preload).toHaveBeenLastCalledWith(["ru"]);
+    expect(mocks.announcer.preload).toHaveBeenCalledTimes(1); // the voice does not depend on the display language
   });
 
   it("preloads nothing when the display has voice turned off", async () => {

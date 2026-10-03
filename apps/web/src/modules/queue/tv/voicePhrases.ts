@@ -1,5 +1,3 @@
-import type { QueueDisplayLanguage } from "../api/queueTypes";
-
 /**
  * Spoken announcement = ordered list of clip ids; each id is a file `public/queue-voice/<lang>/<id>.mp3`
  * (texts live in voiceClips.json and are voiced once by scripts/generate-queue-voice.mjs).
@@ -66,9 +64,10 @@ export function announcementClipIds(lang: VoiceLang, queueNumber: number, room: 
     : ["navbat_raqami", ...numberIds, "qabulga_marhamat"];
 }
 
-/** Speaking order for a display: uz_ru → Uzbek first, then Russian. */
-export function voiceLangs(language: QueueDisplayLanguage): VoiceLang[] {
-  if (language === "uz") return ["uz"];
-  if (language === "ru") return ["ru"];
-  return ["uz", "ru"];
+/**
+ * Languages a call is spoken in. Always Russian, whatever language the screen's texts use: the Russian voice is the
+ * clear one. The Uzbek clips stay in the repository and the announcer still plays them if a language is added here.
+ */
+export function voiceLangs(): VoiceLang[] {
+  return ["ru"];
 }

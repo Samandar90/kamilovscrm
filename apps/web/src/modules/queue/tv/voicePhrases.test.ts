@@ -78,10 +78,8 @@ describe("announcementClipIds", () => {
 });
 
 describe("voiceLangs and pauses", () => {
-  it("speaks Uzbek first for bilingual displays", () => {
-    expect(voiceLangs("uz_ru")).toEqual(["uz", "ru"]);
-    expect(voiceLangs("uz")).toEqual(["uz"]);
-    expect(voiceLangs("ru")).toEqual(["ru"]);
+  it("speaks Russian only", () => {
+    expect(voiceLangs()).toEqual(["ru"]);
   });
 
   it("pauses longer before a new sentence than between number words", () => {
