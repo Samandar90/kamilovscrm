@@ -8,9 +8,13 @@ export const USER_ROLES = [
   "accountant",
   "manager",
   "director",
+  "marketer",
 ] as const;
 
 export type UserRole = (typeof USER_ROLES)[number];
+
+/** Внешние аккаунты (подрядчики), не сотрудники клиники. Их аккаунт проверяется при каждом запросе (authMiddleware). */
+export const EXTERNAL_ROLES = ["marketer"] as const satisfies readonly UserRole[];
 
 export const PERMISSION_MODULES = [
   "patients",
@@ -134,6 +138,9 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     reports: ["read"],
     ai: ["read", "create"],
   },
+
+  /** Внешний таргетолог (подрядчик): ни одного модуля клиники — ни пациентов, ни записей, ни ИИ. Строка остаётся пустой. */
+  marketer: {},
 };
 
 export function hasPermission(
