@@ -40,7 +40,7 @@ function speakCall(
   call: QueueDisplayCall,
   speech: AbortController | null,
 ): Promise<void> {
-  const langs = display.voiceEnabled ? voiceLangs(display.language) : [];
+  const langs = display.voiceEnabled ? voiceLangs() : [];
   const groups = langs.map((lang) => announcementClipIds(lang, call.number, call.room));
   const signal = speech ? speech.signal : undefined;
   const run = async () => {
@@ -231,13 +231,12 @@ export function TvDisplayPage() {
   }, [started]);
 
   // Decode all voice clips in the background once audio is unlocked, so the first calls of the day do not wait for
-  // downloads; again when the display language changes. Voice off → nothing to preload. announce() never waits for it.
+  // downloads. Voice off → nothing to preload. announce() never waits for it.
   const voiceEnabled = state ? state.display.voiceEnabled : false;
-  const voiceLanguage = state ? state.display.language : null;
   React.useEffect(() => {
-    if (!started || !voiceEnabled || !voiceLanguage) return;
-    void announcerRef.current?.preload(voiceLangs(voiceLanguage));
-  }, [started, voiceEnabled, voiceLanguage]);
+    if (!started || !voiceEnabled) return;
+    void announcerRef.current?.preload(voiceLangs());
+  }, [started, voiceEnabled]);
 
   // New calls → overlay queue (the tracker keeps the first poll silent and drops stale calls).
   React.useEffect(() => {
