@@ -92,6 +92,24 @@ describe("errorForLog", () => {
     expect(stack.filter((frame) => !frame.startsWith("at "))).toEqual([]);
   });
 
+  it('takes the frames from what follows the message: a quoted value of several lines may have a line that starts with "at"', () => {
+    const logged = errorForLog(
+      pgError({ message: 'invalid input syntax for type integer: "Просил перезвонить\nat 18:00 жене, 901112233"', code: "22P02" })
+    ) as { stack: string[] };
+    expect(logged.stack.length).toBeGreaterThan(0);
+    expect(inspect(logged)).not.toContain("901112233");
+  });
+
+  it("gives no stack when the message is not in it: where the frames begin is not known", () => {
+    const refused = pgError({
+      message: 'invalid input syntax for type integer: "Просил перезвонить\nat 18:00 жене, 901112233"',
+      code: "22P02",
+    });
+    // An error that took the stack of the one it replaces: that stack begins with the other message.
+    const err = Object.assign(new Error("Не удалось сохранить заметку"), { stack: refused.stack });
+    expect(errorForLog(err)).toEqual({ name: "Error", message: "Не удалось сохранить заметку" });
+  });
+
   it("keeps the name, message and status of an application error and drops its other properties", () => {
     const err = Object.assign(new TypeError("Cannot read properties of undefined (reading 'rows')"), {
       status: 500,
