@@ -23,6 +23,8 @@ import { QueueService } from "../services/queueService";
 import { PostgresQueueRepository } from "../repositories/postgres/PostgresQueueRepository";
 import { QueueDisplaysService } from "../services/queueDisplaysService";
 import { PostgresQueueDisplaysRepository } from "../repositories/postgres/PostgresQueueDisplaysRepository";
+import { LeadsService } from "../services/leadsService";
+import { PostgresLeadsRepository } from "../repositories/postgres/PostgresLeadsRepository";
 import { dbPool } from "../config/database";
 import { env } from "../config/env";
 import { repositories } from "./repositories";
@@ -67,4 +69,5 @@ export const services = {
     queueRepository,
     env.reportsTimezone
   ),
+  leads: new LeadsService(new PostgresLeadsRepository(dbPool)),
 };
