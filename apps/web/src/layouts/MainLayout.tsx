@@ -30,6 +30,7 @@ const getRouteKey = (path: string): string => {
     "/attendance": "pages.attendance",
     "/call-center": "pages.callCenter",
     "/queue": "pages.queue",
+    "/leads": "pages.leads",
     "/questionnaires": "pages.questionnaires",
     "/my-services": "pages.myServices",
     "/system/architecture": "pages.systemArchitecture",

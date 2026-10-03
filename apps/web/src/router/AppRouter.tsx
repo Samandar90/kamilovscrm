@@ -19,6 +19,7 @@ import { AttendancePage } from "../modules/attendance/pages/AttendancePage";
 import { PageLoader } from "../shared/ui/PageLoader";
 const CallCenterPage = React.lazy(() => import("../modules/call-center/pages/CallCenterPage").then((module) => ({ default: module.CallCenterPage })));
 const QueuePage = React.lazy(() => import("../modules/queue/pages/QueuePage").then((module) => ({ default: module.QueuePage })));
+const LeadsPage = React.lazy(() => import("../modules/leads/pages/LeadsPage").then((module) => ({ default: module.LeadsPage })));
 import { ServicesPage } from "../modules/services/pages/ServicesPage";
 import { DoctorsPage } from "../modules/doctors/pages/DoctorsPage";
 import { LoginPage } from "../modules/auth/pages/LoginPage";
@@ -41,6 +42,7 @@ import {
   PAYMENTS_READ_PAGE_ROLES,
   ATTENDANCE_ROLES,
   CALL_CENTER_ROLES,
+  LEADS_ROLES,
   MY_SERVICES_ROLES,
   QUESTIONNAIRE_ROLES,
   QUEUE_ROLES,
@@ -204,6 +206,14 @@ export const AppRouter: React.FC = () => {
           element={
             <RoleGuard roles={QUEUE_ROLES}>
               <React.Suspense fallback={<PageLoader />}><QueuePage /></React.Suspense>
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/leads"
+          element={
+            <RoleGuard roles={LEADS_ROLES}>
+              <React.Suspense fallback={<PageLoader />}><LeadsPage /></React.Suspense>
             </RoleGuard>
           }
         />
