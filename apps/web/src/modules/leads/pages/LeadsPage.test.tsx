@@ -6,12 +6,14 @@ import { formatDateTimeRu } from "../../../utils/formatDateTime";
 import type { Lead, LeadsPage as LeadsPageData } from "../api/leadsTypes";
 
 type DetailsProps = { lead: Lead; onChange: (lead: Lead) => void; onConflict: () => void };
+type SourcesPanelProps = { onClose: () => void; onChanged: () => void };
 const mocks = vi.hoisted(() => ({
   user: null as PublicUser | null,
   list: vi.fn(),
   sources: vi.fn(),
   update: vi.fn(),
   details: null as DetailsProps | null,
+  panel: null as SourcesPanelProps | null,
 }));
 // Real Russian texts from ru.json, so the assertions read like the screen («Взять в работу»).
 vi.mock("react-i18next", async () => {
@@ -33,6 +35,12 @@ vi.mock("../components/LeadDetails", () => ({
   LeadDetails: (props: DetailsProps) => {
     mocks.details = props;
     return <div id="lead-details" data-lead-id={props.lead.id} />;
+  },
+}));
+vi.mock("../components/LeadSourcesPanel", () => ({
+  LeadSourcesPanel: (props: SourcesPanelProps) => {
+    mocks.panel = props;
+    return <div id="lead-sources-panel" />;
   },
 }));
 import { HttpError } from "../../../api/http";
@@ -68,6 +76,7 @@ let view: ReactTestRenderer;
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.details = null;
+  mocks.panel = null;
   mocks.list.mockResolvedValue(firstPage);
   mocks.sources.mockResolvedValue({ items: [{ id: 3, name: "Instagram" }, { id: 4, name: "Facebook" }] });
 });
@@ -301,5 +310,50 @@ describe("staff leads page", () => {
     await click(view.root.findByProps({ "aria-label": "Обновить" }));
     expect(mocks.list).toHaveBeenCalledTimes(2);
     expect(mocks.list).toHaveBeenLastCalledWith({});
+  });
+});
+
+describe("lead sources on the staff leads page", () => {
+  const panels = () => view.root.findAllByProps({ id: "lead-sources-panel" });
+
+  it("opens the sources panel with «Источники» and closes it from the panel, for the superadmin", async () => {
+    await renderAs("superadmin");
+    expect(panels()).toHaveLength(0);
+    const toggle = buttons("Источники")[0];
+    expect(toggle.props["aria-expanded"]).toBe(false);
+
+    await click(toggle);
+    expect(panels()).toHaveLength(1);
+    expect(buttons("Источники")[0].props["aria-expanded"]).toBe(true);
+
+    await act(async () => {
+      mocks.panel?.onClose();
+      await settle();
+    });
+    expect(panels()).toHaveLength(0);
+  });
+
+  it.each<UserRole>(["reception", "operator", "manager", "director"])("gives %s neither the button nor the panel", async (role) => {
+    await renderAs(role);
+    expect(buttons("Источники")).toHaveLength(0);
+    expect(panels()).toHaveLength(0);
+    expect(mocks.panel).toBeNull();
+  });
+
+  it("reloads the leads and the filter's sources when the panel reports a change", async () => {
+    await renderAs("superadmin");
+    await click(buttons("Источники")[0]);
+    mocks.sources.mockResolvedValue({ items: [{ id: 3, name: "Instagram" }, { id: 4, name: "Facebook" }, { id: 5, name: "TikTok" }] });
+    await act(async () => {
+      mocks.panel?.onChanged();
+      await settle();
+    });
+    expect(mocks.list).toHaveBeenCalledTimes(2);
+    expect(mocks.sources).toHaveBeenCalledTimes(2);
+    expect(select("leads-filter-source").findAllByType("option").map(textOf)).toEqual([
+      "Все источники", "Instagram", "Facebook", "TikTok",
+    ]);
+    // The panel stays open: the superadmin is still working in it.
+    expect(panels()).toHaveLength(1);
   });
 });

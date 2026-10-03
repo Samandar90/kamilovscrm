@@ -1,14 +1,15 @@
 import React from "react";
-import { ChevronDown, Megaphone, RefreshCw } from "lucide-react";
+import { ChevronDown, Megaphone, RefreshCw, Table2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { HttpError } from "../../../api/http";
 import { useAuth } from "../../../auth/AuthContext";
-import { LEADS_UPDATE_ROLES } from "../../../auth/roleGroups";
+import { LEADS_UPDATE_ROLES, LEAD_SOURCES_MANAGE_ROLES } from "../../../auth/roleGroups";
 import { ListEmptyState } from "../../../components/ui/ListEmptyState";
 import { formatDateTimeRu } from "../../../utils/formatDateTime";
 import { leadsApi } from "../api/leadsApi";
 import type { Lead, LeadSourceBrief, LeadStage, LeadsListParams } from "../api/leadsTypes";
 import { LeadDetails } from "../components/LeadDetails";
+import { LeadSourcesPanel } from "../components/LeadSourcesPanel";
 import { LEAD_STAGES, LEAD_STAGE_LABEL_KEYS, formatLeadPhone, leadStageBadgeClass } from "../utils/leadFormat";
 
 /**
@@ -24,12 +25,14 @@ const secondaryButton =
 
 /**
  * Staff «Лиды» page: requests read from the contractors' sheets, newest first. Operator, reception and manager call
- * the lead, set the result and link a patient; a role without the update right only reads.
+ * the lead, set the result and link a patient; a role without the update right only reads. The superadmin also gets
+ * the sources panel: contractors' sheets and their reading.
  */
 export const LeadsPage: React.FC = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const canUpdate = !!user && LEADS_UPDATE_ROLES.includes(user.role);
+  const canManageSources = !!user && LEAD_SOURCES_MANAGE_ROLES.includes(user.role);
 
   const [stage, setStage] = React.useState<LeadStage | "">("");
   const [sourceId, setSourceId] = React.useState<number | null>(null);
@@ -42,10 +45,12 @@ export const LeadsPage: React.FC = () => {
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [expandedId, setExpandedId] = React.useState<number | null>(null);
   const [pendingId, setPendingId] = React.useState<number | null>(null);
+  const [showSources, setShowSources] = React.useState(false);
   // Synchronous twin of `pendingId`: a second click can arrive before React re-renders the disabled buttons.
   const pendingRef = React.useRef(false);
   // Number of the latest list request: an answer to an older one (previous filter, unmounted page) is dropped.
   const requestRef = React.useRef(0);
+  const sourcesRequestRef = React.useRef(0);
 
   const filters = React.useMemo<LeadsListParams>(
     () => ({ ...(stage ? { stage } : {}), ...(sourceId ? { sourceId } : {}) }),
@@ -80,19 +85,23 @@ export const LeadsPage: React.FC = () => {
     };
   }, [load]);
 
-  React.useEffect(() => {
-    let cancelled = false;
+  const loadSources = React.useCallback(() => {
+    const request = ++sourcesRequestRef.current;
     // Sources only feed the filter: their failure must not hide the leads (each lead carries its source name).
     leadsApi
       .sources()
       .then((result) => {
-        if (!cancelled) setSources(result.items);
+        if (request === sourcesRequestRef.current) setSources(result.items);
       })
       .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  React.useEffect(() => {
+    loadSources();
+    return () => {
+      sourcesRequestRef.current += 1;
+    };
+  }, [loadSources]);
 
   const reload = () => {
     setActionError(null);
@@ -146,6 +155,12 @@ export const LeadsPage: React.FC = () => {
     void load();
   };
 
+  // The sources panel saved a source or read a sheet: the filter and the list behind it are out of date.
+  const sourcesChanged = () => {
+    loadSources();
+    void load();
+  };
+
   return (
     <div className="page-enter space-y-5 p-4 md:p-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -153,15 +168,32 @@ export const LeadsPage: React.FC = () => {
           <h2 className="text-xl font-semibold tracking-tight text-slate-900">{t("leads.title")}</h2>
           <p className="mt-1 text-sm text-slate-500">{t("leads.subtitle")}</p>
         </div>
-        <button
-          type="button"
-          onClick={reload}
-          aria-label={t("common.actions.refresh")}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} aria-hidden />
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {canManageSources ? (
+            <button
+              type="button"
+              onClick={() => setShowSources((value) => !value)}
+              aria-expanded={showSources}
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
+            >
+              <Table2 className="h-4 w-4" aria-hidden />
+              {t("leads.sources.open")}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={reload}
+            aria-label={t("common.actions.refresh")}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} aria-hidden />
+          </button>
+        </div>
       </header>
+
+      {showSources && canManageSources ? (
+        <LeadSourcesPanel onClose={() => setShowSources(false)} onChanged={sourcesChanged} />
+      ) : null}
 
       <div className="flex flex-col gap-3 md:flex-row">
         <label className="block text-xs font-medium text-slate-600" htmlFor="leads-filter-stage">
