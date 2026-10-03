@@ -63,23 +63,26 @@ type SourceRow = {
 
 // «Записан» и «Пришёл» не хранятся: считаются при чтении по записям привязанного пациента, созданным после лида.
 // Один фрагмент на оба списка (сотрудников и таргетолога), чтобы правило не разошлось. Отменённая запись и неявка
-// в обе группы не входят — лид возвращается к сохранённому статусу.
+// в обе группы не входят — лид возвращается к сохранённому статусу. Пациент, удалённый после привязки,
+// считается непривязанным: его записи стадию не меняют (сам patient_id в строке лида остаётся).
 const STAGE_JOIN = `LEFT JOIN LATERAL (
          SELECT bool_or(a.status IN ('arrived', 'in_consultation', 'completed')) AS arrived,
                 bool_or(a.status IN ('scheduled', 'confirmed')) AS upcoming
          FROM appointments a
+         JOIN patients ap_p ON ap_p.id = a.patient_id AND ap_p.clinic_id = a.clinic_id AND ap_p.deleted_at IS NULL
          WHERE a.clinic_id = l.clinic_id AND a.patient_id = l.patient_id
            AND a.deleted_at IS NULL AND a.created_at >= l.created_at
        ) ap ON l.patient_id IS NOT NULL`;
 const STAGE = "CASE WHEN ap.arrived THEN 'visited' WHEN ap.upcoming THEN 'booked' ELSE l.status END";
 
 // Лид для сотрудников. Источник, пациент и последний редактор — только из той же клиники.
+// patient_id берётся из строки пациента: удалённый пациент наружу не отдаётся ни номером, ни именем.
 const LEAD_SELECT = `SELECT l.id, l.created_at, l.full_name, l.phone, l.extra, l.status, ${STAGE} AS stage, l.note,
-              l.source_id, s.name AS source_name, l.patient_id, p.full_name AS patient_name,
+              l.source_id, s.name AS source_name, p.id AS patient_id, p.full_name AS patient_name,
               l.staff_updated_at, u.full_name AS staff_updated_by_name
        FROM leads l
        JOIN lead_sources s ON s.clinic_id = l.clinic_id AND s.id = l.source_id
-       LEFT JOIN patients p ON p.id = l.patient_id AND p.clinic_id = l.clinic_id
+       LEFT JOIN patients p ON p.id = l.patient_id AND p.clinic_id = l.clinic_id AND p.deleted_at IS NULL
        LEFT JOIN users u ON u.id = l.staff_updated_by AND u.clinic_id = l.clinic_id
        ${STAGE_JOIN}`;
 

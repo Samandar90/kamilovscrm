@@ -484,6 +484,28 @@ describe("lead and patient", () => {
     await as("reception", "/1/patient", "PUT", { patientId: null });
     expect(await stage()).toBe("no_answer");
   });
+
+  it("shows a lead whose patient was deleted afterwards as not linked, and keeps the stored link", async () => {
+    await as("reception", "/1", "PATCH", { status: "no_answer" });
+    await as("reception", "/1/patient", "PUT", { patientId: 100 });
+    await appointment(1, 100, "completed");
+    const shown = { patientId: 100, patientName: "Каримов Алишер", status: "no_answer", stage: "visited" };
+    expect((await as("reception", "")).body.items[0]).toMatchObject(shown);
+    expect((await as("marketerA", "/mine")).body.items[0].stage).toBe("visited");
+
+    await db.query("UPDATE patients SET deleted_at = now() WHERE id = 100");
+    const hidden = { patientId: null, patientName: null, status: "no_answer", stage: "no_answer" };
+    // The staff list, its stage filter, the single lead (the answer of a PATCH) and the contractor's list.
+    expect((await as("reception", "")).body.items[0]).toMatchObject(hidden);
+    expect(ids((await as("reception", "?stage=visited")).body)).toEqual([]);
+    expect(ids((await as("reception", "?stage=no_answer")).body)).toEqual([1]);
+    expect((await as("reception", "/1", "PATCH", { note: "Перезвонить вечером" })).body).toMatchObject(hidden);
+    expect((await as("marketerA", "/mine")).body.items[0].stage).toBe("no_answer");
+    // Only what is returned changes: the row keeps its patient, and a restored patient is linked again.
+    expect(await leadRow(1)).toMatchObject({ patient_id: 100, status: "no_answer" });
+    await db.query("UPDATE patients SET deleted_at = NULL WHERE id = 100");
+    expect((await as("reception", "")).body.items[0]).toMatchObject(shown);
+  });
 });
 
 describe("lead sources", () => {
