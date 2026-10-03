@@ -228,7 +228,8 @@
     "attendance": "Davomat",
     "callCenter": "Call-markaz",
     "queue": "Navbat",
-    "leads": "Lidlar"
+    "leads": "Lidlar",
+    "myLeads": "Mening lidlarim"
   },
   "patients": {
     "source": {
@@ -2230,6 +2231,10 @@
         "nameRequired": "Manba nomini kiriting",
         "saveFailed": "Manbani saqlab bo'lmadi"
       }
+    },
+    "mine": {
+      "subtitle": "Jadvalingizdan kelgan arizalar va har birining holati.",
+      "empty": "Lidlar jadvalingiz ulanganidan keyin shu yerda paydo bo'ladi"
     }
   }
 }
