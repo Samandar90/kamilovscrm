@@ -97,7 +97,7 @@ const as = async (who: Who, path: string, method = "GET", body?: unknown) => {
   return { status: res.status, text, body: JSON.parse(text) as any };
 };
 const ingest = (sourceId: number, rows: LeadRowInput[], clinicId = 1) => services.leads.ingestLeadRows(clinicId, sourceId, rows);
-/** `count` leads with distinct valid phones; the first lead is the fixture person. */
+/** `count` sheet rows with distinct valid phones; `start` shifts the phones so that two calls do not repeat them. */
 const rowsOf = (count: number, start = 0): LeadRowInput[] =>
   Array.from({ length: count }, (_, index) => ({
     phone: `99893${String(5000000 + start + index)}`,
