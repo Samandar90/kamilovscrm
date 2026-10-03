@@ -227,7 +227,8 @@
     "systemArchitecture": "Tizim arxitekturasi",
     "attendance": "Davomat",
     "callCenter": "Call-markaz",
-    "queue": "Navbat"
+    "queue": "Navbat",
+    "leads": "Lidlar"
   },
   "patients": {
     "source": {
@@ -2109,6 +2110,70 @@
         "doctorsRequired": "Kamida bitta shifokorni tanlang",
         "saveFailed": "Ekranni saqlab bo'lmadi"
       }
+    }
+  },
+  "leads": {
+    "title": "Lidlar",
+    "subtitle": "Targetologlar jadvallaridan kelgan arizalar: qo'ng'iroq qiling, natijani belgilang, qabulga yozing.",
+    "noName": "Ismsiz",
+    "columns": {
+      "received": "Kelgan vaqti",
+      "name": "Ism",
+      "phone": "Telefon",
+      "source": "Manba",
+      "status": "Holat"
+    },
+    "filters": {
+      "status": "Holat",
+      "source": "Manba",
+      "allStatuses": "Barcha holatlar",
+      "allSources": "Barcha manbalar"
+    },
+    "stage": {
+      "new": "Yangi",
+      "inProgress": "Ishda",
+      "noAnswer": "Javob bermadi",
+      "booked": "Yozilgan",
+      "visited": "Keldi",
+      "declined": "Rad etdi",
+      "invalid": "Sifatsiz"
+    },
+    "actions": {
+      "take": "Ishga olish",
+      "details": "Batafsil",
+      "showMore": "Yana ko'rsatish",
+      "retry": "Qayta urinish"
+    },
+    "empty": {
+      "title": "Hozircha lidlar yo'q",
+      "description": "Arizalar targetolog jadvali o'qilgandan keyin shu yerda paydo bo'ladi.",
+      "filteredTitle": "Hech narsa topilmadi",
+      "filteredDescription": "Bunday filtrlar bilan lidlar yo'q."
+    },
+    "errors": {
+      "loadFailed": "Lidlarni yuklab bo'lmadi",
+      "saveFailed": "O'zgarishlarni saqlab bo'lmadi",
+      "alreadyTaken": "Lidni hamkasbingiz allaqachon olgan",
+      "changedByColleague": "Lidni hamkasbingiz allaqachon o'zgartirgan. Ro'yxat yangilandi.",
+      "matchesFailed": "Bemorlarni qidirib bo'lmadi"
+    },
+    "details": {
+      "extraTitle": "Jadvaldan",
+      "status": "Holat",
+      "note": "Izoh",
+      "notePlaceholder": "Mijoz nima dedi, qachon qayta qo'ng'iroq qilish kerak",
+      "derivedStage": "«{{stage}}» bog'langan bemorning qabul yozuvi bo'yicha ko'rsatilgan."
+    },
+    "patient": {
+      "title": "Bemor",
+      "notLinked": "Bog'lanmagan",
+      "find": "Bemorni topish",
+      "searching": "Qidirilmoqda…",
+      "noMatches": "Bu raqamli bemor topilmadi",
+      "link": "Bog'lash",
+      "create": "Bemor yaratish",
+      "book": "Qabulga yozish",
+      "unlink": "Ajratish"
     }
   }
 }
