@@ -45,7 +45,8 @@ type State = { error: unknown; reloading: boolean };
 /**
  * Goes around every lazyPage in the router. A tab opened before a deploy asks for a chunk that no longer exists;
  * without this boundary React would unmount the whole app and leave a blank screen. The tab reloads to the deployed
- * version, or, when a reload is not going to help, shows a notice with a button. Other errors pass through untouched.
+ * version; when a reload would not help, or would take something from the user, the page shows a notice with a
+ * button instead. Other errors pass through untouched.
  */
 export class LazyPageBoundary extends React.Component<Props, State> {
   state: State = { error: null, reloading: false };

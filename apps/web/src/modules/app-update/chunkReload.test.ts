@@ -8,10 +8,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** A tab: session storage that survives its reloads, a network state and writes in flight. */
+/** A tab: session storage that survives its reloads, a network state, and whether the user is in the middle of something. */
 function tab() {
   const stored = new Map<string, string>();
-  const state = { online: true, writing: false, storageBlocked: false };
+  const state = { online: true, busy: false, storageBlocked: false };
   const reload = vi.fn();
   const env = {
     storage: () => {
@@ -19,7 +19,7 @@ function tab() {
       return { getItem: (key: string) => stored.get(key) ?? null, setItem: (key: string, value: string) => void stored.set(key, value) };
     },
     isOnline: () => state.online,
-    hasUnfinishedRequests: () => state.writing,
+    isBusy: () => state.busy,
     reload,
   };
   return { state, reload, recover: () => reloadForMissingChunk(env) };
@@ -57,14 +57,22 @@ describe("reloadForMissingChunk", () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
-  it("lets a write in flight finish before it reloads", async () => {
+  it("does not reload from under a request in flight or unsaved work, neither now nor later", async () => {
     const { recover, reload, state } = tab();
-    state.writing = true;
-    expect(recover()).toBe(true);
-    await vi.advanceTimersByTimeAsync(3000);
+    state.busy = true;
+    expect(recover()).toBe(false);
+    state.busy = false;
+    // The user may have gone to another page and started typing there: no reload behind their back.
+    await vi.advanceTimersByTimeAsync(CHUNK_RELOAD_COOLDOWN_MS);
     expect(reload).not.toHaveBeenCalled();
-    state.writing = false;
-    await vi.advanceTimersByTimeAsync(500);
+  });
+
+  it("does not spend the one reload on a refusal", () => {
+    const { recover, reload, state } = tab();
+    state.busy = true;
+    recover();
+    state.busy = false;
+    expect(recover()).toBe(true);
     expect(reload).toHaveBeenCalledTimes(1);
   });
 });

@@ -34,7 +34,8 @@ function fakeBrowser() {
         (total, registry) => total + Array.from(registry.values()).reduce((sum, handlers) => sum + handlers.size, 0),
         0,
       ),
-    fire: (target: "document" | "window", type: string) => registries[target].get(type)?.forEach((handler) => handler({ target: null })),
+    fire: (target: "document" | "window", type: string, element: object | null = null) =>
+      registries[target].get(type)?.forEach((handler) => handler({ target: element })),
   };
   vi.stubGlobal("document", {
     get visibilityState() {
@@ -43,8 +44,8 @@ function fakeBrowser() {
     addEventListener: add(registries.document),
     removeEventListener: remove(registries.document),
     querySelector: () => (browser.dialogOpen ? {} : null),
-    querySelectorAll: (selector: string) =>
-      selector.startsWith("script[src]") ? [{ getAttribute: (name: string) => (name === "src" ? "/assets/index-OLD.js" : null) }] : [],
+    getElementsByTagName: (tag: string) =>
+      tag === "script" ? [{ getAttribute: (name: string) => (name === "src" ? "/assets/index-OLD.js" : null) }] : [],
   });
   vi.stubGlobal("window", {
     location: { reload: browser.reload },
@@ -152,6 +153,29 @@ describe("startAppUpdateWatch", () => {
     expect(browser.reload).toHaveBeenCalledTimes(1);
   });
 
+  it("holds the reload over a field the user changed, until the field is gone", async () => {
+    await openTab(true);
+    const notes = {
+      tagName: "TEXTAREA",
+      isConnected: true,
+      parentElement: null,
+      getAttribute: () => null,
+      hasAttribute: () => false,
+      value: "Амоксициллин 500 мг",
+    };
+    browser.fire("document", "focusin", notes);
+    notes.value = "";
+    browser.fire("document", "input", notes);
+    browser.deployed = page("index-NEW.js");
+    await advance(CHECK_INTERVAL_MS);
+    appUpdate.notifyPageChanged();
+    expect(browser.reload).not.toHaveBeenCalled();
+
+    notes.isConnected = false;
+    appUpdate.notifyPageChanged();
+    expect(browser.reload).toHaveBeenCalledTimes(1);
+  });
+
   it("takes a click, a key, a scroll and a mouse move for the user being there", async () => {
     await openTab(true);
     browser.deployed = page("index-NEW.js");
@@ -227,5 +251,15 @@ describe("recoverFromMissingChunk", () => {
     expect(browser.reload).toHaveBeenCalledTimes(1);
     expect(appUpdate.recoverFromMissingChunk()).toBe(false);
     expect(browser.reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses while a write is in flight or a dialog is open", async () => {
+    await openTab(true);
+    mocks.writing = true;
+    expect(appUpdate.recoverFromMissingChunk()).toBe(false);
+    mocks.writing = false;
+    browser.dialogOpen = true;
+    expect(appUpdate.recoverFromMissingChunk()).toBe(false);
+    expect(browser.reload).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,7 @@ import React from "react";
 import { hasUnfinishedRequests } from "../../api/http";
 import { reloadForMissingChunk } from "./chunkReload";
 import { assetRefsInDocument } from "./deployedAssets";
-import { isPageBusy, trackEditedFields } from "./reloadSafety";
+import { isPageBusy, trackEdits, type EditTracker } from "./reloadSafety";
 import { createUpdateWatcher } from "./updateWatcher";
 
 /**
@@ -11,14 +11,18 @@ import { createUpdateWatcher } from "./updateWatcher";
  * presses F5. Staff pages only; the TV screen (modules/queue/tv) reloads at night by itself.
  */
 
+/** Follows the fields the user edits, from the moment the watch starts. */
+let edits: EditTracker | null = null;
+
 const isOnline = () => navigator.onLine !== false;
-const isBusy = () => hasUnfinishedRequests() || isPageBusy(document, window);
+const isBusy = () => hasUnfinishedRequests() || isPageBusy(document, window, edits);
 const reload = () => window.location.reload();
 
 const watcher = createUpdateWatcher({
   async fetchIndexHtml(signal) {
     // Same origin, so no CORS preflight. `no-cache` makes the browser ask the server with the ETag of its copy:
-    // Vercel answers 304 without a body while nothing was deployed.
+    // Vercel answers 304 without a body while nothing was deployed. Only the first check of a tab opened at another
+    // address has no copy yet and downloads the page (0.7 kB compressed).
     const response = await fetch(`${import.meta.env.BASE_URL}index.html`, { cache: "no-cache", signal });
     if (!response.ok) throw new Error(`index.html: HTTP ${response.status}`);
     return response.text();
@@ -38,7 +42,8 @@ const QUIET: AddEventListenerOptions = { capture: true, passive: true };
 export function startAppUpdateWatch(): () => void {
   // The dev server has no hashed files to compare, and replaces changed modules by itself.
   if (!import.meta.env.PROD) return () => undefined;
-  const stopTracking = trackEditedFields(document);
+  const tracker = trackEdits(document);
+  edits = tracker;
   const onVisibility = () => watcher.visibilityChanged();
   const onActivity = () => watcher.userActive();
   document.addEventListener("visibilitychange", onVisibility);
@@ -46,7 +51,8 @@ export function startAppUpdateWatch(): () => void {
   watcher.start();
   return () => {
     watcher.stop();
-    stopTracking();
+    tracker.stop();
+    if (edits === tracker) edits = null;
     document.removeEventListener("visibilitychange", onVisibility);
     ACTIVITY_EVENTS.forEach((type) => window.removeEventListener(type, onActivity, QUIET));
   };
@@ -64,6 +70,6 @@ export function reloadToNewVersion(confirmLosingWork: () => boolean): void {
   reload();
 }
 
-/** A page chunk failed to load; see chunkReload.ts. False when a reload is not going to help. */
+/** A page chunk failed to load; see chunkReload.ts. False when the tab did not reload: the page then shows a button. */
 export const recoverFromMissingChunk = (): boolean =>
-  reloadForMissingChunk({ storage: () => window.sessionStorage, isOnline, hasUnfinishedRequests, reload });
+  reloadForMissingChunk({ storage: () => window.sessionStorage, isOnline, isBusy, reload });

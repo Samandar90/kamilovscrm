@@ -6,20 +6,23 @@
  */
 export const CHUNK_RELOAD_COOLDOWN_MS = 5 * 60_000;
 const RELOADED_AT_KEY = "crm_chunk_reload_at";
-const WRITE_POLL_MS = 500;
 
 export type ChunkReloadEnv = {
   /** Session storage of the tab: it survives the reload. May throw when the browser blocks storage. */
   storage(): Pick<Storage, "getItem" | "setItem">;
   isOnline(): boolean;
-  hasUnfinishedRequests(): boolean;
+  /** A request is in flight or the page holds unsaved work: a reload would take something from the user. */
+  isBusy(): boolean;
   reload(): void;
 };
 
-/** Reloads the page to get the chunks of the deployed version. False when a reload is not going to help. */
+/**
+ * Reloads the page to get the chunks of the deployed version, now or not at all: a reload put off until later could
+ * fire after the user has moved on to another page. False when it did not reload; the page then shows a button.
+ */
 export function reloadForMissingChunk(env: ChunkReloadEnv): boolean {
   // Offline the reload would end on the browser's error page.
-  if (!env.isOnline()) return false;
+  if (!env.isOnline() || env.isBusy()) return false;
   const now = Date.now();
   try {
     const storage = env.storage();
@@ -29,10 +32,6 @@ export function reloadForMissingChunk(env: ChunkReloadEnv): boolean {
   } catch {
     return false; // storage is blocked: nothing would stop a reload loop
   }
-  const reloadWhenWritten = () => {
-    if (env.hasUnfinishedRequests()) setTimeout(reloadWhenWritten, WRITE_POLL_MS);
-    else env.reload();
-  };
-  reloadWhenWritten();
+  env.reload();
   return true;
 }

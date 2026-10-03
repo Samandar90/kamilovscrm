@@ -135,7 +135,7 @@ const CreateClinicForm: React.FC<CreateClinicFormProps> = ({ onCreated }) => {
       </div>
 
       {created ? (
-        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+        <div data-reload-hold className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           <div className="font-semibold">{t("platform.clinicCreated", { clinic: created.clinic })}</div>
           <div className="mt-1">
             {t("platform.accessCreated")}: {t("platform.login")} <code className="rounded bg-white px-1.5 py-0.5 font-mono">{created.username}</code>{" "}

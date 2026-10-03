@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import sourceIndexHtml from "../../../index.html?raw";
+import viteConfigSource from "../../../vite.config.ts?raw";
 import { assetRefsInDocument, assetRefsInHtml, loadsNewAssets } from "./deployedAssets";
 
 /** index.html as `vite build` writes it (shape taken from production on 2026-10-03). */
@@ -41,8 +42,29 @@ describe("assetRefsInHtml", () => {
     expect(assetRefsInHtml(html)).toEqual(["/assets/new.js"]);
   });
 
-  it("finds the entry module of the source index.html", () => {
-    expect(assetRefsInHtml(sourceIndexHtml)).toEqual(["/src/main.tsx"]);
+  it("lists only files of the build, not what other software adds to the page", () => {
+    // Kaspersky rewrites every HTML answer on its way to the browser and adds a script with a new address each time:
+    // counted as a file, it would make every check report a new version.
+    const injected = (attr: string) =>
+      `<script type="text/javascript" src="https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42-EBFA-4E12-B309-BB3FDD723AC1/main.js?attr=${attr}" charset="UTF-8"></script>`;
+    const html = (attr: string) => builtIndexHtml().replace("<head>", `<head>${injected(attr)}<link rel="stylesheet" href="//cdn.example/assets/x.css">`);
+    expect(assetRefsInHtml(html("aGVsbG8"))).toEqual(assetRefsInHtml(builtIndexHtml()));
+    expect(loadsNewAssets(assetRefsInHtml(html("aGVsbG8")), assetRefsInHtml(html("d29ybGQ")))).toBe(false);
+  });
+
+  it("does not list an icon, even one the build has hashed: it is not code", () => {
+    const html = `<link rel="icon" href="/assets/favicon-Aa11Bb22.ico"><script type="module" src="/assets/index-CN9j9FYx.js"></script>`;
+    expect(assetRefsInHtml(html)).toEqual(["/assets/index-CN9j9FYx.js"]);
+  });
+
+  it("finds no build files in the page of the dev server", () => {
+    expect(assetRefsInHtml(sourceIndexHtml)).toEqual([]);
+  });
+
+  // The prefix of build files is written into deployedAssets.ts: with another `base` or `assetsDir` no check would
+  // ever find a file, and tabs would silently stop noticing new versions.
+  it("relies on Vite's default base and assets directory", () => {
+    expect(viteConfigSource).not.toMatch(/(base|assetsDir)\s*:/);
   });
 
   it("finds nothing in a page that is not the app", () => {
@@ -52,23 +74,41 @@ describe("assetRefsInHtml", () => {
 });
 
 describe("assetRefsInDocument", () => {
-  it("lists the files the running tab loaded", () => {
-    const element = (attributes: Record<string, string>) => ({ getAttribute: (name: string) => attributes[name] ?? null });
-    const selectors: string[] = [];
-    const doc = {
-      querySelectorAll: (selector: string) => {
-        selectors.push(selector);
-        return [
-          element({ src: "/assets/index-CN9j9FYx.js", type: "module" }),
-          element({ href: "/assets/index-CKNx-yYh.css", rel: "stylesheet" }),
-        ];
-      },
-    };
-    expect(assetRefsInDocument(doc)).toEqual(["/assets/index-CN9j9FYx.js", "/assets/index-CKNx-yYh.css"]);
-    expect(selectors).toHaveLength(1);
-    expect(selectors[0]).toContain("script[src]");
-    expect(selectors[0]).toContain("stylesheet");
-    expect(selectors[0]).toContain("modulepreload");
+  const element = (attributes: Record<string, string>) => ({ getAttribute: (name: string) => attributes[name] ?? null });
+  /** The document of a running tab: the elements of the built page plus what the tab and other software added. */
+  const doc = {
+    getElementsByTagName: (tag: string) =>
+      tag === "script"
+        ? [
+            element({ id: "tv-boot-watchdog" }),
+            element({ src: "https://gc.kis.v2.scr.kaspersky-labs.com/FD126C42/main.js?attr=aGVsbG8", type: "text/javascript" }),
+            element({ src: "/assets/index-CN9j9FYx.js", type: "module", crossorigin: "" }),
+          ]
+        : tag === "link"
+          ? [
+              element({ rel: "icon", href: "/favicon.ico" }),
+              element({ rel: "icon", href: "/assets/favicon-Aa11Bb22.ico" }),
+              element({ rel: "modulepreload", crossorigin: "", href: "/assets/vendor-B1x2y3z4.js" }),
+              element({ rel: "stylesheet", crossorigin: "", href: "/assets/index-CKNx-yYh.css" }),
+              element({ rel: "modulepreload", as: "script", crossorigin: "", href: "/assets/QueuePage-Ab12Cd34.js" }),
+              element({ rel: "STYLESHEET", href: "/assets/TvApp-Ef56Gh78.css" }),
+              element({ rel: "stylesheet" }),
+            ]
+          : [],
+  };
+
+  it("lists the build files the running tab loaded, lazy chunks included, and nothing else", () => {
+    expect(assetRefsInDocument(doc)).toEqual([
+      "/assets/index-CN9j9FYx.js",
+      "/assets/vendor-B1x2y3z4.js",
+      "/assets/index-CKNx-yYh.css",
+      "/assets/QueuePage-Ab12Cd34.js",
+      "/assets/TvApp-Ef56Gh78.css",
+    ]);
+  });
+
+  it("agrees with the page the tab was opened from: no new version right after loading", () => {
+    expect(loadsNewAssets(assetRefsInDocument(doc), assetRefsInHtml(builtIndexHtml()))).toBe(false);
   });
 });
 
