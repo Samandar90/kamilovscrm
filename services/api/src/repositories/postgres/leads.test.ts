@@ -185,8 +185,9 @@ beforeEach(async () => {
 describe("ingestLeadRows", () => {
   it("adds each phone once per source: a second read adds nothing, repeats inside a batch collapse", async () => {
     const batch: LeadRowInput[] = [FIXTURE_LEAD, { phone: "998935550001", fullName: null, extra: {} }, { phone: PHONE, fullName: "Повтор", extra: {} }];
-    expect(await ingest(SOURCE_A, batch)).toEqual({ received: 3, added: 2, duplicates: 1 });
-    expect(await ingest(SOURCE_A, batch)).toEqual({ received: 3, added: 0, duplicates: 3 });
+    // A repeat inside the batch is not "already there": duplicates counts only the keys the source had before.
+    expect(await ingest(SOURCE_A, batch)).toEqual({ received: 3, added: 2, duplicates: 0 });
+    expect(await ingest(SOURCE_A, batch)).toEqual({ received: 3, added: 0, duplicates: 2 });
 
     const stored = await db.query("SELECT clinic_id, source_id, external_key, full_name, phone, extra, status FROM leads ORDER BY id");
     expect(stored.rows).toEqual([
@@ -195,8 +196,8 @@ describe("ingestLeadRows", () => {
       { clinic_id: 1, source_id: SOURCE_A, external_key: "p:998935550001", full_name: null, phone: "998935550001", extra: {}, status: "new" },
     ]);
     // The same phone is a separate lead in another source and in another clinic.
-    expect(await ingest(SOURCE_B, batch)).toEqual({ received: 3, added: 2, duplicates: 1 });
-    expect(await ingest(FOREIGN_SOURCE, batch, 2)).toEqual({ received: 3, added: 2, duplicates: 1 });
+    expect(await ingest(SOURCE_B, batch)).toEqual({ received: 3, added: 2, duplicates: 0 });
+    expect(await ingest(FOREIGN_SOURCE, batch, 2)).toEqual({ received: 3, added: 2, duplicates: 0 });
     expect(await ingest(SOURCE_A, [])).toEqual({ received: 0, added: 0, duplicates: 0 });
   });
 
@@ -231,7 +232,9 @@ describe("ingestLeadRows", () => {
       { phone: "12345", fullName: "Короткий номер", extra: {} },
       { phone: "998935559999", fullName: "я".repeat(300), extra: {} },
     ];
-    expect(await ingest(SOURCE_B, odd)).toEqual({ received: 3, added: 2, duplicates: 1 });
+    // The row with an unusable phone was dropped: it is not a duplicate either.
+    expect(await ingest(SOURCE_B, odd)).toEqual({ received: 3, added: 2, duplicates: 0 });
+    expect(await ingest(SOURCE_B, odd)).toEqual({ received: 3, added: 0, duplicates: 2 });
     const stored = await db.query<{ phone: string; full_name: string | null }>("SELECT phone, full_name FROM leads WHERE source_id = $1 ORDER BY id", [SOURCE_B]);
     expect(stored.rows).toEqual([{ phone: PHONE, full_name: null }, { phone: "998935559999", full_name: "я".repeat(200) }]);
   });

@@ -207,6 +207,14 @@ describe("syncNow", () => {
     expect(await syncState(FOREIGN_SOURCE)).toEqual(NEVER_READ);
   });
 
+  it("counts as duplicates only the phones the source already had, not the repeats inside the sheet", async () => {
+    // Five data rows: one phone written twice, one row without a phone.
+    sheets.set(tab(SHEET_A), csv(`${SHEET_CSV}\r\nАлишер Повтор,998901234567,Ташкент`));
+    expect(await service.syncNow(admin, SOURCE_A)).toEqual({ status: "ok", rows: 5, added: 3, duplicates: 0, skipped: 1 });
+    expect(await service.syncNow(admin, SOURCE_A)).toEqual({ status: "ok", rows: 5, added: 0, duplicates: 3, skipped: 1 });
+    expect(await leadRows()).toHaveLength(3);
+  });
+
   it("reads a source whose scheduled reading is off", async () => {
     sheets.set(tab(SHEET_B, 5), csv("Телефон\n998971112233"));
     expect(await service.syncNow(admin, SOURCE_B)).toEqual({ status: "ok", rows: 1, added: 1, duplicates: 0, skipped: 0 });

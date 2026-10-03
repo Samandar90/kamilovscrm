@@ -294,7 +294,8 @@ export class LeadsService {
    * Единственное место, где создаются лиды. Одна заявка на один телефон в рамках источника: ключ строки — «p:» + телефон,
    * повтор внутри пачки отбрасывается (остаётся первая строка), повтор с уже записанным лидом пропускает INSERT.
    * Существующие лиды не меняются: повторное чтение таблицы не стирает работу сотрудников.
-   * `duplicates` — строки, которые не добавились.
+   * `duplicates` — строки, чей ключ уже был в источнике: отброшенные (без пригодного телефона) и повторы внутри пачки
+   * сюда не входят.
    */
   async ingestLeadRows(
     clinicId: number,
@@ -314,7 +315,7 @@ export class LeadsService {
     for (let start = 0; start < batch.length; start += INGEST_CHUNK) {
       added += await this.leads.insertLeads(clinicId, sourceId, batch.slice(start, start + INGEST_CHUNK));
     }
-    return { received: rows.length, added, duplicates: rows.length - added };
+    return { received: rows.length, added, duplicates: batch.length - added };
   }
 
   private async requireLead(clinicId: number, id: number): Promise<Lead> {
