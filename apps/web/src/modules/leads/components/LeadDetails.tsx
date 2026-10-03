@@ -56,11 +56,10 @@ export function LeadDetails({ lead, onChange, onConflict }: Props) {
   const [createOpen, setCreateOpen] = React.useState(false);
   const [createError, setCreateError] = React.useState<string | null>(null);
 
-  // The saved lead comes back through the page: start the form again from what is stored.
-  React.useEffect(() => {
-    setStatus(lead.status);
-    setNote(lead.note ?? "");
-  }, [lead.status, lead.note]);
+  // The saved lead comes back through the page: start the form again from what is stored. Each field follows only
+  // its own stored value: a status set elsewhere («Взять в работу», a patient link) must not erase a typed note.
+  React.useEffect(() => setStatus(lead.status), [lead.status]);
+  React.useEffect(() => setNote(lead.note ?? ""), [lead.note]);
 
   const run = async (operation: () => Promise<void>, fallback: string) => {
     if (busyRef.current) return;

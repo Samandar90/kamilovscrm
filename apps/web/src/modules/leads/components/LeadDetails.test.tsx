@@ -180,6 +180,25 @@ describe("lead details", () => {
       expect(buttons("Сохранить")[0].props.disabled).toBe(true);
     });
 
+    it("keeps an unsaved note when the lead's status changes outside the form", async () => {
+      const taken = lead({ status: "in_progress", stage: "in_progress" });
+      mocks.update.mockResolvedValue(lead({ note: "перезвонить после обеда" }));
+      await renderAs("operator", lead({ status: "new", stage: "new" }));
+      type(noteField(), "перезвонить после обеда");
+
+      // «Взять в работу» in the row, or linking a patient, hands the same lead back with another status.
+      await act(async () => {
+        view.update(element(taken));
+        await settle();
+      });
+      expect(statusSelect().props.value).toBe("in_progress");
+      expect(noteField().props.value).toBe("перезвонить после обеда");
+      expect(buttons("Сохранить")[0].props.disabled).toBe(false);
+
+      await click(buttons("Сохранить")[0]);
+      expect(mocks.update.mock.calls[0]).toStrictEqual([52, { note: "перезвонить после обеда" }]);
+    });
+
     it("sends the status with the status it replaces", async () => {
       mocks.update.mockResolvedValue(lead({ status: "no_answer", stage: "no_answer" }));
       await renderAs("reception");
