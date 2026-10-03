@@ -4,6 +4,8 @@ import type { QueueDisplayCabinet, QueueDisplayCall, QueueDisplayLanguage, Queue
 import { createAnnouncer, type Announcer } from "./announcer";
 import { createCallTracker } from "./callTracker";
 import { normalizeCodeInput } from "./codeInput";
+import { doctorSentence } from "./doctorSpeech";
+import { createSpeechVoice, type SpeechVoice } from "./speechVoice";
 import { readStartedFlag, requestFullscreen, requestWakeLock, writeStartedFlag, type WakeLockHandle } from "./tvDevice";
 import { TV_TEXT_LANGUAGE, tvLabel } from "./tvLabels";
 import { CABINETS_PER_PAGE, gridColumns, pageCabinets, waitingRowsShown } from "./tvLayout";
@@ -14,6 +16,7 @@ import { announcementClipIds, voiceLangs } from "./voicePhrases";
 export const CALL_OVERLAY_MS = 10_000;
 export const PAGE_ROTATE_MS = 10_000;
 const SPEECH_TIMEOUT_MS = 20_000;
+const DOCTOR_PAUSE_MS = 400;
 const RELOAD_RETRY_MS = 5 * 60_000;
 const RECENT_CALLS_SHOWN = 5;
 
@@ -31,22 +34,33 @@ function settleWithin(promise: Promise<unknown>, ms: number): Promise<void> {
 
 /**
  * Chime + voice for one call; voice follows the display settings. Never rejects, never hangs longer than 20 s.
+ * «Номер N.» comes from the recorded clips, then «Пройдите к врачу <ФИО>.» from the browser's Russian voice; when that
+ * voice or the doctor's name is missing, the clips close with «Пройдите на приём.» instead.
  * When it gives up (or the caller aborts `speech`), the announcement is cancelled, so a late one never talks over
  * the next call.
  */
 function speakCall(
   announcer: Announcer,
+  voice: SpeechVoice,
   display: QueueDisplayState["display"],
   call: QueueDisplayCall,
   speech: AbortController | null,
 ): Promise<void> {
   const langs = display.voiceEnabled ? voiceLangs() : [];
-  const groups = langs.map((lang) => announcementClipIds(lang, call.number, call.room));
+  const sentence = langs.length > 0 ? doctorSentence(call.doctorName) : null;
   const signal = speech ? speech.signal : undefined;
   const run = async () => {
     // After the start button, unlock() only re-resumes a context the browser suspended; without audio → silence.
     if (!announcer.isUnlocked() && !(await announcer.unlock())) return;
+    const doctorSpoken = sentence !== null && (await voice.isAvailable());
+    const groups = langs.map((lang) => announcementClipIds(lang, call.number, doctorSpoken));
     await announcer.announce(groups, langs, { signal });
+    // A number above 999 has no clips (chime only): a doctor without a number would be half an announcement.
+    if (sentence === null || !doctorSpoken || !groups.some((group) => group.length > 0) || signal?.aborted) return;
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, DOCTOR_PAUSE_MS);
+    });
+    await voice.speak(sentence, { signal });
   };
   return settleWithin(run(), SPEECH_TIMEOUT_MS).then(() => speech?.abort());
 }
@@ -158,6 +172,8 @@ export function TvDisplayPage() {
   if (announcerRef.current === null) announcerRef.current = createAnnouncer();
   const trackerRef = React.useRef<ReturnType<typeof createCallTracker> | null>(null);
   if (trackerRef.current === null) trackerRef.current = createCallTracker();
+  const voiceRef = React.useRef<SpeechVoice | null>(null);
+  if (voiceRef.current === null) voiceRef.current = createSpeechVoice();
 
   const [started, setStarted] = React.useState(false);
   const startedRef = React.useRef(started);
@@ -230,11 +246,12 @@ export function TvDisplayPage() {
   }, [started]);
 
   // Decode all voice clips in the background once audio is unlocked, so the first calls of the day do not wait for
-  // downloads. Voice off → nothing to preload. announce() never waits for it.
+  // downloads, and let the browser load its voices. Voice off → nothing to preload. announce() never waits for it.
   const voiceEnabled = state ? state.display.voiceEnabled : false;
   React.useEffect(() => {
     if (!started || !voiceEnabled) return;
     void announcerRef.current?.preload(voiceLangs());
+    void voiceRef.current?.isAvailable();
   }, [started, voiceEnabled]);
 
   // New calls → overlay queue (the tracker keeps the first poll silent and drops stale calls).
@@ -255,10 +272,11 @@ export function TvDisplayPage() {
       timer = window.setTimeout(resolve, CALL_OVERLAY_MS);
     });
     const announcer = announcerRef.current;
+    const voice = voiceRef.current;
     const display = displayRef.current;
     const speech = typeof AbortController === "function" ? new AbortController() : null;
     const spoken =
-      startedRef.current && announcer && display ? speakCall(announcer, display, activeCall, speech) : Promise.resolve();
+      startedRef.current && announcer && voice && display ? speakCall(announcer, voice, display, activeCall, speech) : Promise.resolve();
     void Promise.all([shown, spoken]).then(() => {
       if (!finished) setCalls((queue) => queue.slice(1));
     });
