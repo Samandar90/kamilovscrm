@@ -39,9 +39,22 @@ const MAX_DATA_ROWS = 5000;
 const SOURCE_NOT_FOUND = "Источник не найден";
 const SHEET_NOT_SET = "Сначала укажите ссылку на таблицу";
 
+/**
+ * A body with more lines is not turned into rows at all. The sheet is in the contractor's hands, and 5 MB of
+ * one-character lines would be millions of arrays (about 1 GB). The room above MAX_DATA_ROWS is for a title,
+ * the header and blank lines.
+ */
+const MAX_SHEET_LINES = 20_000;
+
 const NO_COUNTS = { rows: 0, added: 0, duplicates: 0, skipped: 0 };
 
-/** `too_large` is decided here: the mapping does not know the limit. */
+/** The rows of the body, or null when it has more than MAX_SHEET_LINES lines: the pass stops there. */
+const tableOf = (text: string): string[][] | null => {
+  const table = parseCsv(text, MAX_SHEET_LINES);
+  return table.length > MAX_SHEET_LINES ? null : table;
+};
+
+/** `too_large` by data rows is decided here: the mapping does not know the limit. */
 const statusOf = (mapping: SheetMapping): LeadSyncStatus =>
   mapping.status === "ok" && mapping.dataRows > MAX_DATA_ROWS ? "too_large" : mapping.status;
 
@@ -75,10 +88,12 @@ export class LeadSheetSyncService {
   async check(auth: AuthTokenPayload, sourceId: number): Promise<LeadSheetCheck> {
     const source = await this.requireSheetSource(auth.clinicId, sourceId);
     const fetched = await this.fetchSheet(source.spreadsheetId, source.gid);
-    if (fetched.status !== "ok") {
-      return { status: fetched.status, headers: [], detected: { phone: null, name: null }, rows: 0, valid: 0, skipped: 0 };
+    const table = fetched.status === "ok" ? tableOf(fetched.text) : null;
+    if (table === null) {
+      const status = fetched.status === "ok" ? "too_large" : fetched.status;
+      return { status, headers: [], detected: { phone: null, name: null }, rows: 0, valid: 0, skipped: 0 };
     }
-    const mapping = mapSheetRows(parseCsv(fetched.text), source.columnMap);
+    const mapping = mapSheetRows(table, source.columnMap);
     return {
       status: statusOf(mapping),
       headers: mapping.headers,
@@ -149,7 +164,15 @@ export class LeadSheetSyncService {
       return { result: { ...NO_COUNTS, status: last.status, rows: last.rows ?? 0, skipped: last.skipped ?? 0 }, unchanged: true };
     }
 
-    const mapping = mapSheetRows(parseCsv(fetched.text), source.columnMap);
+    const table = tableOf(fetched.text);
+    if (table === null) {
+      // Not counted, like a body over the size limit. Remembered: the same body is not gone through next time.
+      await this.leads.recordSync(source.clinicId, source.id, "too_large", null, null);
+      this.lastReads.set(source.id, { hash, status: "too_large", rows: null, skipped: null });
+      return { result: { status: "too_large", ...NO_COUNTS }, unchanged: false };
+    }
+
+    const mapping = mapSheetRows(table, source.columnMap);
     const status = statusOf(mapping);
     // A sheet whose columns were not found was not counted: it has no counts, unlike a sheet with 0 rows.
     const counted = status !== "columns_not_found";

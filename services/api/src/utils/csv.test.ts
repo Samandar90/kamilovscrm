@@ -87,4 +87,30 @@ describe("parseCsv", () => {
     expect(rows).toHaveLength(20_000);
     expect(rows[19_999]).toEqual(["998901234567", "Имя Фамилия", "комментарий, с запятой"]);
   });
+
+  describe("with a row limit", () => {
+    it("returns every row of a text that has no more rows than the limit", () => {
+      expect(parseCsv("a,b\nc,d\ne,f", 3)).toEqual([["a", "b"], ["c", "d"], ["e", "f"]]);
+      expect(parseCsv("a,b\nc,d\ne,f\n", 3)).toHaveLength(3);
+      expect(parseCsv("", 0)).toEqual([]);
+    });
+
+    it("stops one row past the limit: a longer text gives limit + 1 rows", () => {
+      expect(parseCsv("a\nb\nc\nd\ne", 3)).toEqual([["a"], ["b"], ["c"], ["d"]]);
+      expect(parseCsv("a\nb\nc\nd", 3)).toHaveLength(4);
+      expect(parseCsv("a\r\nb\r\nc\r\nd\r\ne\r\n", 2)).toEqual([["a"], ["b"], ["c"]]);
+      expect(parseCsv("a", 0)).toEqual([["a"]]);
+    });
+
+    it("counts empty lines and a line break inside quotes is not a row", () => {
+      expect(parseCsv("\n\n\n\n\n", 2)).toEqual([[""], [""], [""]]);
+      expect(parseCsv('"1\n2\n3\n4",x\ny', 2)).toEqual([["1\n2\n3\n4", "x"], ["y"]]);
+    });
+
+    it("does not turn millions of short rows into arrays", () => {
+      const rows = parseCsv("1\n".repeat(2_000_000), 20_000);
+      expect(rows).toHaveLength(20_001);
+      expect(rows[20_000]).toEqual(["1"]);
+    });
+  });
 });

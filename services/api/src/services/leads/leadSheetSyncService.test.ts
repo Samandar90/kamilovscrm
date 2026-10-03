@@ -267,6 +267,56 @@ describe("syncNow", () => {
   }, 30000);
 });
 
+describe("a sheet of very many lines", () => {
+  /** A header, three leads and then one-character lines: `lines` lines in all. */
+  const csvOfLines = (lines: number) => `${SHEET_CSV.split("\r\n").slice(0, 4).join("\r\n")}\r\n${"1\r\n".repeat(lines - 4)}`;
+  const nothing = { headers: [], detected: { phone: null, name: null }, rows: 0, valid: 0, skipped: 0 };
+
+  it("is 'too_large' without being turned into rows: nothing is counted and nothing is inserted", async () => {
+    sheets.set(tab(SHEET_A), csv(csvOfLines(600_000)));
+    const ingest = vi.spyOn(LeadsService.prototype, "ingestLeadRows");
+
+    // Not the count of the lines: the pass stopped long before the end of the body.
+    expect(await service.check(admin, SOURCE_A)).toEqual({ status: "too_large", ...nothing });
+    expect(await syncState(SOURCE_A)).toEqual(NEVER_READ);
+
+    expect(await service.syncNow(admin, SOURCE_A)).toEqual({ status: "too_large", rows: 0, added: 0, duplicates: 0, skipped: 0 });
+    expect(ingest).not.toHaveBeenCalled();
+    expect(leadInserts).toBe(0);
+    expect(await leadRows()).toEqual([]);
+    // Like a body over 5 MB: a read that was not counted has no counts.
+    expect(await syncState(SOURCE_A)).toEqual({ last_sync_at: expect.any(Date), last_sync_status: "too_large", last_sync_rows: null, last_sync_skipped: null });
+  });
+
+  it("is read up to 20 000 lines and refused from the next one", async () => {
+    // 20 000 lines are still gone through and counted: over 5000 data rows, so not imported.
+    sheets.set(tab(SHEET_A), csv(csvOfLines(20_000)));
+    expect(await service.check(admin, SOURCE_A)).toMatchObject({ status: "too_large", rows: 19_999, valid: 3, skipped: 19_996 });
+    // Empty lines are lines too.
+    sheets.set(tab(SHEET_A), csv(`${SHEET_CSV}\r\n${"\r\n".repeat(19_995)}`));
+    expect(await service.check(admin, SOURCE_A)).toMatchObject({ status: "ok", rows: 4, valid: 3, skipped: 1 });
+
+    sheets.set(tab(SHEET_A), csv(csvOfLines(20_001)));
+    expect(await service.check(admin, SOURCE_A)).toEqual({ status: "too_large", ...nothing });
+    sheets.set(tab(SHEET_A), csv(`${SHEET_CSV}\r\n${"\r\n".repeat(19_996)}`));
+    expect(await service.check(admin, SOURCE_A)).toEqual({ status: "too_large", ...nothing });
+  });
+
+  it("is refused by the schedule too, and the same body is not gone through again", async () => {
+    sheets.set(tab(SHEET_A), csv(csvOfLines(600_000)));
+    sheets.set(tab(SHEET_FOREIGN), csv(FOREIGN_CSV));
+    const ingest = vi.spyOn(LeadsService.prototype, "ingestLeadRows");
+
+    // The next source is still read.
+    expect(await service.runCycle()).toEqual({ sources: 2, added: 2, unchanged: 0, errors: 0, statuses: { too_large: 1, ok: 1 } });
+    expect(await service.runCycle()).toEqual({ sources: 2, added: 0, unchanged: 2, errors: 0, statuses: { too_large: 1, ok: 1 } });
+
+    expect(ingest.mock.calls.map(([clinicId, sourceId]) => [clinicId, sourceId])).toEqual([[2, FOREIGN_SOURCE]]);
+    expect((await leadRows()).map((row) => row.clinic_id)).toEqual([2, 2]);
+    expect(await syncState(SOURCE_A)).toMatchObject({ last_sync_status: "too_large", last_sync_rows: null, last_sync_skipped: null });
+  });
+});
+
 describe("runCycle", () => {
   it("reads only the sources with sync on, one after another, each into its own clinic", async () => {
     sheets.set(tab(SHEET_A), csv(SHEET_CSV));

@@ -3,8 +3,12 @@
  * и удвоенную кавычку. Концы строк — LF, CRLF или CR. Ведущий BOM убирается. Ячейки не обрезаются.
  * Пустая строка внутри текста — строка с одной пустой ячейкой; перенос в конце текста строку не добавляет.
  * Не бросает: кавычка в середине ячейки без кавычек — обычный символ, незакрытая кавычка читается до конца.
+ *
+ * `maxRows` — предел для текста из чужих рук: проход останавливается на первой строке сверх предела, и
+ * возвращается `maxRows + 1` строк. Длина больше `maxRows` значит «в тексте больше строк», остаток не разобран.
+ * Без предела каждая строка текста становится массивом: 5 МБ строк по одному символу — около 1 ГБ памяти.
  */
-export function parseCsv(text: string): string[][] {
+export function parseCsv(text: string, maxRows = Number.POSITIVE_INFINITY): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = "";
@@ -23,7 +27,7 @@ export function parseCsv(text: string): string[][] {
     row = [];
   };
 
-  for (let i = text.charCodeAt(0) === 0xfeff ? 1 : 0; i < text.length; i += 1) {
+  for (let i = text.charCodeAt(0) === 0xfeff ? 1 : 0; i < text.length && rows.length <= maxRows; i += 1) {
     const ch = text[i];
     if (inQuotes) {
       if (ch !== '"') {
@@ -47,6 +51,7 @@ export function parseCsv(text: string): string[][] {
       cellStarted = true;
     }
   }
+  // После остановки по пределу здесь пусто: проход кончается сразу за концом строки.
   if (cellStarted || row.length > 0) endRow();
   return rows;
 }
