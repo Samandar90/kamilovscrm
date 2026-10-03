@@ -14,6 +14,7 @@ import type {
   AppointmentServiceLineReplacement,
   AppointmentStatus,
   AppointmentUpdateInput,
+  PatientLastVisit,
 } from "../interfaces/coreTypes";
 import { ApiError } from "../../middleware/errorHandler";
 import { dbPool } from "../../config/database";
@@ -479,6 +480,34 @@ export class PostgresAppointmentsRepository implements IAppointmentsRepository {
     }
     const [withServices] = await attachAssignedServices([mapAppointmentRow(result.rows[0])]);
     return withServices ?? null;
+  }
+
+  async findLastVisits(
+    filters: Pick<AppointmentFilters, "doctorId"> = {}
+  ): Promise<PatientLastVisit[]> {
+    const clinicId = requireClinicId();
+    const whereClauses: string[] = ["deleted_at IS NULL", "clinic_id = $1"];
+    const values: number[] = [clinicId];
+
+    if (filters.doctorId !== undefined) {
+      values.push(filters.doctorId);
+      whereClauses.push(`doctor_id = $${values.length}`);
+    }
+
+    const result = await dbPool.query<{ patient_id: number | string; last_start_at: string | Date }>(
+      `
+        SELECT patient_id, MAX(start_at) AS last_start_at
+        FROM appointments
+        WHERE ${whereClauses.join(" AND ")}
+        GROUP BY patient_id
+        ORDER BY patient_id
+      `,
+      values
+    );
+    return result.rows.map((row) => ({
+      patientId: Number(row.patient_id),
+      lastVisitAt: normalizeToLocalDateTime(row.last_start_at),
+    }));
   }
 
   async create(

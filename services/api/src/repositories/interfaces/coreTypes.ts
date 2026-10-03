@@ -140,6 +140,13 @@ export type Appointment = {
   queueCallCount?: number;
 };
 
+/** The latest appointment start of a patient: any status, future ones included. */
+export type PatientLastVisit = {
+  patientId: number;
+  /** Clinic wall-clock time "YYYY-MM-DD HH:mm:ss", as `Appointment.startAt`. */
+  lastVisitAt: string;
+};
+
 export type AppointmentFilters = {
   patientId?: number;
   doctorId?: number;

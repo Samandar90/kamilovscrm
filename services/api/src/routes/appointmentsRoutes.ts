@@ -10,6 +10,7 @@ import {
   listAppointmentServicesController,
   replaceAppointmentServicesController,
   listAppointmentsController,
+  listLastVisitsController,
   updateAppointmentPriceController,
   updateAppointmentController,
 } from "../controllers/appointmentsController";
@@ -32,6 +33,12 @@ router.get(
   requireAuth,
   allowPermission("APPOINTMENT_READ"),
   asyncHandler(checkAvailabilityController)
+);
+router.get(
+  "/last-visits",
+  requireAuth,
+  allowPermission("APPOINTMENT_READ"),
+  asyncHandler(listLastVisitsController)
 );
 router.get(
   "/:id",
