@@ -12,11 +12,17 @@ describe("canonicalizePhone", () => {
     ["p:+998901234567", "998901234567"], // the label ad lead forms put before the phone
     ["'+998901234567", "998901234567"], // the apostrophe that keeps a cell as text
     ["00998901234567", "998901234567"], // international prefix 00
-    [" +998 90 123 45 67 ", "998901234567"], // non-breaking space at the edge
-    ["+998 90 123 45 67", "998901234567"], // non-breaking spaces inside
+    ["\u00a0+998 90 123 45 67 ", "998901234567"], // non-breaking space at the edge
+    ["+998\u00a090\u00a0123\u00a045\u00a067", "998901234567"], // non-breaking spaces inside
     ["+7 912 345-67-89", "79123456789"], // a foreign number is kept as is
     ["998 99 812 34 56", "998998123456"], // operator code 99
     ["998123456", "998998123456"], // 9 digits that start with 998 are still a national number
+    ["p: +998901234567", "998901234567"], // a space after the label
+    ["' +998901234567", "998901234567"], // a space after the apostrophe
+    ["'p: 901234567", "998901234567"], // the apostrophe, the label and a space
+    ["90.123.45.67", "998901234567"], // dots as separators
+    ["+998.90.123.45.67", "998901234567"],
+    ["998 90.1234567", "998901234567"], // one dot, but not a decimal number: there is a space
   ])("accepts %j → %s", (input, expected) => {
     expect(canonicalizePhone(input)).toBe(expected);
   });
@@ -25,6 +31,11 @@ describe("canonicalizePhone", () => {
     ["9.98901E+11", "exponent notation"],
     [9.98901234567e22, "a number that is not a safe integer"],
     [901234567.5, "a fraction"],
+    ["901234567.5", "a fraction written as text"],
+    ["901234567,5", "a fraction written with a comma"],
+    ["9989012345.67", "a decimal number of 12 digits"],
+    [" 901234567.5 ", "a fraction with spaces around"],
+    ["'901234567.5", "a fraction kept as text by an apostrophe"],
     [-998901234567, "a negative number"],
     [Number.NaN, "NaN"],
     ["998 90 123 45", "a truncated Uzbek number"],
