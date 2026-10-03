@@ -69,7 +69,8 @@ export const MyLeadsPage: React.FC = () => {
   }, [load]);
 
   const loadMore = async () => {
-    if (nextBeforeId === null || loadingMore) return;
+    // While the first page is being loaded again the cursor is the old list's: its page must not be added to the new one.
+    if (nextBeforeId === null || loadingMore || loading) return;
     const request = requestRef.current;
     setLoadingMore(true);
     setMoreError(null);
@@ -167,7 +168,7 @@ export const MyLeadsPage: React.FC = () => {
 
       {nextBeforeId !== null && items.length > 0 ? (
         <div className="flex justify-center">
-          <button type="button" onClick={() => void loadMore()} disabled={loadingMore} className={secondaryButton}>
+          <button type="button" onClick={() => void loadMore()} disabled={loadingMore || loading} className={secondaryButton}>
             {t("leads.actions.showMore")}
           </button>
         </div>

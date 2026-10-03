@@ -220,6 +220,46 @@ describe("staff leads page", () => {
     expect(rows()).toHaveLength(4);
   });
 
+  it("ignores «Показать ещё» while the list is being reloaded: the old cursor is not asked for", async () => {
+    mocks.list.mockResolvedValueOnce({ ...firstPage, nextBeforeId: 50 });
+    await renderAs("operator");
+    let finish!: (page: LeadsPageData) => void;
+    mocks.list.mockReturnValueOnce(new Promise<LeadsPageData>((resolve) => (finish = resolve)));
+    // A page of the old cursor would be appended to the fresh first page.
+    mocks.list.mockResolvedValue({ items: [lead(49), lead(48)], nextBeforeId: null });
+
+    await click(view.root.findByProps({ "aria-label": "Обновить" }));
+    expect(mocks.list).toHaveBeenCalledTimes(2);
+    expect(buttons("Показать ещё")[0].props.disabled).toBe(true);
+    await click(buttons("Показать ещё")[0]);
+    expect(mocks.list).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      finish({ items: [lead(53), ...firstPage.items], nextBeforeId: 50 });
+      await settle();
+    });
+    expect(rows().map((row) => textOf(row.findByProps({ "data-cell": "name" })))).toEqual([
+      "Тестовый Лид 53", "Тестовый Лид 52", "Без имени", "Тестовый Лид 50",
+    ]);
+    expect(buttons("Показать ещё")[0].props.disabled).toBe(false);
+  });
+
+  it("ignores «Показать ещё» while another filter is being loaded", async () => {
+    mocks.list.mockResolvedValueOnce({ ...firstPage, nextBeforeId: 50 });
+    await renderAs("operator");
+    let finish!: (page: LeadsPageData) => void;
+    mocks.list.mockReturnValueOnce(new Promise<LeadsPageData>((resolve) => (finish = resolve)));
+    await choose("leads-filter-stage", "new");
+    await click(buttons("Показать ещё")[0]);
+    expect(mocks.list).toHaveBeenCalledTimes(2);
+    expect(mocks.list).toHaveBeenLastCalledWith({ stage: "new" });
+    await act(async () => {
+      finish({ items: [lead(52)], nextBeforeId: null });
+      await settle();
+    });
+    expect(rows()).toHaveLength(1);
+  });
+
   it("«Взять в работу» moves a new lead to «В работе» only if it is still new", async () => {
     mocks.update.mockResolvedValue(lead(52, { status: "in_progress", stage: "in_progress" }));
     await renderAs("operator");
@@ -310,6 +350,16 @@ describe("staff leads page", () => {
     await click(view.root.findByProps({ "aria-label": "Обновить" }));
     expect(mocks.list).toHaveBeenCalledTimes(2);
     expect(mocks.list).toHaveBeenLastCalledWith({});
+  });
+
+  it("«Обновить» asks for the filter's sources again, so a failed sources request is not left until the page is reopened", async () => {
+    mocks.sources.mockRejectedValueOnce(new Error("Нет связи с сервером"));
+    await renderAs("operator");
+    expect(select("leads-filter-source").findAllByType("option").map(textOf)).toEqual(["Все источники"]);
+
+    await click(view.root.findByProps({ "aria-label": "Обновить" }));
+    expect(mocks.sources).toHaveBeenCalledTimes(2);
+    expect(select("leads-filter-source").findAllByType("option").map(textOf)).toEqual(["Все источники", "Instagram", "Facebook"]);
   });
 });
 
