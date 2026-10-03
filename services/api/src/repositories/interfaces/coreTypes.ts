@@ -151,6 +151,8 @@ export type AppointmentFilters = {
   startTo?: string;
   /** Синоним `startTo` (верхняя граница диапазона). Если заданы оба — используется `startTo`. */
   endTo?: string;
+  /** Не больше стольких записей (первыми идут самые поздние по `start_at`). */
+  limit?: number;
 };
 
 /** Generic patient list filters (no role semantics). */

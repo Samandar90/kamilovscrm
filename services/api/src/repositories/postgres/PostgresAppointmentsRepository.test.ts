@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+vi.mock("../../config/env", () => ({ env: { isProduction: false, jwtSecret: "isolated-appointments-repository-tests-only" } }));
 vi.mock("../../config/database", () => ({ dbPool: {
   query: (sql: string, params?: unknown[]) => db.query(sql, params),
   connect: async () => ({ query: (sql: string, params?: unknown[]) => db.query(sql, params), release: () => {} }),

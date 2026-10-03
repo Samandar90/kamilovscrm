@@ -340,7 +340,6 @@
     "period": "Davr",
     "schedule": "Jadval",
     "emptyToday": "Bugun qabullari yo'q",
-    "emptyGeneral": "Qabullari yo'q",
     "addFirst": "Birinchi qabulni qo'shing",
     "showMore": "Koproq korsatish",
     "noPatientName": "Bemor #{{id}}",

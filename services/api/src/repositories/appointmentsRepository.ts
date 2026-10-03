@@ -110,6 +110,7 @@ export class MockAppointmentsRepository implements IAppointmentsRepository {
         return true;
       })
       .sort((a, b) => b.startAt.localeCompare(a.startAt))
+      .slice(0, filters.limit)
     );
   }
 

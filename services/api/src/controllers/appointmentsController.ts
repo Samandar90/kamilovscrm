@@ -118,6 +118,7 @@ export const listAppointmentsController = async (
   const startFrom = startFromRaw === "" ? undefined : startFromRaw;
   const startTo = startToRaw === "" ? undefined : startToRaw;
   const endTo = endToRaw === "" ? undefined : endToRaw;
+  const limit = parsePositiveQueryId(req.query.limit, "limit");
 
   const auth = getAuthPayload(req);
   const appointments = await services.appointments.list(auth, {
@@ -129,6 +130,7 @@ export const listAppointmentsController = async (
     startFrom,
     startTo,
     endTo,
+    limit,
   });
 
   return res.status(200).json(appointments);

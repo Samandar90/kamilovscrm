@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { HttpError } from "../../../api/http";
 import { useAuth } from "../../../auth/AuthContext";
 import { appointmentsFlowApi, type Appointment } from "../../appointments/api/appointmentsFlowApi";
 import { AppointmentServicesModal } from "../../appointments/components/AppointmentServicesModal";
@@ -65,18 +66,12 @@ export const DoctorWorkspacePage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [rows, patients, clinicMeta] = await Promise.all([
-        appointmentsFlowApi.listAppointments(token),
+      const [found, patients, clinicMeta] = await Promise.all([
+        appointmentsFlowApi.getAppointment(token, parsedId),
         appointmentsFlowApi.listPatients(token),
         cashDeskApi.getClinicMeta(token).catch(() => null),
       ]);
       setClinicPrintName(clinicMeta?.clinicName?.trim() || t("common.clinic"));
-      const found = rows.find((row) => row.id === parsedId) ?? null;
-      if (!found) {
-        setError(t("doctorWorkspace.errors.appointmentNotFound"));
-        setAppointment(null);
-        return;
-      }
       const patient = patients.find((row) => row.id === found.patientId);
       setAppointment(found);
       setPatientName(patient?.fullName ?? t("common.patientWithId", { id: found.patientId }));
@@ -88,6 +83,11 @@ export const DoctorWorkspacePage: React.FC = () => {
         recommendedReturnDate: found.recommendedReturnDate ?? "",
       });
     } catch (requestError) {
+      if (requestError instanceof HttpError && requestError.status === 404) {
+        setError(t("doctorWorkspace.errors.appointmentNotFound"));
+        setAppointment(null);
+        return;
+      }
       setError(requestError instanceof Error ? requestError.message : t("common.errors.loadError"));
     } finally {
       setLoading(false);

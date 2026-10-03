@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+// The real config/env needs JWT_SECRET from a local .env; the pool options under test do not depend on it.
+vi.mock("./env", () => ({ env: { debugSqlParams: false } }));
 import { dbPool } from "./database";
 
 describe("dbPool", () => {

@@ -71,9 +71,19 @@ export function normalizeDateTimeForApi(date: string, time: string): string | nu
   return buildLocalDateTimeString(ymd, timeTrim);
 }
 
-export function todayYmd(): string {
-  const d = new Date();
+/** Local calendar day of a date as `YYYY-MM-DD`. */
+export function dateToYmd(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+export function todayYmd(): string {
+  return dateToYmd(new Date());
+}
+
+/** `YYYY-MM-DD` moved by whole days; month and year ends roll over. */
+export function addDaysYmd(ymd: string, days: number): string {
+  const [year, month, day] = ymd.split("-").map(Number);
+  return dateToYmd(new Date(year, month - 1, day + days));
 }
 
 /** Next 15-minute slot from now (for quick entry default). */

@@ -321,3 +321,91 @@ describe("returning a no-show that also moves its slot", () => {
     expect(await counters()).toEqual([]);
   });
 });
+
+describe("GET /api/appointments for a period", () => {
+  const TOMORROW = "2026-10-01";
+  // The web sends a period of whole days as the first second of one day and the last second of another.
+  const period = (from: string, to: string, extra: Record<string, string> = {}) =>
+    `?${new URLSearchParams({ startFrom: `${from} 00:00:00`, startTo: `${to} 23:59:59`, ...extra })}`;
+  const ids = (res: { body: Array<{ id: number }> }) => res.body.map((row) => row.id);
+
+  it("returns only the visits that start inside the period, the latest first", async () => {
+    const today = await http("reception", period(TODAY, TODAY));
+    expect(today.status).toBe(200);
+    expect(ids(today)).toEqual([206, 203, 202, 201]);
+    expect(ids(await http("reception", period(YESTERDAY, YESTERDAY)))).toEqual([205, 204]);
+    expect(ids(await http("reception", period(YESTERDAY, TODAY)))).toEqual([206, 203, 202, 201, 205, 204]);
+    expect(ids(await http("reception", period(TOMORROW, TOMORROW)))).toEqual([]);
+  });
+
+  it("includes the first and the last second of the period and nothing next to them", async () => {
+    await db.exec(`INSERT INTO appointments(id, clinic_id, patient_id, doctor_id, service_id, price, start_at, end_at, status) VALUES
+      (211, 1, 100, 11, 3, 100000, '${YESTERDAY} 23:59:59', '${TODAY} 00:29:59', 'scheduled'),
+      (212, 1, 100, 11, 3, 100000, '${TODAY} 00:00:00', '${TODAY} 00:30:00', 'scheduled'),
+      (213, 1, 100, 11, 3, 100000, '${TODAY} 23:59:59', '${TOMORROW} 00:29:59', 'scheduled'),
+      (214, 1, 100, 11, 3, 100000, '${TOMORROW} 00:00:00', '${TOMORROW} 00:30:00', 'scheduled');`);
+    expect(ids(await http("reception", period(TODAY, TODAY)))).toEqual([213, 206, 203, 202, 201, 212]);
+  });
+
+  it("leaves out soft-deleted visits and visits of another clinic", async () => {
+    await db.exec(`UPDATE appointments SET deleted_at = now() WHERE id = 202;
+      INSERT INTO appointments(id, clinic_id, patient_id, doctor_id, service_id, price, start_at, end_at, status)
+        VALUES (221, 2, 100, 10, 3, 100000, '${TODAY} 10:00:00', '${TODAY} 10:30:00', 'scheduled');`);
+    expect(ids(await http("reception", period(TODAY, TODAY)))).toEqual([206, 203, 201]);
+  });
+
+  it("combines the period with a doctor and keeps a doctor inside the own schedule", async () => {
+    expect(ids(await http("reception", period(TODAY, TODAY, { doctorId: "11" })))).toEqual([203]);
+    // A doctor who asks for a colleague's day still gets only the own visits.
+    expect(ids(await http("doctor", period(TODAY, TODAY, { doctorId: "11" })))).toEqual([202, 201]);
+  });
+
+  it("answers 400 to a bound that is not a date and time", async () => {
+    expect((await http("reception", "?startFrom=tomorrow")).status).toBe(400);
+  });
+
+  it("returns at most `limit` visits, the latest first", async () => {
+    expect(ids(await http("reception", "?limit=1"))).toEqual([206]);
+    expect(ids(await http("reception", period(YESTERDAY, YESTERDAY, { limit: "1" })))).toEqual([205]);
+    expect(ids(await http("reception", "?limit=50"))).toEqual([206, 203, 202, 201, 205, 204]);
+  });
+
+  it.each(["0", "-1", "1.5", "all"])("answers 400 to limit=%s", async (limit) => {
+    expect((await http("reception", `?limit=${limit}`)).status).toBe(400);
+  });
+});
+
+describe("migration 036: index for the appointments of a period", () => {
+  beforeAll(async () => {
+    const migration = readFileSync(resolve(__dirname, "../../../migrations/036_appointments_clinic_start_index.sql"), "utf8");
+    await db.exec(migration);
+    // The runner applies each file once, but a failed deploy may retry it.
+    await db.exec(migration);
+  });
+
+  it("indexes the live visits of a clinic by start time", async () => {
+    const found = await db.query<{ indexdef: string }>(
+      "SELECT indexdef FROM pg_indexes WHERE tablename = 'appointments' AND indexname = 'idx_appointments_clinic_start'"
+    );
+    expect(found.rows.map((row) => row.indexdef)).toEqual([
+      "CREATE INDEX idx_appointments_clinic_start ON public.appointments USING btree (clinic_id, start_at) WHERE (deleted_at IS NULL)",
+    ]);
+  });
+
+  it("serves the period query of the repository", async () => {
+    const queries = vi.spyOn(db, "query");
+    await runWithClinicContext(1, () => repo.findAll({ startFrom: `${TODAY} 00:00:00`, startTo: `${TODAY} 23:59:59` }));
+    const listQuery = queries.mock.calls.find(([sql]) => /FROM appointments\s+WHERE/.test(String(sql)));
+    queries.mockRestore();
+    expect(listQuery).toBeDefined();
+    const [sql, params] = listQuery as [string, unknown[]];
+    // With sequential scans switched off the planner must still find an index that fits the query.
+    await db.exec("SET enable_seqscan = off");
+    try {
+      const plan = await db.query<{ "QUERY PLAN": string }>(`EXPLAIN ${sql}`, params);
+      expect(plan.rows.map((row) => row["QUERY PLAN"]).join("\n")).toContain("idx_appointments_clinic_start");
+    } finally {
+      await db.exec("RESET enable_seqscan");
+    }
+  });
+});

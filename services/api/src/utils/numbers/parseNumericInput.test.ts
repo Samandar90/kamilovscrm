@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+// parseNumericInput imports errorHandler, which reads config/env (JWT_SECRET from .env).
+vi.mock("../../config/env", () => ({ env: { isProduction: false } }));
 import { parseNumericInput } from "./parseNumericInput";
 
 describe("parseNumericInput", () => {

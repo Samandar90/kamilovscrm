@@ -315,3 +315,24 @@ describe("invoice snapshot of the visit's services", () => {
     expect(await invoices.createFromAppointment(admin, saved.id)).toMatchObject({ total: 300000 });
   });
 });
+
+describe("listing appointments", () => {
+  const book = (startAt: string) => service.create(admin, { ...input, startAt });
+
+  it("returns the visits that start inside the period, the latest first", async () => {
+    await book("2099-08-27 10:00:00");
+    const morning = await book("2099-08-28 09:00:00");
+    const evening = await book("2099-08-28 23:00:00");
+    await book("2099-08-29 00:00:00");
+    const rows = await service.list(admin, { startFrom: "2099-08-28 00:00:00", startTo: "2099-08-28 23:59:59" });
+    expect(rows.map((row) => row.id)).toEqual([evening.id, morning.id]);
+  });
+
+  it("returns at most `limit` visits, the latest first", async () => {
+    await book("2099-08-27 10:00:00");
+    const latest = await book("2099-08-29 10:00:00");
+    await book("2099-08-28 10:00:00");
+    expect((await service.list(admin, { limit: 1 })).map((row) => row.id)).toEqual([latest.id]);
+    expect(await service.list(admin, { limit: 5 })).toHaveLength(3);
+  });
+});

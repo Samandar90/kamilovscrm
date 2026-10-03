@@ -340,7 +340,6 @@
     "period": "Период",
     "schedule": "Расписание",
     "emptyToday": "Нет записей на сегодня",
-    "emptyGeneral": "Нет записей",
     "addFirst": "Добавьте первую запись",
     "showMore": "Показать ещё",
     "noPatientName": "Пациент #{{id}}",
