@@ -35,6 +35,7 @@ import {
   todayYmd,
   uiDateToYmd,
 } from "../utils/appointmentFormUtils";
+import { loadAppointmentsPageData } from "../utils/appointmentsPageData";
 import { summarizeAppointments } from "../utils/appointmentSummary";
 import {
   canChangeAppointmentServices,
@@ -382,26 +383,10 @@ export const AppointmentsPage: React.FC = () => {
     }
     setError(null);
     try {
-      const [appointmentRows, patients, doctors, services] = await Promise.all([
-        appointmentsFlowApi.listAppointments(token),
-        canReadPatientsList ? appointmentsFlowApi.listPatients(token) : Promise.resolve([]),
-        appointmentsFlowApi.listDoctors(token),
-        appointmentsFlowApi.listServices(token),
-      ]);
-      const invoicePairs = readBilling
-        ? await Promise.all(
-            appointmentRows.map(async (row) => {
-              try {
-                const rows = await appointmentsFlowApi.listInvoicesByAppointment(token, row.id);
-                return [row.id, rows[0] ?? null] as const;
-              } catch (_error) {
-                return [row.id, null] as const;
-              }
-            })
-          )
-        : appointmentRows.map((row) => [row.id, null] as const);
+      const { appointments: appointmentRows, patients, doctors, services, invoicesByAppointmentId: invoices } =
+        await loadAppointmentsPageData(appointmentsFlowApi, token, { readBilling, readPatients: canReadPatientsList });
       setAppointments(appointmentRows);
-      setInvoicesByAppointmentId(Object.fromEntries(invoicePairs));
+      setInvoicesByAppointmentId(invoices);
       setPatientsList(patients);
       setDoctorsMap(Object.fromEntries(doctors.map((item) => [item.id, item.name])));
       setServicesMap(Object.fromEntries(services.map((item) => [item.id, item])));
