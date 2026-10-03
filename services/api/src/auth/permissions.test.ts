@@ -30,6 +30,35 @@ describe("queue permissions", () => {
   });
 });
 
+describe("leads permissions", () => {
+  it("has a leads module that reception, operator and manager read and update", () => {
+    expect(PERMISSION_MODULES).toContain("leads");
+    expect(rolesWithPermission("leads", "read")).toEqual(["superadmin", "reception", "operator", "manager"]);
+    expect(rolesWithPermission("leads", "update")).toEqual(["superadmin", "reception", "operator", "manager"]);
+    // Leads are created only by the sheet reader and are never deleted: no role is granted these actions.
+    expect(rolesWithPermission("leads", "create")).toEqual(["superadmin"]);
+    expect(rolesWithPermission("leads", "delete")).toEqual(["superadmin"]);
+  });
+
+  it("gives the other roles nothing in the leads module", () => {
+    for (const role of ["director", "doctor", "nurse", "cashier", "accountant", "marketer"] as const) {
+      for (const action of PERMISSION_ACTIONS) {
+        expect(hasPermission(role, "leads", action), `${role} leads.${action}`).toBe(false);
+      }
+    }
+  });
+
+  it("lets only superadmin manage lead sources and only the marketer read own leads", () => {
+    expect(PERMISSIONS.LEAD_SOURCES_MANAGE).toEqual(["superadmin"]);
+    expect(PERMISSIONS.LEADS_OWN_READ).toEqual(["marketer"]);
+    for (const role of USER_ROLES) {
+      expect(roleHasPermissionKey(role, "LEAD_SOURCES_MANAGE"), role).toBe(role === "superadmin");
+      // allowPermission does not auto-pass superadmin: the owner has no "own leads" either.
+      expect(roleHasPermissionKey(role, "LEADS_OWN_READ"), role).toBe(role === "marketer");
+    }
+  });
+});
+
 describe("marketer (external contractor)", () => {
   const marketer: UserRole = "marketer";
 
@@ -45,10 +74,9 @@ describe("marketer (external contractor)", () => {
     }
   });
 
-  it("is in no named permission", () => {
-    for (const key of Object.keys(PERMISSIONS) as PermissionKey[]) {
-      expect(roleHasPermissionKey(marketer, key), key).toBe(false);
-    }
+  it("is in one named permission only: reading own leads", () => {
+    const granted = (Object.keys(PERMISSIONS) as PermissionKey[]).filter((key) => roleHasPermissionKey(marketer, key));
+    expect(granted).toEqual(["LEADS_OWN_READ"]);
   });
 
   it("is not derived into patients, appointments or ai read", () => {

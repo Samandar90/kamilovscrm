@@ -37,6 +37,9 @@ export const PERMISSION_MODULES = [
   // Электронная очередь: номера и вызов пациентов. Врач/медсестра — только своя очередь (проверка в сервисе).
   // Экраны (ТВ) — отдельная политика QUEUE_DISPLAY_MANAGE.
   "queue",
+  // Лиды из таблиц таргетологов: список клиники, статус, заметка, привязка пациента. Источники и подключение
+  // таблиц — отдельная политика LEAD_SOURCES_MANAGE; свои лиды таргетолога — LEADS_OWN_READ.
+  "leads",
 ] as const;
 
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];
@@ -60,6 +63,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     appointments: ["read", "create", "update", "delete"],
     questionnaires: ["read", "create", "update"],
     queue: ["read", "create", "update"],
+    leads: ["read", "update"],
     ai: ["read", "create"],
   },
 
@@ -96,6 +100,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     patients: ["read", "create"],
     appointments: ["read", "create", "update"],
     callcenter: ["read", "update"],
+    leads: ["read", "update"],
     ai: ["read", "create"],
   },
 
@@ -118,6 +123,7 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     appointments: ["read", "create", "update", "delete"],
     questionnaires: ["read", "create", "update", "delete"],
     queue: ["read"],
+    leads: ["read", "update"],
     invoices: ["read"],
     payments: ["read"],
     expenses: ["read", "create", "update", "delete"],
@@ -139,7 +145,10 @@ const ROLE_PERMISSIONS: Record<UserRole, RoleRule> = {
     ai: ["read", "create"],
   },
 
-  /** Внешний таргетолог (подрядчик): ни одного модуля клиники — ни пациентов, ни записей, ни ИИ. Строка остаётся пустой. */
+  /**
+   * Внешний таргетолог (подрядчик): ни одного модуля клиники — ни пациентов, ни записей, ни ИИ. Строка остаётся пустой.
+   * Свои лиды он читает по именованному ключу LEADS_OWN_READ, не через модуль leads.
+   */
   marketer: {},
 };
 
@@ -192,6 +201,10 @@ export const PERMISSIONS = {
   QUESTIONNAIRE_TEMPLATE_MANAGE: ["superadmin", "manager", "doctor"] as const satisfies readonly UserRole[],
   /** ТВ-экраны электронной очереди (создание, код, удаление) — только superadmin клиники. */
   QUEUE_DISPLAY_MANAGE: ["superadmin"] as const satisfies readonly UserRole[],
+  /** Источники лидов: создание, привязка таргетолога, подключение и чтение таблицы — только superadmin клиники. */
+  LEAD_SOURCES_MANAGE: ["superadmin"] as const satisfies readonly UserRole[],
+  /** GET /leads/mine — таргетолог читает только лиды своих источников. Superadmin в список не входит. */
+  LEADS_OWN_READ: ["marketer"] as const satisfies readonly UserRole[],
 
   /** /services/mine — врач сам ведёт свой список услуг (выбор из каталога и создание новой). */
   DOCTOR_OWN_SERVICES: ["doctor"] as const satisfies readonly UserRole[],
