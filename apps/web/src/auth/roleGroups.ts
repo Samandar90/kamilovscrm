@@ -76,6 +76,18 @@ export const QUESTIONNAIRE_ROLES = rolesWithPermission("questionnaires", "read")
 /** Страница «Очередь»: все, у кого есть queue.read (manager/director — только просмотр). */
 export const QUEUE_ROLES = rolesWithPermission("queue", "read");
 
+/** Страница «Лиды»: сотрудники с чтением модуля leads (оператор, ресепшен, менеджер, superadmin). */
+export const LEADS_ROLES = rolesWithPermission("leads", "read");
+
+/** Статус, заметка и привязка пациента у лида. */
+export const LEADS_UPDATE_ROLES = rolesWithPermission("leads", "update");
+
+/** Источники лидов и подключение таблиц — только superadmin. */
+export const LEAD_SOURCES_MANAGE_ROLES: UserRole[] = [...PERMISSIONS.LEAD_SOURCES_MANAGE];
+
+/** «Мои лиды»: внешний таргетолог видит только лиды своих источников. */
+export const MARKETER_ROLES: UserRole[] = [...PERMISSIONS.LEADS_OWN_READ];
+
 /** «Мои услуги»: врач сам ведёт список своих услуг. */
 export const MY_SERVICES_ROLES: UserRole[] = [...PERMISSIONS.DOCTOR_OWN_SERVICES];
 

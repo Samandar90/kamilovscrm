@@ -1,15 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
+  PERMISSIONS,
   PERMISSION_MODULES,
   USER_ROLES,
   hasPermission,
   roleHasPermissionKey,
   type PermissionAction,
+  type PermissionKey,
   type UserRole,
 } from "./permissions";
 import {
   CLINIC_STAFF,
   DASHBOARD_NAV_ROLES,
+  LEADS_ROLES,
+  LEADS_UPDATE_ROLES,
+  LEAD_SOURCES_MANAGE_ROLES,
+  MARKETER_ROLES,
   QUEUE_ROLES,
   ROLE_LABEL_KEYS,
   canCallQueue,
@@ -64,6 +70,46 @@ describe("electronic queue permissions", () => {
     expect(canReadQueue(null)).toBe(false);
     expect(canIssueQueue(undefined)).toBe(false);
     expect(canCallQueue(null)).toBe(false);
+  });
+});
+
+/** Mirrors the API matrix: services/api/src/auth/permissions.ts (leads module). */
+const EXPECTED_LEADS_ACTIONS: Record<UserRole, PermissionAction[]> = {
+  superadmin: ["read", "create", "update", "delete"],
+  reception: ["read", "update"],
+  doctor: [],
+  nurse: [],
+  cashier: [],
+  operator: ["read", "update"],
+  accountant: [],
+  manager: ["read", "update"],
+  director: [],
+  marketer: [],
+};
+
+describe("leads permissions", () => {
+  it("has the leads module", () => {
+    expect(PERMISSION_MODULES).toContain("leads");
+  });
+
+  it.each(USER_ROLES)("grants %s exactly its leads actions", (role) => {
+    expect(ACTIONS.filter((action) => hasPermission(role, "leads", action))).toEqual(EXPECTED_LEADS_ACTIONS[role]);
+  });
+
+  it("lets only superadmin manage lead sources and only the marketer read own leads", () => {
+    expect(PERMISSIONS.LEAD_SOURCES_MANAGE).toEqual(["superadmin"]);
+    expect(PERMISSIONS.LEADS_OWN_READ).toEqual(["marketer"]);
+    const keys = Object.keys(PERMISSIONS) as PermissionKey[];
+    expect(keys.filter((key) => roleHasPermissionKey("marketer", key))).toEqual(["LEADS_OWN_READ"]);
+  });
+
+  it("derives the leads role groups from the matrix", () => {
+    expect(new Set(LEADS_ROLES)).toEqual(new Set(["superadmin", "reception", "operator", "manager"]));
+    expect(LEADS_ROLES).toHaveLength(4);
+    expect(new Set(LEADS_UPDATE_ROLES)).toEqual(new Set(["superadmin", "reception", "operator", "manager"]));
+    expect(LEADS_UPDATE_ROLES).toHaveLength(4);
+    expect(LEAD_SOURCES_MANAGE_ROLES).toEqual(["superadmin"]);
+    expect(MARKETER_ROLES).toEqual(["marketer"]);
   });
 });
 
