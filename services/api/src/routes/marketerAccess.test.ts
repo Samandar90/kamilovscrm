@@ -264,8 +264,14 @@ describe("marketer on the data routers", () => {
     ["GET", "/debug/ai"],
     ["POST", "/users"],
     ["POST", "/users/2/impersonate"],
+    // Leads: the staff list, a lead, the sources and their management. The marketer's own address is /leads/mine.
+    ["GET", "/leads"],
+    ["PATCH", "/leads/1"],
+    ["GET", "/leads/sources"],
+    ["GET", "/leads/sources/manage"],
+    ["POST", "/leads/sources"],
   ])("%s /api%s answers 403", async (method, path) => {
-    const res = await as("marketer", path, method, method === "POST" ? {} : undefined);
+    const res = await as("marketer", path, method, method === "GET" ? undefined : {});
     expect(res.status).toBe(403);
   });
 
