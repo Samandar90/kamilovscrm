@@ -306,6 +306,9 @@ export function LeadDetails({ lead, onChange, onConflict }: Props) {
           onClose={() => setCreateOpen(false)}
           onCreated={(patient) => {
             setCreateOpen(false);
+            // The patient exists now. It stays as the only candidate until the link succeeds: after a failed link
+            // «Привязать» retries it, and nobody is created a second time.
+            setMatches([{ id: patient.id, fullName: patient.fullName, phone: patient.phone ?? null }]);
             void setPatient(patient.id);
           }}
           onError={setCreateError}

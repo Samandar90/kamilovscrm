@@ -12,7 +12,7 @@ type ModalProps = {
   source?: string;
   error?: string | null;
   onClose: () => void;
-  onCreated: (patient: { id: number; fullName: string }) => void;
+  onCreated: (patient: { id: number; fullName: string; phone?: string | null }) => void;
   onError: (message: string | null) => void;
 };
 const mocks = vi.hoisted(() => ({
@@ -312,6 +312,30 @@ describe("lead details", () => {
       expect(mocks.setPatient).toHaveBeenCalledWith(52, 77);
       expect(mocks.onChange).toHaveBeenCalledWith(updated);
       expect(view.root.findAllByProps({ id: "create-patient-modal" })).toHaveLength(0);
+    });
+
+    it("keeps a created patient as the candidate when the link fails: «Привязать» retries without creating a second one", async () => {
+      const updated = linked({ patientId: 77 });
+      mocks.setPatient.mockRejectedValueOnce(new HttpError("Нет связи с сервером", 503)).mockResolvedValueOnce(updated);
+      await renderAs("reception");
+      await click(buttons("Создать пациента")[0]);
+      await act(async () => {
+        mocks.modal?.onCreated({ id: 77, fullName: "Тестовый Лид", phone: "+998901234567" });
+        await settle();
+      });
+      expect(mocks.setPatient).toHaveBeenCalledTimes(1);
+      expect(textOf(view.root.findByProps({ role: "alert" }))).toBe("Нет связи с сервером");
+      expect(mocks.onChange).not.toHaveBeenCalled();
+      expect(view.root.findAllByProps({ id: "create-patient-modal" })).toHaveLength(0);
+
+      // The patient exists: it is offered for the link, not created again.
+      const candidates = view.root.findAll((node) => node.type === "li" && node.props["data-match"] !== undefined);
+      expect(candidates.map(textOf)).toEqual(["Тестовый Лид+998901234567Привязать"]);
+      await click(buttons("Привязать")[0]);
+      expect(mocks.setPatient).toHaveBeenCalledTimes(2);
+      expect(mocks.setPatient).toHaveBeenLastCalledWith(52, 77);
+      expect(mocks.onChange).toHaveBeenCalledWith(updated);
+      expect(view.root.findAllByProps({ role: "alert" })).toHaveLength(0);
     });
 
     it("starts the form with an empty name for a lead without one", async () => {
