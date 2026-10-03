@@ -592,6 +592,34 @@ describe("lead sources", () => {
       .toEqual([{ marketer_user_id: 7, spreadsheet_id: null }]);
   });
 
+  it("answers 400, not 500, to a control character in a source name or in a column header", async () => {
+    // PostgreSQL stores no NUL in text or jsonb: without the check the statement fails and the answer is 500.
+    for (const name of ["Insta\u0000gram", "\u0000", "Insta\u0007gram", "Insta\ngram", "Insta\u007fgram"]) {
+      const label = JSON.stringify(name);
+      expect(await as("admin", "/sources", "POST", { name }), label)
+        .toMatchObject({ status: 400, body: { error: "Название источника не должно содержать управляющих символов" } });
+      expect((await as("admin", `/sources/${SOURCE_A}`, "PATCH", { name })).status, label).toBe(400);
+    }
+    const columnMaps = [
+      { phone: "Теле\u0000фон", name: null }, { phone: "Телефон", name: "И\u0000мя" }, { phone: "\u0000", name: null },
+      { phone: "Теле\u001bфон", name: null },
+    ];
+    for (const columnMap of columnMaps) {
+      const res = await as("admin", `/sources/${SOURCE_A}`, "PATCH", { columnMap });
+      expect(res, JSON.stringify(columnMap)).toMatchObject({ status: 400, body: { error: expect.stringContaining("columnMap") } });
+      // The value is not repeated in the answer.
+      expect(res.text).not.toMatch(/[\u0000-\u001f]|\\u00/);
+    }
+    expect((await db.query("SELECT name, column_map FROM lead_sources ORDER BY id")).rows).toEqual([
+      { name: "Instagram", column_map: null }, { name: "Facebook", column_map: null }, { name: "Чужой источник", column_map: null },
+    ]);
+
+    // White space at the edges of a name is trimmed as before; a header cell of two lines can still be chosen.
+    expect((await as("admin", `/sources/${SOURCE_A}`, "PATCH", { name: "\tИнста\n" })).body).toMatchObject({ name: "Инста" });
+    expect((await as("admin", `/sources/${SOURCE_A}`, "PATCH", { columnMap: { phone: "Номер\nтелефона", name: null } })).body)
+      .toMatchObject({ columnMap: { phone: "Номер\nтелефона", name: null } });
+  });
+
   it("patches only the fields that are sent", async () => {
     const renamed = await as("admin", `/sources/${SOURCE_A}`, "PATCH", { name: " Инста " });
     expect(renamed.status).toBe(200);

@@ -48,11 +48,20 @@ const isLeadStatus = (value: unknown): value is LeadStatus =>
 // Длина считается в символах, как char_length в CHECK-ах миграции 038.
 const chars = (text: string): number => [...text].length;
 
+// NUL PostgreSQL не хранит ни в text, ни в jsonb: запрос с ним падает, и ответом был бы 500. Остальным управляющим
+// символам в названии тоже делать нечего.
+const CONTROL_RE = /[\u0000-\u001f\u007f]/;
+// В заголовке колонки перенос строки и табуляция допустимы: ячейка заголовка в таблице бывает в две строки.
+const HEADER_CONTROL_RE = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
+
 const parseSourceName = (value: unknown): string => {
   const name = typeof value === "string" ? value.trim() : "";
   const length = chars(name);
   if (length < 1 || length > NAME_MAX) {
     throw new ApiError(400, `Название источника: от 1 до ${NAME_MAX} символов`);
+  }
+  if (CONTROL_RE.test(name)) {
+    throw new ApiError(400, "Название источника не должно содержать управляющих символов");
   }
   return name;
 };
@@ -109,6 +118,9 @@ const parseColumnMap = (value: unknown): LeadColumnMap | null => {
     throw new ApiError(400, COLUMN_MAP_ERROR);
   }
   const nameHeader = typeof name === "string" ? name.trim() : "";
+  if (HEADER_CONTROL_RE.test(phoneHeader) || HEADER_CONTROL_RE.test(nameHeader)) {
+    throw new ApiError(400, "Поле 'columnMap': заголовок колонки не должен содержать управляющих символов");
+  }
   return { phone: phoneHeader, name: nameHeader === "" ? null : nameHeader };
 };
 
