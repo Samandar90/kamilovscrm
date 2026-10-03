@@ -100,6 +100,14 @@ const debugSqlParams =
 const debugInvoiceCreate =
   !isProduction && process.env.DEBUG_INVOICE_CREATE?.trim() === "1";
 
+/** ИИ-ассистент: писать в лог сам текст сообщений, промптов и ответов, а не только длину — только DEBUG_AI_TEXT=1, не production. */
+const debugAiText =
+  !isProduction && process.env.DEBUG_AI_TEXT?.trim() === "1";
+
+/** Писать в лог ошибку целиком (у PostgreSQL — message, detail и where со значениями полей) — только DEBUG_ERROR_DETAILS=1, не production. */
+const debugErrorDetails =
+  !isProduction && process.env.DEBUG_ERROR_DETAILS?.trim() === "1";
+
 export const env = {
   nodeEnv,
   isProduction,
@@ -118,6 +126,8 @@ export const env = {
   clinicReceiptFooter,
   debugSqlParams,
   debugInvoiceCreate,
+  debugAiText,
+  debugErrorDetails,
   smsEnabled,
   eskizEmail,
   eskizPassword,

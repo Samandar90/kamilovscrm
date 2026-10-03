@@ -3,6 +3,7 @@ import { AI_ACCESS_DENIED_MESSAGE, checkAIRequestAccess } from "../../ai/aiAssis
 import { AIService } from "./ai.service";
 import { services } from "../../container";
 import { aiMessagesService } from "../aiMessagesService";
+import { errorForLog, textForLog } from "../../utils/logRedaction";
 import { getAuthPayload } from "../../utils/requestAuth";
 
 const aiService = new AIService({
@@ -30,9 +31,7 @@ export const aiAskV2Controller = async (req: Request, res: Response) => {
     await aiMessagesService.append(auth.userId, "user", message);
 
     const allowed = checkAIRequestAccess(auth.role, message);
-    console.log("ROLE:", auth.role);
-    console.log("MESSAGE:", message);
-    console.log("ALLOWED:", allowed);
+    console.log("[AI V2] ask", JSON.stringify({ role: auth.role, allowed, message: textForLog(message) }));
     if (!allowed) {
       await aiMessagesService.append(auth.userId, "assistant", AI_ACCESS_DENIED_MESSAGE);
       return res.status(200).json({
@@ -46,14 +45,14 @@ export const aiAskV2Controller = async (req: Request, res: Response) => {
     try {
       answer = await aiService.handleMessage(message, auth, chatHistory);
     } catch (error) {
-      console.error("[AI V2] handleMessage failed", error);
+      console.error("[AI V2] handleMessage failed", errorForLog(error));
       answer = AI_ERROR_ANSWER;
     }
 
     await aiMessagesService.append(auth.userId, "assistant", answer);
     return res.status(200).json({ answer, suggestions: [] });
   } catch (error) {
-    console.error("[AI V2] ask failed", error);
+    console.error("[AI V2] ask failed", errorForLog(error));
     try {
       const auth = getAuthPayload(req);
       await aiMessagesService.append(auth.userId, "assistant", AI_ERROR_ANSWER);

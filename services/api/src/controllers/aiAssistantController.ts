@@ -4,6 +4,7 @@ import { dbPool } from "../config/database";
 import { services } from "../container";
 import { ApiError } from "../middleware/errorHandler";
 import type { AssistantChatHistoryItem } from "../ai/aiLlmService";
+import { errorForLog, textForLog } from "../utils/logRedaction";
 import { getAuthPayload } from "../utils/requestAuth";
 
 const FALLBACK_CRM = "Не удалось получить данные CRM";
@@ -31,7 +32,7 @@ export const aiAskController = async (req: Request, res: Response) => {
     const history = parseChatHistory(req.body);
     console.log(
       "[AI] ask intent",
-      JSON.stringify({ message: message.slice(0, 200), historyLen: history.length })
+      JSON.stringify({ message: textForLog(message), historyLen: history.length })
     );
     if (!message) {
       return res.status(400).json({
@@ -51,7 +52,7 @@ export const aiAskController = async (req: Request, res: Response) => {
     if (error instanceof ApiError && error.status === 401) {
       throw error;
     }
-    console.error("[AI] ask controller error (real)", error);
+    console.error("[AI] ask controller error (real)", errorForLog(error));
     return res.status(200).json({
       answer: FALLBACK_CRM,
       suggestions: [],
@@ -71,7 +72,7 @@ export const aiSummaryController = async (req: Request, res: Response) => {
     if (error instanceof ApiError && error.status === 401) {
       throw error;
     }
-    console.error("[AI] summary controller error (real)", error);
+    console.error("[AI] summary controller error (real)", errorForLog(error));
     return res.status(200).json({
       summaryText: FALLBACK_CRM,
       recommendationText: "Попробуйте обновить страницу.",
@@ -110,7 +111,7 @@ export const aiDebugController = async (_req: Request, res: Response) => {
       paymentsRows: paymentsRows.rows,
     });
   } catch (error) {
-    console.error("[AI DEBUG ERROR FULL]", error);
+    console.error("[AI DEBUG ERROR FULL]", errorForLog(error));
     return res.status(500).json({
       error: error instanceof Error ? error.message : String(error),
     });

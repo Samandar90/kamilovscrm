@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { env } from "../config/env";
+import { errorForLog } from "../utils/logRedaction";
 
 // Basic error shape for future domain errors
 export class ApiError extends Error {
@@ -66,17 +67,10 @@ export const errorHandler = (
   _next: NextFunction
 ) => {
   if (err && typeof err === "object") {
-    const pg = err as PostgresLikeError & { message?: string; stack?: string };
+    const pg = err as PostgresLikeError;
     if (typeof pg.code === "string" && pg.code.length === 5) {
       // eslint-disable-next-line no-console
-      console.error("RAW BACKEND ERROR:", {
-        message: pg.message ?? (err instanceof Error ? err.message : undefined),
-        code: pg.code,
-        detail: pg.detail,
-        where: pg.where,
-        constraint: pg.constraint,
-        stack: err instanceof Error ? err.stack : pg.stack,
-      });
+      console.error("RAW BACKEND ERROR:", errorForLog(err));
     }
   }
 

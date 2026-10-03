@@ -1,6 +1,7 @@
 import type { UserRole } from "../../auth/permissions";
 import { canReadFinancialFactsInAi } from "../../ai/aiAssistantRoleAccess";
 import { AiFactBuilderService } from "../../ai/aiFactBuilderService";
+import { errorForLog } from "../../utils/logRedaction";
 
 export type AIContext = {
   revenueToday: number;
@@ -72,7 +73,7 @@ export class AIContextBuilder {
             : "нет данных",
       };
     } catch (error) {
-      console.error("[AI CONTEXT] buildCRMContext failed", error);
+      console.error("[AI CONTEXT] buildCRMContext failed", errorForLog(error));
       return DEFAULT_CONTEXT;
     }
   }

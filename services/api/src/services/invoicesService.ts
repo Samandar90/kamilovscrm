@@ -15,6 +15,7 @@ import type { IInvoicesRepository } from "../repositories/interfaces/IInvoicesRe
 import type { IAppointmentsRepository } from "../repositories/interfaces/IAppointmentsRepository";
 import type { IServicesRepository } from "../repositories/interfaces/IServicesRepository";
 import type { AuthTokenPayload } from "../repositories/interfaces/userTypes";
+import { errorForLog } from "../utils/logRedaction";
 import { parseNumericInput, parseRequiredMoney, roundMoney2 } from "../utils/numbers";
 
 const TERMINAL_STATUSES = new Set<InvoiceStatus>(["paid", "cancelled", "refunded"]);
@@ -374,7 +375,7 @@ export class InvoicesService {
       return created;
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error("[InvoicesService.createFromAppointment]", { appointmentId }, err);
+      console.error("[InvoicesService.createFromAppointment]", { appointmentId }, errorForLog(err));
       throw err;
     }
   }

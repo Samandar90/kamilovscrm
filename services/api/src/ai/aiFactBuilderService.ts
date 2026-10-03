@@ -1,6 +1,7 @@
 import { dbPool } from "../config/database";
 import { env } from "../config/env";
 import { getMockDb } from "../repositories/mockDatabase";
+import { errorForLog } from "../utils/logRedaction";
 import type { QueryResultRow } from "pg";
 import { sqlInvoiceValidForRevenue, sqlLocalDate, sqlNetPayment, sqlTodayLocal } from "./aiSql";
 import {
@@ -50,7 +51,7 @@ export class AiFactBuilderService {
     try {
       return await dbPool.query<T>(query, values);
     } catch (error) {
-      console.error("[AI SQL ERROR]", inferred, error);
+      console.error("[AI SQL ERROR]", inferred, errorForLog(error));
       throw error;
     }
   }
@@ -66,7 +67,7 @@ export class AiFactBuilderService {
       const r = await this.queryPg<T>(query, values, label);
       return r.rows[0] ?? fallback;
     } catch (error) {
-      console.error(`[AI FACTS] ${label} failed`, error);
+      console.error(`[AI FACTS] ${label} failed`, errorForLog(error));
       return fallback;
     }
   }
@@ -406,7 +407,7 @@ export class AiFactBuilderService {
       cashShiftOpen: db.cashRegisterShifts.some((s) => !s.closedAt),
     };
     } catch (error) {
-      console.error("[AI FACT BUILDER] getClinicSnapshot failed", error);
+      console.error("[AI FACT BUILDER] getClinicSnapshot failed", errorForLog(error));
       return createEmptyClinicFactsSnapshot();
     }
   }
@@ -721,7 +722,7 @@ export class AiFactBuilderService {
         activeServices,
       };
     } catch (error) {
-      console.error("[AI FACT BUILDER] buildStructuredContext failed", error);
+      console.error("[AI FACT BUILDER] buildStructuredContext failed", errorForLog(error));
       return {
         revenueToday: snapshot.revenueToday,
         revenue7d: snapshot.revenue7d,
