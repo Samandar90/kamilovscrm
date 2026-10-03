@@ -1,13 +1,5 @@
-/** Result codes of a sheet read; stored in lead_sources.last_sync_status. */
-export type LeadSyncStatus =
-  | "ok"
-  | "empty"
-  | "no_access"
-  | "not_found"
-  | "columns_not_found"
-  | "too_large"
-  | "timeout"
-  | "http_error";
+/** Result codes of a sheet read: the type lives with the other contract types and is re-exported here. */
+export type { LeadSyncStatus } from "../../repositories/interfaces/leadTypes";
 
 const SHEETS_HOST = "docs.google.com";
 

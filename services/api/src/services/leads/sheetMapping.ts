@@ -1,7 +1,8 @@
+import type { LeadColumnMap } from "../../repositories/interfaces/leadTypes";
 import { canonicalizePhone } from "../../utils/phone";
 
-/** Headers chosen by the superadmin; stored in lead_sources.column_map. `name: null` — the sheet has no name column. */
-export type LeadColumnMap = { phone: string; name: string | null };
+/** Headers chosen by the superadmin: the type lives with the other contract types and is re-exported here. */
+export type { LeadColumnMap };
 
 export type LeadRowInput = { phone: string; fullName: string | null; extra: Record<string, string> };
 
