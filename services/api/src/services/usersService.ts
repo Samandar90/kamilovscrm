@@ -34,6 +34,18 @@ export class UsersService {
     return { ...base, nurseDoctorId: nid };
   }
 
+  /**
+   * Цель действия superadmin — только пользователь его клиники: findById ищет в клинике запроса.
+   * Пользователь другой клиники для него не существует (404), изменяющий запрос не выполняется.
+   */
+  private async requireUserOfOwnClinic(id: number): Promise<User> {
+    const user = await this.usersRepository.findById(id);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+    return user;
+  }
+
   async getAllUsers(_auth: AuthTokenPayload, filters: UsersFilters = {}) {
     try {
       const users = await this.usersRepository.findAll(filters);
@@ -125,8 +137,7 @@ export class UsersService {
     if (_auth.role !== "superadmin") {
       throw new ApiError(403, "Only superadmin can update users");
     }
-    const current = await this.usersRepository.findById(id);
-    if (!current) return null;
+    const current = await this.requireUserOfOwnClinic(id);
 
     if (data.role !== undefined && !isRoleValid(data.role)) {
       throw new ApiError(400, "Invalid user role");
@@ -197,6 +208,7 @@ export class UsersService {
     if (_auth.role !== "superadmin") {
       throw new ApiError(403, "Only superadmin can delete users");
     }
+    await this.requireUserOfOwnClinic(id);
     await this.nursesRepository.deleteByUserId(id);
     return this.usersRepository.delete(id);
   }
@@ -205,6 +217,7 @@ export class UsersService {
     if (_auth.role !== "superadmin") {
       throw new ApiError(403, "Only superadmin can toggle user activity");
     }
+    await this.requireUserOfOwnClinic(id);
     const updated = await this.usersRepository.toggleActive(id);
     return updated ? await this.enrichPublicUser(updated) : null;
   }
@@ -216,6 +229,7 @@ export class UsersService {
     if (typeof newPassword !== "string" || newPassword.length < 6) {
       throw new ApiError(400, "Password must be at least 6 characters");
     }
+    await this.requireUserOfOwnClinic(id);
     const updated = await this.usersRepository.updatePassword(
       id,
       await hashPassword(newPassword)

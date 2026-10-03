@@ -146,6 +146,24 @@ describe("clinic of a new user", () => {
   });
 });
 
+describe("superadmin of another clinic", () => {
+  it("cannot switch on, rename, delete or reset the password of a marketer of clinic 1", async () => {
+    await db.exec("UPDATE users SET is_active = false WHERE id = 3");
+    const before = (await db.query("SELECT * FROM users WHERE id = 3")).rows;
+
+    expect((await as("clinicAdmin", "/users/3/toggle-active", "PATCH")).status).toBe(404);
+    expect((await as("clinicAdmin", "/users/3/password", "PATCH", { password: "secret2" })).status).toBe(404);
+    expect((await as("clinicAdmin", "/users/3", "PUT", { full_name: "Чужое имя", is_active: true })).status).toBe(404);
+    expect((await as("clinicAdmin", "/users/3", "DELETE")).status).toBe(404);
+    expect((await db.query("SELECT * FROM users WHERE id = 3")).rows).toEqual(before);
+
+    // The owner of clinic 1 still manages the same account.
+    const toggled = await as("platformAdmin", "/users/3/toggle-active", "PATCH");
+    expect(toggled.status).toBe(200);
+    expect(toggled.body).toMatchObject({ id: 3, isActive: true });
+  });
+});
+
 describe("marketer on the data routers", () => {
   // One route per mount of routes/index.ts, plus the two requireAuth-only routes that sit behind a role check.
   it.each([

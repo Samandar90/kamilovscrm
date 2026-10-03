@@ -57,3 +57,56 @@ describe("createUser", () => {
     expect(usersRepository.create).toHaveBeenCalledWith(expect.objectContaining({ clinicId: 2, role: "marketer", doctorId: null }));
   });
 });
+
+describe("a user outside the superadmin's clinic", () => {
+  // findById is scoped to the request's clinic: a user of another clinic is simply not found.
+  beforeEach(() => {
+    usersRepository.findById.mockResolvedValue(null);
+  });
+
+  it("is not updated", async () => {
+    await expect(service.updateUser(admin, 30, { isActive: true })).rejects.toMatchObject({ status: 404 });
+    expect(usersRepository.update).not.toHaveBeenCalled();
+  });
+
+  it("is not deleted", async () => {
+    await expect(service.deleteUser(admin, 30)).rejects.toMatchObject({ status: 404 });
+    expect(usersRepository.delete).not.toHaveBeenCalled();
+    expect(nursesRepository.deleteByUserId).not.toHaveBeenCalled();
+  });
+
+  it("is not switched on or off", async () => {
+    await expect(service.toggleUserActive(admin, 30)).rejects.toMatchObject({ status: 404 });
+    expect(usersRepository.toggleActive).not.toHaveBeenCalled();
+  });
+
+  it("does not get a new password", async () => {
+    await expect(service.changeUserPassword(admin, 30, "secret2")).rejects.toMatchObject({ status: 404 });
+    expect(usersRepository.updatePassword).not.toHaveBeenCalled();
+  });
+});
+
+describe("a user of the superadmin's own clinic", () => {
+  beforeEach(() => {
+    usersRepository.findById.mockResolvedValue(stored());
+  });
+
+  it("is updated, deleted, toggled and given a new password as before", async () => {
+    usersRepository.update.mockResolvedValue(stored({ fullName: "Новое имя" }));
+    expect(await service.updateUser(admin, 30, { fullName: "Новое имя" })).toMatchObject({ id: 30, fullName: "Новое имя" });
+    expect(usersRepository.update).toHaveBeenCalledWith(30, { fullName: "Новое имя" });
+
+    usersRepository.toggleActive.mockResolvedValue(stored({ isActive: false }));
+    expect(await service.toggleUserActive(admin, 30)).toMatchObject({ id: 30, isActive: false });
+    expect(usersRepository.toggleActive).toHaveBeenCalledWith(30);
+
+    usersRepository.updatePassword.mockResolvedValue(stored());
+    expect(await service.changeUserPassword(admin, 30, "secret2")).toMatchObject({ id: 30 });
+    expect(usersRepository.updatePassword).toHaveBeenCalledWith(30, "hash:secret2");
+
+    usersRepository.delete.mockResolvedValue(true);
+    expect(await service.deleteUser(admin, 30)).toBe(true);
+    expect(nursesRepository.deleteByUserId).toHaveBeenCalledWith(30);
+    expect(usersRepository.delete).toHaveBeenCalledWith(30);
+  });
+});
